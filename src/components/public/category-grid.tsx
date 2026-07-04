@@ -1,0 +1,42 @@
+import { ImgPlaceholder } from '@/components/public/img-placeholder'
+
+// Grilla de categorías de navegación (no confundir con el género literario de
+// cada producto): son las 3 grandes familias de la marca. Se mantiene
+// estática, igual que el wireframe — no depende de una tabla normalizada.
+const CATEGORIES = [
+  { title: 'Kits literarios', sub: 'Libro + objetos elegidos para vivir la historia' },
+  { title: 'Cajas literarias', sub: 'Papelería y detalles para tu rincón de lectura' },
+  { title: 'Marcapáginas', sub: 'Pequeños detalles hechos a mano' },
+]
+
+export function CategoryGrid() {
+  return (
+    <section className="w-full bg-background py-14 md:py-24">
+      <div className="mx-auto max-w-7xl px-4 md:px-10">
+        <div className="mb-8 text-center md:mb-12">
+          <p className="font-script mb-1 text-xl text-muted md:text-2xl">Explorá</p>
+          <h2 className="font-heading text-2xl font-semibold text-foreground md:text-4xl">Nuestras categorías</h2>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2.5 md:gap-7">
+          {CATEGORIES.map((cat) => (
+            <div
+              key={cat.title}
+              className="group relative h-44 cursor-pointer overflow-hidden rounded-xl shadow-lg sm:h-64 md:h-96 md:rounded-3xl"
+            >
+              <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
+                <ImgPlaceholder label={cat.title} dark iconSize={16} className="h-full w-full" />
+              </div>
+              <div className="absolute inset-0 flex flex-col justify-end rounded-xl bg-[linear-gradient(to_top,rgba(61,50,88,0.92)_0%,rgba(61,50,88,0.15)_55%,rgba(61,50,88,0)_100%)] p-2.5 md:rounded-3xl md:p-7">
+                <h3 className="mb-0.5 font-heading text-xs font-semibold leading-tight text-foreground sm:text-lg md:mb-1 md:text-2xl">
+                  {cat.title}
+                </h3>
+                <p className="hidden text-xs text-muted sm:block md:text-sm">{cat.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}

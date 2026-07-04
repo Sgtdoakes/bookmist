@@ -1,0 +1,181 @@
+# Bookmist 📚✨
+
+Sitio web de **Bookmist**, marca de cajas y kits literarios (libros curados +
+accesorios). Este repo cubre, por ahora, la **Fase 1**: landing pública
+conectada a un catálogo real en Supabase. Carrito, checkout, pagos, envíos y
+el panel de administración llegan en fases siguientes — ver el historial de
+la conversación de planificación para el roadmap completo.
+
+---
+
+## Stack técnico
+
+- **Next.js 16** (App Router) + **TypeScript** (tipado estricto)
+- **Supabase**: base de datos PostgreSQL y storage (Auth se suma en la Fase 5)
+- **Tailwind CSS v4** + **shadcn/ui**
+- **Vitest** para tests unitarios
+- Pensado para desplegar en **Vercel** (free tier) + **Supabase** (free tier)
+
+---
+
+## Requisitos previos
+
+- **Node.js 18.18 o superior** (recomendado Node 20+) y npm.
+- Una cuenta gratuita en **[Supabase](https://supabase.com)**.
+- *(Para producción)* Una cuenta gratuita en **[Vercel](https://vercel.com)**.
+
+---
+
+## Puesta en marcha local (paso a paso)
+
+### 1. Instalar dependencias
+
+```bash
+npm install
+```
+
+### 2. Crear el proyecto en Supabase
+
+1. Entrá a [app.supabase.com](https://app.supabase.com) y creá un proyecto nuevo.
+2. Elegí una contraseña para la base y una región cercana (ej. *South America (São Paulo)*).
+3. Esperá unos minutos a que el proyecto termine de crearse.
+
+### 3. Crear las tablas (migraciones) y los datos de ejemplo
+
+En el panel de Supabase, andá a **SQL Editor** y ejecutá, **en este orden**, el
+contenido de cada archivo de la carpeta [`supabase/migrations`](./supabase/migrations):
+
+1. `0001_init.sql` — tablas `productos`, `items_catalogo`, `producto_items`.
+2. `0002_rls.sql` — reglas de seguridad (Row Level Security).
+3. `0003_functions.sql` — trigger de `updated_at` y función `categorias_distintas`.
+
+Después, para cargar cajas/kits de ejemplo (tomados del wireframe de Dani),
+ejecutá:
+
+4. [`supabase/seed.sql`](./supabase/seed.sql)
+
+> Podés copiar y pegar cada archivo en una pestaña nueva del SQL Editor y apretar **Run**.
+
+### 4. Configurar las variables de entorno
+
+Copiá el archivo de ejemplo y completá los valores:
+
+```bash
+cp .env.example .env.local
+```
+
+Como mínimo necesitás las tres claves de Supabase. El resto tiene valores por
+defecto razonables. Ver la tabla más abajo.
+
+Las claves de Supabase están en **Project Settings → API**:
+- `NEXT_PUBLIC_SUPABASE_URL` → *Project URL*
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` → *anon public*
+- `SUPABASE_SERVICE_ROLE_KEY` → *service_role* (⚠️ secreta, nunca compartir)
+
+### 5. Levantar el servidor de desarrollo
+
+```bash
+npm run dev
+```
+
+Abrí [http://localhost:3000](http://localhost:3000).
+
+> **Nota sobre el panel de administración:** todavía no existe (`/admin`
+> llega en la Fase 5, con login de Supabase). Cuando se agregue, va a ser
+> obligatorio deshabilitar el registro público en Supabase (**Authentication
+> → Sign In / Providers → Allow new users to sign up = OFF**) y crear las
+> cuentas de Daniela a mano — el sistema considera admin a cualquier usuario
+> que pueda iniciar sesión. Dejarlo anotado acá para no perderlo de vista.
+
+---
+
+## Variables de entorno
+
+| Variable | ¿Obligatoria? | Descripción |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | URL del proyecto Supabase. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Clave pública (anon) de Supabase. |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Clave secreta para lecturas públicas cacheables. **No exponer.** |
+| `NEXT_PUBLIC_SITE_URL` | ✅ | URL del sitio (`http://localhost:3000` en local). |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | ⬜ | WhatsApp de Bookmist, solo dígitos. Sin este valor, el botón flotante no se muestra. |
+| `NEXT_PUBLIC_STORE_*` / `NEXT_PUBLIC_INSTAGRAM_*` / `NEXT_PUBLIC_TIKTOK_URL` | ⬜ | Datos de marca (tienen valores por defecto). |
+
+---
+
+## Despliegue en Vercel
+
+1. Subí el proyecto a un repositorio de GitHub (privado).
+2. En [Vercel](https://vercel.com/new), importá el repositorio (detecta Next.js solo).
+3. En **Settings → Environment Variables**, cargá las mismas variables de
+   `.env.local` (con `NEXT_PUBLIC_SITE_URL` apuntando a la URL final de Vercel).
+4. Deploy. Vercel da una URL `https://tu-proyecto.vercel.app` — no hay
+   dominio propio comprado todavía, así que se usa esa URL hasta que se
+   compre uno.
+5. Actualizá `NEXT_PUBLIC_SITE_URL` con esa URL y volvé a desplegar.
+
+---
+
+## Seguridad (OWASP)
+
+- **RLS en Postgres desde el día 1**: el público solo puede leer productos
+  `activo = true`; nada de escritura sin sesión autenticada (ver
+  `supabase/migrations/0002_rls.sql`).
+- **Aislamiento de la service role key**: `src/lib/supabase/admin.ts` está
+  marcado `server-only` y nunca se importa desde código de cliente.
+- **Headers de seguridad** en `next.config.ts`: CSP, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+  HSTS.
+- **CSP sin nonces por ahora** (trade-off documentado en el propio
+  `next.config.ts`): se prioriza poder servir la landing como contenido
+  estático/cacheable. Se revisita con nonces + rendering dinámico cuando
+  Fase 2+ agregue formularios/checkout, momento en el que ese costo de
+  performance ya se paga igual.
+- **`npm audit`**: hay un advisory moderado conocido (XSS en la copia interna
+  de `postcss` que trae `next` como dependencia transitiva). El fix sugerido
+  por `npm audit fix --force` degrada Next a la v9 — **no aplicar**; es un
+  falso positivo de rango de versiones. Revisar en cada actualización de
+  Next.js si ya se resolvió corriente arriba.
+
+---
+
+## Estructura del proyecto
+
+```
+supabase/migrations/      Migraciones SQL (esquema, RLS, funciones)
+supabase/seed.sql         Datos de ejemplo
+design-reference/         Wireframe original de Dani (jsx) + captura del footer de referencia
+src/app/(public)/         Landing pública
+src/app/robots.ts         SEO: robots.txt
+src/app/sitemap.ts        SEO: sitemap.xml
+src/components/ui/        Componentes de shadcn/ui
+src/components/public/    Componentes propios del sitio público
+src/lib/                  Supabase, helpers, formato, slugs, config de marca
+src/lib/__tests__/        Tests unitarios (Vitest)
+src/types/db.ts           Tipos de la base de datos
+src/proxy.ts              Middleware (Next 16 renombró `middleware` a `proxy`)
+```
+
+---
+
+## Pendientes antes de salir a producción
+
+Estos ítems no bloquean el desarrollo, pero sí lanzar el sitio real:
+
+- Número de WhatsApp, usuario de Instagram y de TikTok reales.
+- Fotos reales de las cajas/kits y de Daniela (hoy hay placeholders).
+- Catálogo real de cajas/kits (hoy hay datos de ejemplo en `supabase/seed.sql`).
+- Comprar un dominio propio (hoy se usa el subdominio `*.vercel.app`).
+
+---
+
+## Scripts disponibles
+
+```bash
+npm run dev        # servidor de desarrollo
+npm run build      # build de producción
+npm run start      # correr el build
+npm run lint       # ESLint
+npm run typecheck  # chequeo de tipos (tsc)
+npm run test       # tests unitarios (Vitest)
+npm run test:watch # tests en modo watch
+```
