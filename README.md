@@ -1,14 +1,15 @@
 # Bookmist 📚✨
 
 Sitio web de **Bookmist**, marca de cajas y kits literarios (libros curados +
-accesorios). Este repo cubre, por ahora, las **Fases 1 y 2**: landing pública
-conectada a un catálogo real en Supabase, más catálogo, carrito y checkout con
-pago manual (transferencia/efectivo). Bookmist envía a todo el país (sin
-retiro en persona), así que el checkout siempre pide dirección de envío; el
-costo de envío queda "a coordinar" hasta que la Fase 4 automatice la
-cotización con Andreani. Pagos online (Mercado Pago) y el panel de
-administración llegan en fases siguientes — ver el historial de la
-conversación de planificación para el roadmap completo.
+accesorios). Este repo cubre, por ahora, las **Fases 1 a 3**: landing pública
+conectada a un catálogo real en Supabase, catálogo/carrito/checkout con pago
+manual (transferencia/efectivo) y pago online con **Mercado Pago** (Checkout
+Pro: QR, billetera y tarjetas en una sola integración). Bookmist envía a todo
+el país (sin retiro en persona), así que el checkout siempre pide dirección
+de envío; el costo de envío queda "a coordinar" hasta que la Fase 4 automatice
+la cotización con Andreani. El panel de administración llega en fases
+siguientes — ver el historial de la conversación de planificación para el
+roadmap completo.
 
 ---
 
@@ -54,11 +55,13 @@ contenido de cada archivo de la carpeta [`supabase/migrations`](./supabase/migra
 3. `0003_functions.sql` — trigger de `updated_at` y función `categorias_distintas`.
 4. `0004_orders.sql` — tablas `orders` y `order_items` (pedidos, Fase 2).
 5. `0005_orders_rls.sql` — RLS de pedidos (sin acceso público, ni lectura).
+6. `0006_mercadopago.sql` — agrega `'mercadopago'` al enum de métodos de pago
+   y las columnas `mp_preference_id`/`mp_payment_id` a `orders` (Fase 3).
 
 Después, para cargar cajas/kits de ejemplo (tomados del wireframe de Dani),
 ejecutá:
 
-6. [`supabase/seed.sql`](./supabase/seed.sql)
+7. [`supabase/seed.sql`](./supabase/seed.sql)
 
 > Podés copiar y pegar cada archivo en una pestaña nueva del SQL Editor y apretar **Run**.
 
@@ -107,6 +110,29 @@ Abrí [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_STORE_*` / `NEXT_PUBLIC_INSTAGRAM_*` / `NEXT_PUBLIC_TIKTOK_URL` | ⬜ | Datos de marca (tienen valores por defecto). |
 | `NEXT_PUBLIC_ENVIO_COSTO` | ⬜ | Costo fijo de envío. Vacío = "a coordinar" (hasta la Fase 4 con Andreani). |
 | `EMAIL_PROVIDER` / `OWNER_EMAIL` / `EMAIL_FROM` / `RESEND_API_KEY` / `SMTP_*` | ⬜ | Notificación por email de pedidos nuevos a Daniela. Sin configurar, el pedido igual se registra y queda el link de WhatsApp como respaldo. |
+| `MP_ACCESS_TOKEN` | ⬜ | Access token de Mercado Pago (Checkout Pro). Sin esto, el checkout solo ofrece transferencia/efectivo. **Secreto.** |
+
+---
+
+## Mercado Pago (Checkout Pro)
+
+1. Conseguí las credenciales en el panel de Mercado Pago → **Tus integraciones
+   → Credenciales** (usá las de *prueba* mientras desarrollás, las de
+   *producción* recién al salir en vivo).
+2. Cargá `MP_ACCESS_TOKEN` en `.env.local` (o en Vercel, para producción).
+3. El **webhook** (`/api/mercadopago/webhook`, que marca el pedido como
+   *pagado*) necesita una URL pública — **solo funciona una vez desplegado**,
+   no en `localhost`. Configurá la URL del webhook en el panel de Mercado
+   Pago apuntando a `https://tu-proyecto.vercel.app/api/mercadopago/webhook`
+   (o dejá que Mercado Pago la tome sola del `notification_url` que manda
+   cada preferencia — no hace falta configurarla a mano en el panel).
+4. El webhook nunca confía en el aviso en sí: vuelve a consultarle a Mercado
+   Pago el estado real del pago con nuestro propio `MP_ACCESS_TOKEN` antes de
+   marcar cualquier pedido como pagado (`src/lib/mercadopago.ts`,
+   `src/app/api/mercadopago/webhook/route.ts`).
+5. Checkout Pro ya cubre QR, billetera Mercado Pago y tarjetas en un solo
+   flujo — no hace falta una integración de QR de punto de venta separada
+   (Bookmist no tiene local físico).
 
 ---
 
@@ -135,6 +161,11 @@ Abrí [http://localhost:3000](http://localhost:3000).
   precio/cantidad que manda el navegador — vuelve a buscar cada producto en la
   base y valida disponibilidad real (stock − reservas de pedidos activos)
   antes de crear el pedido (`src/app/api/checkout/route.ts`).
+- **Webhook de Mercado Pago sin confianza ciega**: nunca se marca un pedido
+  como pagado por lo que dice el body del webhook — siempre se vuelve a
+  consultar el pago por id contra la API real de Mercado Pago con nuestro
+  propio access token, así un tercero no puede forjar un aviso de "pago
+  aprobado" (`src/lib/mercadopago.ts`).
 - **Aislamiento de la service role key**: `src/lib/supabase/admin.ts` está
   marcado `server-only` y nunca se importa desde código de cliente.
 - **Headers de seguridad** en `next.config.ts`: CSP, `X-Frame-Options: DENY`,
@@ -161,6 +192,7 @@ supabase/seed.sql         Datos de ejemplo
 design-reference/         Wireframe original de Dani (jsx) + capturas de referencia
 src/app/(public)/         Landing, catálogo, carrito, checkout, confirmación de pedido
 src/app/api/checkout/     Ruta de creación de pedidos (service role, valida stock real)
+src/app/api/mercadopago/  Webhook de confirmación de pago (Checkout Pro)
 src/app/robots.ts         SEO: robots.txt
 src/app/sitemap.ts        SEO: sitemap.xml (home + catálogo + cada producto activo)
 src/components/ui/        Componentes de shadcn/ui

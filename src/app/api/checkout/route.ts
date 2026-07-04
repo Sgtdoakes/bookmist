@@ -5,6 +5,7 @@ import { storeConfig } from '@/lib/store-config'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 import { notificarPedidoNuevo } from '@/lib/email'
 import { getReservasActivas } from '@/lib/reservas'
+import { mpConfigured, crearPreferencia } from '@/lib/mercadopago'
 import type { OrderItemInsert } from '@/types/db'
 
 type LineaValidada = {
@@ -45,6 +46,17 @@ export async function POST(request: Request) {
     )
   }
   const data = parsed.data
+
+  // Si elige Mercado Pago pero no está configurado, avisamos antes de crear nada.
+  if (data.metodo_pago === 'mercadopago' && !mpConfigured()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'El pago con Mercado Pago no está disponible en este momento. Elegí otro método.',
+      },
+      { status: 400 },
+    )
+  }
 
   const supabase = createAdminClient()
 
@@ -122,7 +134,36 @@ export async function POST(request: Request) {
     )
   }
 
-  // 4) Link de WhatsApp + email a Daniela (no frena el pedido si falla).
+  // 4) Si paga con Mercado Pago, creamos la preferencia (Checkout Pro).
+  let mpInitPoint: string | null = null
+  if (data.metodo_pago === 'mercadopago') {
+    const pref = await crearPreferencia({
+      orderId: order.id,
+      numeroPedido: order.numero_pedido,
+      items: itemsValidados.map((x) => ({
+        nombre: x.producto.nombre,
+        precio: x.producto.precio,
+        cantidad: x.cantidad,
+      })),
+      costoEnvio,
+      emailCliente: data.cliente_email,
+    })
+    if (!pref) {
+      // Limpiamos el pedido para no dejar uno colgado (cascade borra los items).
+      await supabase.from('orders').delete().eq('id', order.id)
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'No pudimos iniciar el pago con Mercado Pago. Probá de nuevo o elegí otro método.',
+        },
+        { status: 502 },
+      )
+    }
+    mpInitPoint = pref.init_point
+    await supabase.from('orders').update({ mp_preference_id: pref.id }).eq('id', order.id)
+  }
+
+  // 5) Link de WhatsApp + email a Daniela (no frena el pedido si falla).
   const datosMsg: DatosPedidoMensaje = {
     numeroPedido: order.numero_pedido,
     clienteNombre: data.cliente_nombre,
@@ -148,5 +189,6 @@ export async function POST(request: Request) {
     numero_pedido: order.numero_pedido,
     whatsapp_url: waUrl,
     total,
+    mp_init_point: mpInitPoint,
   })
 }

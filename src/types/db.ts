@@ -3,7 +3,7 @@
 
 export type ProductoTipo = 'caja' | 'kit'
 export type ItemTipo = 'libro' | 'accesorio'
-export type MetodoPago = 'transferencia' | 'efectivo'
+export type MetodoPago = 'transferencia' | 'efectivo' | 'mercadopago'
 export type EstadoPedido = 'pendiente' | 'pagado' | 'cancelado'
 
 export type Database = {
@@ -118,6 +118,8 @@ export type Database = {
           total: number
           notas: string | null
           leido: boolean
+          mp_preference_id: string | null
+          mp_payment_id: string | null
           created_at: string
         }
         Insert: {
@@ -133,6 +135,8 @@ export type Database = {
           total?: number
           notas?: string | null
           leido?: boolean
+          mp_preference_id?: string | null
+          mp_payment_id?: string | null
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['orders']['Insert']>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { CheckoutForm } from '@/components/public/checkout-form'
 import { storeConfig } from '@/lib/store-config'
+import { mpConfigured } from '@/lib/mercadopago'
 
 export const metadata: Metadata = {
   title: 'Confirmar pedido',
@@ -14,7 +15,7 @@ export default function CheckoutPage() {
         Completá tus datos de envío. Te contactamos para coordinar el pago.
       </p>
       <div className="mt-8">
-        <CheckoutForm envioCosto={storeConfig.envioCosto} />
+        <CheckoutForm envioCosto={storeConfig.envioCosto} mpEnabled={mpConfigured()} />
       </div>
     </div>
   )

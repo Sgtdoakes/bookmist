@@ -64,9 +64,21 @@ describe('checkoutSchema', () => {
       cliente_email: 'juana@example.com',
       cliente_telefono: '1122334455',
       direccion_envio: 'Calle Falsa 123',
-      metodo_pago: 'mercadopago',
+      metodo_pago: 'bitcoin',
       items: [ITEM],
     })
     expect(r.success).toBe(false)
+  })
+
+  it('acepta mercadopago como método de pago', () => {
+    const r = checkoutSchema.safeParse({
+      cliente_nombre: 'Juana',
+      cliente_email: 'juana@example.com',
+      cliente_telefono: '1122334455',
+      direccion_envio: 'Calle Falsa 123',
+      metodo_pago: 'mercadopago',
+      items: [ITEM],
+    })
+    expect(r.success).toBe(true)
   })
 })

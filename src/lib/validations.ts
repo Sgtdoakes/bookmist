@@ -14,7 +14,7 @@ const checkoutBase = z.object({
   cliente_email: z.email('Ingresá un email válido'),
   cliente_telefono: z.string().trim().min(6, 'Ingresá un teléfono de contacto'),
   direccion_envio: z.string().trim().min(5, 'Ingresá la dirección de envío').max(300),
-  metodo_pago: z.enum(['transferencia', 'efectivo']),
+  metodo_pago: z.enum(['transferencia', 'efectivo', 'mercadopago']),
   notas: z.string().trim().max(500).nullish(),
 })
 

@@ -20,7 +20,13 @@ function FieldError({ msg }: { msg?: string }) {
   return <p className="mt-1 text-sm text-red-300">{msg}</p>
 }
 
-export function CheckoutForm({ envioCosto }: { envioCosto: number | null }) {
+export function CheckoutForm({
+  envioCosto,
+  mpEnabled,
+}: {
+  envioCosto: number | null
+  mpEnabled: boolean
+}) {
   const router = useRouter()
   const { items, ready, totalPrecio, clear } = useCart()
   const [enviando, setEnviando] = useState(false)
@@ -90,6 +96,11 @@ export function CheckoutForm({ envioCosto }: { envioCosto: number | null }) {
         // sessionStorage no disponible: la confirmación mostrará la versión genérica
       }
       clear()
+      // Mercado Pago: redirigimos a la pasarela de pago.
+      if (json.mp_init_point) {
+        window.location.href = json.mp_init_point
+        return
+      }
       router.push(`/pedido/${json.numero_pedido}`)
     } catch {
       toast.error('Hubo un problema de conexión. Probá de nuevo.')
@@ -138,22 +149,26 @@ export function CheckoutForm({ envioCosto }: { envioCosto: number | null }) {
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-foreground">¿Cómo querés pagar?</h2>
           <div className="space-y-2">
-            {(Object.keys(METODO_PAGO_LABEL) as Array<keyof typeof METODO_PAGO_LABEL>).map((m) => (
-              <label
-                key={m}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                  metodoPago === m ? 'border-primary bg-primary/10' : 'border-foreground/16 hover:bg-foreground/5'
-                }`}
-              >
-                <input
-                  type="radio"
-                  value={m}
-                  {...register('metodo_pago')}
-                  className="mt-1 size-4 accent-[var(--primary)]"
-                />
-                <span className="font-medium text-foreground">{METODO_PAGO_LABEL[m]}</span>
-              </label>
-            ))}
+            {(Object.keys(METODO_PAGO_LABEL) as Array<keyof typeof METODO_PAGO_LABEL>)
+              .filter((m) => m !== 'mercadopago' || mpEnabled)
+              .map((m) => (
+                <label
+                  key={m}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    metodoPago === m
+                      ? 'border-primary bg-primary/10'
+                      : 'border-foreground/16 hover:bg-foreground/5'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value={m}
+                    {...register('metodo_pago')}
+                    className="mt-1 size-4 accent-[var(--primary)]"
+                  />
+                  <span className="font-medium text-foreground">{METODO_PAGO_LABEL[m]}</span>
+                </label>
+              ))}
           </div>
           <p className="text-xs text-foreground/60">
             Te contactamos para coordinar los datos de pago apenas confirmes el pedido.
