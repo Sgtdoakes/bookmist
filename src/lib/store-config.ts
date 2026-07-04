@@ -1,14 +1,7 @@
 // Datos de la marca, configurables por variables de entorno.
 // Los valores por defecto corresponden a Bookmist. Sin local físico: no hay
-// dirección/horarios/mapa (a diferencia de Martín Libros).
-
-// Costo fijo de envío (configurable). Si no se define, queda "a coordinar"
-// hasta que la Fase 4 automatice la cotización real con Andreani.
-const envioCostoRaw = process.env.NEXT_PUBLIC_ENVIO_COSTO
-const envioCosto =
-  envioCostoRaw && envioCostoRaw.trim() !== '' && !Number.isNaN(Number(envioCostoRaw))
-    ? Number(envioCostoRaw)
-    : null
+// dirección/horarios/mapa (a diferencia de Martín Libros). El costo de envío
+// ya no es un valor fijo acá: se resuelve por zona (ver src/lib/zonas.ts).
 
 export const storeConfig = {
   nombre: process.env.NEXT_PUBLIC_STORE_NOMBRE ?? 'Bookmist',
@@ -18,7 +11,6 @@ export const storeConfig = {
   instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? 'https://www.instagram.com/bookmist.ar/',
   instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE ?? '@bookmist.ar',
   tiktok: process.env.NEXT_PUBLIC_TIKTOK_URL ?? 'https://www.tiktok.com/@bookmist.ar',
-  envioCosto,
 } as const
 
 export type StoreConfig = typeof storeConfig

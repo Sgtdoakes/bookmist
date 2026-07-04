@@ -1,13 +1,19 @@
 import type { Metadata } from 'next'
 import { CheckoutForm } from '@/components/public/checkout-form'
-import { storeConfig } from '@/lib/store-config'
+import { getZonasEnvioActivas } from '@/lib/zonas'
 import { mpConfigured } from '@/lib/mercadopago'
+
+// ISR: sin esto, la lista de zonas de envío queda estática desde el build y
+// una zona nueva/editada en Supabase no aparecería hasta el próximo deploy.
+export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'Confirmar pedido',
 }
 
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const zonas = await getZonasEnvioActivas()
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10">
       <h1 className="font-heading text-3xl font-semibold text-foreground">Confirmá tu pedido</h1>
@@ -15,7 +21,7 @@ export default function CheckoutPage() {
         Completá tus datos de envío. Te contactamos para coordinar el pago.
       </p>
       <div className="mt-8">
-        <CheckoutForm envioCosto={storeConfig.envioCosto} mpEnabled={mpConfigured()} />
+        <CheckoutForm zonas={zonas} mpEnabled={mpConfigured()} />
       </div>
     </div>
   )

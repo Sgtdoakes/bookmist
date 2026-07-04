@@ -93,10 +93,25 @@ export async function POST(request: Request) {
   }
 
   const subtotal = itemsValidados.reduce((acc, x) => acc + x.producto.precio * x.cantidad, 0)
-  const costoEnvio = storeConfig.envioCosto
-  const total = subtotal + (costoEnvio ?? 0)
 
-  // 2) Crear el pedido (service role: ignora RLS).
+  // 2) Costo de envío según la zona elegida (Fase 4a: manual; la API real de
+  // Andreani es Fase 4b, cuando exista el contrato).
+  const { data: zona } = await supabase
+    .from('zonas_envio')
+    .select('nombre,costo')
+    .eq('id', data.zona_id)
+    .eq('activo', true)
+    .maybeSingle()
+  if (!zona) {
+    return NextResponse.json(
+      { ok: false, error: 'La zona de envío elegida ya no está disponible.' },
+      { status: 400 },
+    )
+  }
+  const costoEnvio = Number(zona.costo)
+  const total = subtotal + costoEnvio
+
+  // 3) Crear el pedido (service role: ignora RLS).
   const { data: order, error: orderErr } = await supabase
     .from('orders')
     .insert({
@@ -104,6 +119,7 @@ export async function POST(request: Request) {
       cliente_email: data.cliente_email,
       cliente_telefono: data.cliente_telefono,
       direccion_envio: data.direccion_envio,
+      zona_envio: zona.nombre,
       costo_envio: costoEnvio,
       metodo_pago: data.metodo_pago,
       estado: 'pendiente',
@@ -116,7 +132,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'No pudimos registrar el pedido.' }, { status: 500 })
   }
 
-  // 3) Items con snapshot de nombre y precio.
+  // 4) Items con snapshot de nombre y precio.
   const itemsInsert: OrderItemInsert[] = itemsValidados.map((x) => ({
     order_id: order.id,
     producto_id: x.producto.id,
@@ -134,7 +150,7 @@ export async function POST(request: Request) {
     )
   }
 
-  // 4) Si paga con Mercado Pago, creamos la preferencia (Checkout Pro).
+  // 5) Si paga con Mercado Pago, creamos la preferencia (Checkout Pro).
   let mpInitPoint: string | null = null
   if (data.metodo_pago === 'mercadopago') {
     const pref = await crearPreferencia({
@@ -163,7 +179,7 @@ export async function POST(request: Request) {
     await supabase.from('orders').update({ mp_preference_id: pref.id }).eq('id', order.id)
   }
 
-  // 5) Link de WhatsApp + email a Daniela (no frena el pedido si falla).
+  // 6) Link de WhatsApp + email a Daniela (no frena el pedido si falla).
   const datosMsg: DatosPedidoMensaje = {
     numeroPedido: order.numero_pedido,
     clienteNombre: data.cliente_nombre,
@@ -174,6 +190,7 @@ export async function POST(request: Request) {
       precio_unitario: x.producto.precio,
     })),
     direccionEnvio: data.direccion_envio,
+    zonaEnvio: zona.nombre,
     costoEnvio,
     metodoPago: data.metodo_pago,
     total,

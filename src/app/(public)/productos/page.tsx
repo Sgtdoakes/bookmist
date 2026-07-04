@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { getProductosActivos } from '@/lib/productos'
 import { ProductCard } from '@/components/public/product-card'
 
+// ISR: sin esto, el catálogo queda estático desde el build y un producto
+// nuevo/editado en Supabase no aparecería hasta el próximo deploy.
+export const revalidate = 300
+
 export const metadata: Metadata = {
   title: 'Productos',
   description: 'Todas las cajas y kits literarios de Bookmist.',

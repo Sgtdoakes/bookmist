@@ -6,6 +6,13 @@
 -- real de Daniela apenas esté definido.
 -- =============================================================================
 
+-- Zonas de envío (costo manual, Fase 4a — ver README) ------------------------
+insert into zonas_envio (nombre, costo, activo, orden) values
+  ('CABA y GBA',                 3500, true, 1),
+  ('Resto de Buenos Aires',      4500, true, 2),
+  ('Resto del país',             5500, true, 3)
+on conflict (nombre) do nothing;
+
 -- Biblioteca reusable de libros/accesorios -----------------------------------
 insert into items_catalogo (tipo, nombre, autor, descripcion) values
   ('libro',     'Sombras en la Niebla',              'Valeria Cortez',  'Novela de terror gótico ambientada en un pueblo costero.'),

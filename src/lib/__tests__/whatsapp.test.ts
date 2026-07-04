@@ -51,4 +51,12 @@ describe('construirMensajePedido', () => {
     const conNotas = construirMensajePedido({ ...base, notas: 'Dejar en portería' })
     expect(conNotas).toContain('Notas: Dejar en portería')
   })
+
+  it('incluye la zona de envío solo si está presente', () => {
+    const sinZona = construirMensajePedido(base)
+    expect(sinZona).not.toContain('Zona:')
+
+    const conZona = construirMensajePedido({ ...base, zonaEnvio: 'CABA y GBA' })
+    expect(conZona).toContain('Zona: CABA y GBA')
+  })
 })

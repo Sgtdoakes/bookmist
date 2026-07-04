@@ -1,15 +1,15 @@
 # Bookmist 📚✨
 
 Sitio web de **Bookmist**, marca de cajas y kits literarios (libros curados +
-accesorios). Este repo cubre, por ahora, las **Fases 1 a 3**: landing pública
+accesorios). Este repo cubre, por ahora, las **Fases 1 a 4a**: landing pública
 conectada a un catálogo real en Supabase, catálogo/carrito/checkout con pago
-manual (transferencia/efectivo) y pago online con **Mercado Pago** (Checkout
-Pro: QR, billetera y tarjetas en una sola integración). Bookmist envía a todo
-el país (sin retiro en persona), así que el checkout siempre pide dirección
-de envío; el costo de envío queda "a coordinar" hasta que la Fase 4 automatice
-la cotización con Andreani. El panel de administración llega en fases
-siguientes — ver el historial de la conversación de planificación para el
-roadmap completo.
+manual (transferencia/efectivo) y online con **Mercado Pago** (Checkout Pro:
+QR, billetera y tarjetas en una sola integración), y envío con **costo manual
+por zona** (Daniela carga las zonas y su costo; la integración real con la
+API de Andreani es la Fase 4b, cuando exista el contrato comercial). Bookmist
+envía a todo el país (sin retiro en persona), así que el checkout siempre
+pide dirección de envío. El panel de administración llega en la Fase 5 — ver
+el historial de la conversación de planificación para el roadmap completo.
 
 ---
 
@@ -57,11 +57,15 @@ contenido de cada archivo de la carpeta [`supabase/migrations`](./supabase/migra
 5. `0005_orders_rls.sql` — RLS de pedidos (sin acceso público, ni lectura).
 6. `0006_mercadopago.sql` — agrega `'mercadopago'` al enum de métodos de pago
    y las columnas `mp_preference_id`/`mp_payment_id` a `orders` (Fase 3).
+7. `0007_zonas_envio.sql` — tabla `zonas_envio` (costo manual por zona) y
+   columna `zona_envio` en `orders` (Fase 4a).
+8. `0008_zonas_envio_rls.sql` — RLS de `zonas_envio` (lectura pública de
+   zonas activas, escritura solo autenticado).
 
-Después, para cargar cajas/kits de ejemplo (tomados del wireframe de Dani),
-ejecutá:
+Después, para cargar cajas/kits y zonas de envío de ejemplo (tomados del
+wireframe de Dani), ejecutá:
 
-7. [`supabase/seed.sql`](./supabase/seed.sql)
+9. [`supabase/seed.sql`](./supabase/seed.sql)
 
 > Podés copiar y pegar cada archivo en una pestaña nueva del SQL Editor y apretar **Run**.
 
@@ -108,7 +112,6 @@ Abrí [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_SITE_URL` | ✅ | URL del sitio (`http://localhost:3000` en local). |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | ⬜ | WhatsApp de Bookmist, solo dígitos. Sin este valor, el botón flotante no se muestra (pero el checkout funciona igual). |
 | `NEXT_PUBLIC_STORE_*` / `NEXT_PUBLIC_INSTAGRAM_*` / `NEXT_PUBLIC_TIKTOK_URL` | ⬜ | Datos de marca (tienen valores por defecto). |
-| `NEXT_PUBLIC_ENVIO_COSTO` | ⬜ | Costo fijo de envío. Vacío = "a coordinar" (hasta la Fase 4 con Andreani). |
 | `EMAIL_PROVIDER` / `OWNER_EMAIL` / `EMAIL_FROM` / `RESEND_API_KEY` / `SMTP_*` | ⬜ | Notificación por email de pedidos nuevos a Daniela. Sin configurar, el pedido igual se registra y queda el link de WhatsApp como respaldo. |
 | `MP_ACCESS_TOKEN` | ⬜ | Access token de Mercado Pago (Checkout Pro). Sin esto, el checkout solo ofrece transferencia/efectivo. **Secreto.** |
 
@@ -133,6 +136,33 @@ Abrí [http://localhost:3000](http://localhost:3000).
 5. Checkout Pro ya cubre QR, billetera Mercado Pago y tarjetas en un solo
    flujo — no hace falta una integración de QR de punto de venta separada
    (Bookmist no tiene local físico).
+
+---
+
+## Envíos (costo por zona — Fase 4a)
+
+- El costo de envío se carga a mano por zona en la tabla `zonas_envio`
+  (Table Editor de Supabase, hasta que exista el panel de administración de
+  la Fase 5). `supabase/seed.sql` trae 3 zonas de ejemplo ("CABA y GBA",
+  "Resto de Buenos Aires", "Resto del país") — reemplazalas por las reales.
+- El cliente elige su zona en el checkout; el nombre y el costo quedan
+  "congelados" en el pedido (`orders.zona_envio`/`orders.costo_envio`), así
+  que renombrar o borrar una zona después no afecta pedidos ya hechos.
+- **Fase 4b (pendiente)**: integrar la API real de Andreani (cotización
+  automática por código postal/peso, generación de etiquetas) cuando
+  Bookmist tenga cuenta/contrato comercial con ellos. Hasta entonces, este
+  esquema manual por zona es el costo real que se cobra.
+
+---
+
+## Cómo se actualiza el contenido (ISR)
+
+La home, el catálogo, cada ficha de producto y el checkout usan **ISR**
+(`export const revalidate = 300`): se sirven como páginas estáticas
+(rápidas, cacheables) pero Next las revalida en segundo plano cada 5
+minutos. Un cambio de stock, un producto nuevo o una zona de envío editada
+en Supabase tarda **hasta 5 minutos** en aparecer en el sitio — no hace
+falta redeployar. Sin esto, quedarían fijas desde el momento del build.
 
 ---
 
@@ -215,8 +245,12 @@ Estos ítems no bloquean el desarrollo, pero sí lanzar el sitio real:
 - Comprar un dominio propio (hoy se usa el subdominio `*.vercel.app`).
 - Configurar Resend (o SMTP) si se quiere el aviso de pedidos nuevos por email
   además del link de WhatsApp.
-- Sin panel de administración todavía (Fase 5): los pedidos se revisan a mano
-  desde el **Table Editor de Supabase** (tabla `orders`/`order_items`).
+- Zonas de envío y costos reales (hoy hay 3 zonas de ejemplo en
+  `supabase/seed.sql`).
+- Cuenta/contrato comercial con Andreani para automatizar la cotización real
+  (Fase 4b) — hasta entonces, el costo por zona es manual.
+- Sin panel de administración todavía (Fase 5): los pedidos y las zonas de
+  envío se revisan/cargan a mano desde el **Table Editor de Supabase**.
 
 ---
 

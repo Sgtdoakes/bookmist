@@ -14,19 +14,14 @@ import { useCart } from '@/lib/cart'
 import { formatARS } from '@/lib/format'
 import { checkoutFormSchema, type CheckoutFormInput } from '@/lib/validations'
 import { METODO_PAGO_LABEL } from '@/lib/constants'
+import type { ZonaEnvio } from '@/types/db'
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null
   return <p className="mt-1 text-sm text-red-300">{msg}</p>
 }
 
-export function CheckoutForm({
-  envioCosto,
-  mpEnabled,
-}: {
-  envioCosto: number | null
-  mpEnabled: boolean
-}) {
+export function CheckoutForm({ zonas, mpEnabled }: { zonas: ZonaEnvio[]; mpEnabled: boolean }) {
   const router = useRouter()
   const { items, ready, totalPrecio, clear } = useCart()
   const [enviando, setEnviando] = useState(false)
@@ -43,6 +38,7 @@ export function CheckoutForm({
       cliente_email: '',
       cliente_telefono: '',
       direccion_envio: '',
+      zona_id: '',
       metodo_pago: 'transferencia',
       notas: '',
     },
@@ -50,9 +46,11 @@ export function CheckoutForm({
 
   // watch() no se puede memoizar con React Compiler (esperado en react-hook-form).
   // eslint-disable-next-line react-hooks/incompatible-library
-  const { metodo_pago: metodoPago } = watch()
+  const { metodo_pago: metodoPago, zona_id: zonaId } = watch()
 
-  const total = totalPrecio + (envioCosto ?? 0)
+  const zonaElegida = zonas.find((z) => z.id === zonaId)
+  const costoEnvio = zonaElegida ? Number(zonaElegida.costo) : null
+  const total = totalPrecio + (costoEnvio ?? 0)
 
   if (ready && items.length === 0) {
     return (
@@ -135,14 +133,37 @@ export function CheckoutForm({
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">Envío</h2>
-          <Label htmlFor="direccion_envio">Dirección completa</Label>
-          <Textarea
-            id="direccion_envio"
-            {...register('direccion_envio')}
-            placeholder="Calle, número, localidad, provincia, código postal…"
-            className="mt-1"
-          />
-          <FieldError msg={errors.direccion_envio?.message} />
+
+          <Label htmlFor="zona_id">Zona de envío</Label>
+          <select
+            id="zona_id"
+            {...register('zona_id')}
+            className="mt-1 h-9 w-full rounded-lg border border-foreground/16 bg-background px-3 text-sm text-foreground"
+          >
+            <option value="">Elegí tu zona…</option>
+            {zonas.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.nombre} — {formatARS(z.costo)}
+              </option>
+            ))}
+          </select>
+          {zonas.length === 0 && (
+            <p className="text-xs text-foreground/60">
+              Todavía no hay zonas de envío cargadas. Escribinos y coordinamos el costo a mano.
+            </p>
+          )}
+          <FieldError msg={errors.zona_id?.message} />
+
+          <div className="pt-2">
+            <Label htmlFor="direccion_envio">Dirección completa</Label>
+            <Textarea
+              id="direccion_envio"
+              {...register('direccion_envio')}
+              placeholder="Calle, número, localidad, provincia, código postal…"
+              className="mt-1"
+            />
+            <FieldError msg={errors.direccion_envio?.message} />
+          </div>
           <p className="text-xs text-foreground/60">Enviamos a todo el país con Andreani.</p>
         </section>
 
@@ -202,7 +223,9 @@ export function CheckoutForm({
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/70">Envío</span>
-              <span className="text-foreground">{envioCosto != null ? formatARS(envioCosto) : 'a coordinar'}</span>
+              <span className="text-foreground">
+                {costoEnvio != null ? formatARS(costoEnvio) : 'elegí tu zona'}
+              </span>
             </div>
           </div>
           <div className="my-3 h-px bg-foreground/12" />

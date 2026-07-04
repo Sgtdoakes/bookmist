@@ -112,6 +112,7 @@ export type Database = {
           cliente_email: string
           cliente_telefono: string
           direccion_envio: string
+          zona_envio: string | null
           costo_envio: number | null
           metodo_pago: MetodoPago
           estado: EstadoPedido
@@ -129,6 +130,7 @@ export type Database = {
           cliente_email: string
           cliente_telefono: string
           direccion_envio: string
+          zona_envio?: string | null
           costo_envio?: number | null
           metodo_pago: MetodoPago
           estado?: EstadoPedido
@@ -175,6 +177,26 @@ export type Database = {
           },
         ]
       }
+      zonas_envio: {
+        Row: {
+          id: string
+          nombre: string
+          costo: number
+          activo: boolean
+          orden: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          costo?: number
+          activo?: boolean
+          orden?: number
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['zonas_envio']['Insert']>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -209,3 +231,4 @@ export type Order = Database['public']['Tables']['orders']['Row']
 export type OrderInsert = Database['public']['Tables']['orders']['Insert']
 export type OrderItem = Database['public']['Tables']['order_items']['Row']
 export type OrderItemInsert = Database['public']['Tables']['order_items']['Insert']
+export type ZonaEnvio = Database['public']['Tables']['zonas_envio']['Row']

@@ -21,6 +21,7 @@ export type DatosPedidoMensaje = {
   clienteTelefono?: string
   items: ItemMensaje[]
   direccionEnvio: string
+  zonaEnvio?: string | null
   costoEnvio: number | null
   metodoPago: MetodoPago
   total: number
@@ -41,6 +42,7 @@ export function construirMensajePedido(d: DatosPedidoMensaje): string {
   }
   lineas.push('')
   lineas.push(`Envío a: ${d.direccionEnvio}`)
+  if (d.zonaEnvio) lineas.push(`Zona: ${d.zonaEnvio}`)
   lineas.push(`Costo de envío: ${d.costoEnvio != null ? formatARS(d.costoEnvio) : 'a coordinar'}`)
   lineas.push(`Pago: ${METODO_PAGO_LABEL[d.metodoPago]}`)
   lineas.push(`*Total: ${formatARS(d.total)}*`)

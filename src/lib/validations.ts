@@ -3,7 +3,8 @@ import { z } from 'zod'
 // --- Checkout (sitio público) -------------------------------------------
 // Bookmist envía a todo el país (sin retiro en persona), así que la
 // dirección siempre es obligatoria — a diferencia de Martín Libros no hay
-// que ramificar el esquema por método de entrega.
+// que ramificar el esquema por método de entrega. El costo de envío se
+// resuelve por zona (Fase 4a, manual — la API real de Andreani es Fase 4b).
 export const checkoutItemSchema = z.object({
   producto_id: z.uuid(),
   cantidad: z.number().int().positive(),
@@ -14,6 +15,7 @@ const checkoutBase = z.object({
   cliente_email: z.email('Ingresá un email válido'),
   cliente_telefono: z.string().trim().min(6, 'Ingresá un teléfono de contacto'),
   direccion_envio: z.string().trim().min(5, 'Ingresá la dirección de envío').max(300),
+  zona_id: z.uuid('Elegí una zona de envío'),
   metodo_pago: z.enum(['transferencia', 'efectivo', 'mercadopago']),
   notas: z.string().trim().max(500).nullish(),
 })

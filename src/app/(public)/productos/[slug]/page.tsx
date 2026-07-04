@@ -6,6 +6,9 @@ import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { AddToCart } from '@/components/public/add-to-cart'
 import { formatARS } from '@/lib/format'
 
+// ISR: sin esto, la ficha de producto queda estática desde el build.
+export const revalidate = 300
+
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
