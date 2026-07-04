@@ -35,7 +35,9 @@ export function BestSellersScroller({ productos }: { productos: Producto[] }) {
         className="flex gap-6 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {productos.map((p) => (
-          <ProductCard key={p.id} producto={p} />
+          <div key={p.id} className="w-64 flex-shrink-0 md:w-72">
+            <ProductCard producto={p} />
+          </div>
         ))}
       </div>
     </>

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/public'
-import type { Producto } from '@/types/db'
+import type { Producto, ProductoConItems } from '@/types/db'
 
 // Capa de datos del catálogo (lado servidor). Degrada con elegancia: si
 // Supabase todavía no está configurado o falla, devuelve valores vacíos en
@@ -31,6 +31,59 @@ export async function getDestacados(limit = 12): Promise<Producto[]> {
     return data ?? []
   } catch {
     return []
+  }
+}
+
+// Catálogo completo (página /productos).
+export async function getProductosActivos(): Promise<Producto[]> {
+  if (!configured()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('activo', true)
+      .order('orden', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
+export async function getProductoBySlug(slug: string): Promise<Producto | null> {
+  if (!configured()) return null
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('slug', slug)
+      .eq('activo', true)
+      .maybeSingle()
+    if (error) throw error
+    return data
+  } catch {
+    return null
+  }
+}
+
+// Producto + su contenido curado ("qué incluye"), para la página de detalle.
+export async function getProductoConItems(slug: string): Promise<ProductoConItems | null> {
+  if (!configured()) return null
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*, producto_items(*, items_catalogo(*))')
+      .eq('slug', slug)
+      .eq('activo', true)
+      .order('orden', { referencedTable: 'producto_items', ascending: true })
+      .maybeSingle()
+    if (error) throw error
+    return data as ProductoConItems | null
+  } catch {
+    return null
   }
 }
 

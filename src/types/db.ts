@@ -3,6 +3,8 @@
 
 export type ProductoTipo = 'caja' | 'kit'
 export type ItemTipo = 'libro' | 'accesorio'
+export type MetodoPago = 'transferencia' | 'efectivo'
+export type EstadoPedido = 'pendiente' | 'pagado' | 'cancelado'
 
 export type Database = {
   public: {
@@ -102,6 +104,73 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          id: string
+          numero_pedido: string
+          cliente_nombre: string
+          cliente_email: string
+          cliente_telefono: string
+          direccion_envio: string
+          costo_envio: number | null
+          metodo_pago: MetodoPago
+          estado: EstadoPedido
+          total: number
+          notas: string | null
+          leido: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          numero_pedido?: string
+          cliente_nombre: string
+          cliente_email: string
+          cliente_telefono: string
+          direccion_envio: string
+          costo_envio?: number | null
+          metodo_pago: MetodoPago
+          estado?: EstadoPedido
+          total?: number
+          notas?: string | null
+          leido?: boolean
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['orders']['Insert']>
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          id: string
+          order_id: string
+          producto_id: string | null
+          nombre: string
+          precio_unitario: number
+          cantidad: number
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          producto_id?: string | null
+          nombre: string
+          precio_unitario: number
+          cantidad: number
+        }
+        Update: Partial<Database['public']['Tables']['order_items']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'order_items_order_id_fkey'
+            columns: ['order_id']
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'order_items_producto_id_fkey'
+            columns: ['producto_id']
+            referencedRelation: 'productos'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -113,6 +182,8 @@ export type Database = {
     Enums: {
       producto_tipo: ProductoTipo
       item_tipo: ItemTipo
+      metodo_pago: MetodoPago
+      estado_pedido: EstadoPedido
     }
     CompositeTypes: Record<string, never>
   }
@@ -129,3 +200,8 @@ export type ProductoItem = Database['public']['Tables']['producto_items']['Row']
 export type ProductoConItems = Producto & {
   producto_items: (ProductoItem & { items_catalogo: ItemCatalogo })[]
 }
+
+export type Order = Database['public']['Tables']['orders']['Row']
+export type OrderInsert = Database['public']['Tables']['orders']['Insert']
+export type OrderItem = Database['public']['Tables']['order_items']['Row']
+export type OrderItemInsert = Database['public']['Tables']['order_items']['Insert']

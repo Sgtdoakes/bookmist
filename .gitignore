@@ -40,6 +40,9 @@ yarn-error.log*
 # Claude Code (config local de la herramienta, no del proyecto)
 .claude
 
+# Visual Studio (metadata local del editor, no del proyecto)
+.vs/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

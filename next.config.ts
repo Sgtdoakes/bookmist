@@ -5,12 +5,16 @@ const isDev = process.env.NODE_ENV === 'development'
 // CSP sin nonces (recomendación oficial de Next.js para apps que priorizan
 // generación estática/ISR): un CSP con nonces obliga a renderizado dinámico
 // en TODAS las páginas (sin caché de CDN), lo cual choca con el requisito de
-// "lo más performante posible" para una landing mayormente estática. Se
-// documenta acá el trade-off: 'unsafe-inline' en script-src es lo que exige
-// el propio bootstrap de Next.js sin nonces; no hay scripts de terceros ni
-// contenido de usuario sin escapar en esta fase (todo el HTML lo arma React,
-// que escapa por defecto). Revisitar con nonces + rendering dinámico cuando
-// checkout/formularios (Fase 2+) hagan que ese costo de performance valga la pena.
+// "lo más performante posible". Se documenta acá el trade-off: 'unsafe-inline'
+// en script-src es lo que exige el propio bootstrap de Next.js sin nonces; no
+// hay scripts de terceros ni contenido de usuario sin escapar (todo el HTML
+// lo arma React, que escapa por defecto).
+// Revisitado en la Fase 2 (catálogo/carrito/checkout): ninguna de las páginas
+// nuevas usa cookies()/headers() ni datos por-request, así que siguen siendo
+// estáticas/cacheables — el trade-off original sigue valiendo la pena. El
+// checkout envía sus datos vía fetch a /api/checkout (Route Handler, siempre
+// dinámico por naturaleza), no vía navegación de página, así que no fuerza
+// rendering dinámico en el resto del sitio.
 const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''};

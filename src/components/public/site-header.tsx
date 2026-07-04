@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import { NAV_LINKS } from '@/lib/constants'
 import { BookDoodle } from '@/components/public/decorative'
+import { CartButton } from '@/components/public/cart-button'
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -35,14 +36,17 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <button
-          className="rounded-full p-2 text-foreground lg:hidden"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-3">
+          <CartButton />
+          <button
+            className="rounded-full p-2 text-foreground lg:hidden"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {menuOpen && (

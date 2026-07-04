@@ -1,10 +1,14 @@
 # Bookmist 📚✨
 
 Sitio web de **Bookmist**, marca de cajas y kits literarios (libros curados +
-accesorios). Este repo cubre, por ahora, la **Fase 1**: landing pública
-conectada a un catálogo real en Supabase. Carrito, checkout, pagos, envíos y
-el panel de administración llegan en fases siguientes — ver el historial de
-la conversación de planificación para el roadmap completo.
+accesorios). Este repo cubre, por ahora, las **Fases 1 y 2**: landing pública
+conectada a un catálogo real en Supabase, más catálogo, carrito y checkout con
+pago manual (transferencia/efectivo). Bookmist envía a todo el país (sin
+retiro en persona), así que el checkout siempre pide dirección de envío; el
+costo de envío queda "a coordinar" hasta que la Fase 4 automatice la
+cotización con Andreani. Pagos online (Mercado Pago) y el panel de
+administración llegan en fases siguientes — ver el historial de la
+conversación de planificación para el roadmap completo.
 
 ---
 
@@ -48,11 +52,13 @@ contenido de cada archivo de la carpeta [`supabase/migrations`](./supabase/migra
 1. `0001_init.sql` — tablas `productos`, `items_catalogo`, `producto_items`.
 2. `0002_rls.sql` — reglas de seguridad (Row Level Security).
 3. `0003_functions.sql` — trigger de `updated_at` y función `categorias_distintas`.
+4. `0004_orders.sql` — tablas `orders` y `order_items` (pedidos, Fase 2).
+5. `0005_orders_rls.sql` — RLS de pedidos (sin acceso público, ni lectura).
 
 Después, para cargar cajas/kits de ejemplo (tomados del wireframe de Dani),
 ejecutá:
 
-4. [`supabase/seed.sql`](./supabase/seed.sql)
+6. [`supabase/seed.sql`](./supabase/seed.sql)
 
 > Podés copiar y pegar cada archivo en una pestaña nueva del SQL Editor y apretar **Run**.
 
@@ -97,8 +103,10 @@ Abrí [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Clave pública (anon) de Supabase. |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Clave secreta para lecturas públicas cacheables. **No exponer.** |
 | `NEXT_PUBLIC_SITE_URL` | ✅ | URL del sitio (`http://localhost:3000` en local). |
-| `NEXT_PUBLIC_WHATSAPP_NUMBER` | ⬜ | WhatsApp de Bookmist, solo dígitos. Sin este valor, el botón flotante no se muestra. |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | ⬜ | WhatsApp de Bookmist, solo dígitos. Sin este valor, el botón flotante no se muestra (pero el checkout funciona igual). |
 | `NEXT_PUBLIC_STORE_*` / `NEXT_PUBLIC_INSTAGRAM_*` / `NEXT_PUBLIC_TIKTOK_URL` | ⬜ | Datos de marca (tienen valores por defecto). |
+| `NEXT_PUBLIC_ENVIO_COSTO` | ⬜ | Costo fijo de envío. Vacío = "a coordinar" (hasta la Fase 4 con Andreani). |
+| `EMAIL_PROVIDER` / `OWNER_EMAIL` / `EMAIL_FROM` / `RESEND_API_KEY` / `SMTP_*` | ⬜ | Notificación por email de pedidos nuevos a Daniela. Sin configurar, el pedido igual se registra y queda el link de WhatsApp como respaldo. |
 
 ---
 
@@ -119,17 +127,24 @@ Abrí [http://localhost:3000](http://localhost:3000).
 
 - **RLS en Postgres desde el día 1**: el público solo puede leer productos
   `activo = true`; nada de escritura sin sesión autenticada (ver
-  `supabase/migrations/0002_rls.sql`).
+  `supabase/migrations/0002_rls.sql`). `orders`/`order_items` no tienen NINGUNA
+  política para `anon` — ni lectura ni escritura — los pedidos se crean
+  exclusivamente desde `/api/checkout` con la service role key (ver
+  `0005_orders_rls.sql`).
+- **Validación server-side de precio/stock**: el checkout nunca confía en el
+  precio/cantidad que manda el navegador — vuelve a buscar cada producto en la
+  base y valida disponibilidad real (stock − reservas de pedidos activos)
+  antes de crear el pedido (`src/app/api/checkout/route.ts`).
 - **Aislamiento de la service role key**: `src/lib/supabase/admin.ts` está
   marcado `server-only` y nunca se importa desde código de cliente.
 - **Headers de seguridad** en `next.config.ts`: CSP, `X-Frame-Options: DENY`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`,
   HSTS.
 - **CSP sin nonces por ahora** (trade-off documentado en el propio
-  `next.config.ts`): se prioriza poder servir la landing como contenido
-  estático/cacheable. Se revisita con nonces + rendering dinámico cuando
-  Fase 2+ agregue formularios/checkout, momento en el que ese costo de
-  performance ya se paga igual.
+  `next.config.ts`): se prioriza poder servir las páginas como contenido
+  estático/cacheable. Revisado en la Fase 2: el checkout manda sus datos por
+  `fetch` a `/api/checkout`, no por navegación de página, así que catálogo/
+  carrito/checkout siguen siendo estáticos y el trade-off sigue valiendo.
 - **`npm audit`**: hay un advisory moderado conocido (XSS en la copia interna
   de `postcss` que trae `next` como dependencia transitiva). El fix sugerido
   por `npm audit fix --force` degrada Next a la v9 — **no aplicar**; es un
@@ -143,10 +158,11 @@ Abrí [http://localhost:3000](http://localhost:3000).
 ```
 supabase/migrations/      Migraciones SQL (esquema, RLS, funciones)
 supabase/seed.sql         Datos de ejemplo
-design-reference/         Wireframe original de Dani (jsx) + captura del footer de referencia
-src/app/(public)/         Landing pública
+design-reference/         Wireframe original de Dani (jsx) + capturas de referencia
+src/app/(public)/         Landing, catálogo, carrito, checkout, confirmación de pedido
+src/app/api/checkout/     Ruta de creación de pedidos (service role, valida stock real)
 src/app/robots.ts         SEO: robots.txt
-src/app/sitemap.ts        SEO: sitemap.xml
+src/app/sitemap.ts        SEO: sitemap.xml (home + catálogo + cada producto activo)
 src/components/ui/        Componentes de shadcn/ui
 src/components/public/    Componentes propios del sitio público
 src/lib/                  Supabase, helpers, formato, slugs, config de marca
@@ -165,6 +181,10 @@ Estos ítems no bloquean el desarrollo, pero sí lanzar el sitio real:
 - Fotos reales de las cajas/kits y de Daniela (hoy hay placeholders).
 - Catálogo real de cajas/kits (hoy hay datos de ejemplo en `supabase/seed.sql`).
 - Comprar un dominio propio (hoy se usa el subdominio `*.vercel.app`).
+- Configurar Resend (o SMTP) si se quiere el aviso de pedidos nuevos por email
+  además del link de WhatsApp.
+- Sin panel de administración todavía (Fase 5): los pedidos se revisan a mano
+  desde el **Table Editor de Supabase** (tabla `orders`/`order_items`).
 
 ---
 
