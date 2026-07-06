@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductoForm } from '@/components/admin/producto-form'
 import { getItemsCatalogoAdmin } from '@/app/admin/productos/actions'
+import { getCategoriasDistintas } from '@/lib/productos'
 import type { ProductoConItems } from '@/types/db'
 
 export const metadata = { title: 'Editar producto' }
@@ -27,14 +28,15 @@ type Props = { params: Promise<{ id: string }> }
 
 export default async function EditarProductoPage({ params }: Props) {
   const { id } = await params
-  const [producto, itemsDisponibles] = await Promise.all([
+  const [producto, itemsDisponibles, categoriasExistentes] = await Promise.all([
     getProductoAdmin(id),
     getItemsCatalogoAdmin(),
+    getCategoriasDistintas(),
   ])
   if (!producto) notFound()
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="mx-auto max-w-4xl px-4 py-6">
       <Link
         href="/admin/productos"
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -44,7 +46,7 @@ export default async function EditarProductoPage({ params }: Props) {
       </Link>
       <h1 className="text-2xl font-bold">Editar producto</h1>
       <div className="mt-6">
-        <ProductoForm producto={producto} itemsDisponibles={itemsDisponibles} />
+        <ProductoForm producto={producto} itemsDisponibles={itemsDisponibles} categoriasExistentes={categoriasExistentes} />
       </div>
     </div>
   )

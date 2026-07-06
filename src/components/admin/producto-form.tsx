@@ -1,12 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { ImageUploader } from '@/components/admin/image-uploader'
+import { SelectorItems } from '@/components/admin/selector-items'
 import { generarSlug } from '@/lib/slugs'
 import {
   actualizarProducto,
@@ -19,9 +21,10 @@ import type { ItemCatalogo, ProductoConItems, ProductoTipo } from '@/types/db'
 type Props = {
   producto?: ProductoConItems
   itemsDisponibles: ItemCatalogo[]
+  categoriasExistentes?: string[]
 }
 
-export function ProductoForm({ producto, itemsDisponibles }: Props) {
+export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes = [] }: Props) {
   const router = useRouter()
   const [nombre, setNombre] = useState(producto?.nombre ?? '')
   const [slug, setSlug] = useState(producto?.slug ?? '')
@@ -33,6 +36,8 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
   const [stock, setStock] = useState(String(producto?.stock ?? 0))
   const [destacado, setDestacado] = useState(producto?.destacado ?? false)
   const [activo, setActivo] = useState(producto?.activo ?? true)
+  const [imagenPrincipal, setImagenPrincipal] = useState<string | null>(producto?.imagen_principal ?? null)
+  const [imagenesGaleria, setImagenesGaleria] = useState<string[]>(producto?.imagenes_galeria ?? [])
   const [guardando, setGuardando] = useState(false)
 
   const [cantidades, setCantidades] = useState<Record<string, number>>(() => {
@@ -40,12 +45,6 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
     for (const pi of producto?.producto_items ?? []) inicial[pi.item_id] = pi.cantidad
     return inicial
   })
-
-  const libros = useMemo(() => itemsDisponibles.filter((i) => i.tipo === 'libro'), [itemsDisponibles])
-  const accesorios = useMemo(
-    () => itemsDisponibles.filter((i) => i.tipo === 'accesorio'),
-    [itemsDisponibles],
-  )
 
   function onNombreChange(v: string) {
     setNombre(v)
@@ -59,6 +58,20 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
       else delete next[id]
       return next
     })
+  }
+
+  async function onPortadaChange(url: string | null) {
+    if (!producto) return
+    const r = await actualizarProducto(producto.id, { imagen_principal: url })
+    if (!r.ok) return toast.error(r.error)
+    setImagenPrincipal(url)
+  }
+
+  async function onGaleriaChange(urls: string[]) {
+    if (!producto) return
+    const r = await actualizarProducto(producto.id, { imagenes_galeria: urls })
+    if (!r.ok) return toast.error(r.error)
+    setImagenesGaleria(urls)
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -110,12 +123,31 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
     }
 
     toast.success(producto ? 'Producto actualizado' : 'Producto creado')
-    router.push('/admin/productos')
+    if (producto) {
+      router.push('/admin/productos')
+    } else {
+      // Recién creado: va a la ficha completa para poder cargar fotos ya mismo.
+      router.push(`/admin/productos/${id}`)
+    }
     router.refresh()
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {producto && (
+        <div>
+          <Label className="mb-1 block">Fotos</Label>
+          <ImageUploader
+            carpeta="productos"
+            entidadId={producto.id}
+            portada={imagenPrincipal}
+            galeria={imagenesGaleria}
+            onPortadaChange={onPortadaChange}
+            onGaleriaChange={onGaleriaChange}
+          />
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="nombre">Nombre</Label>
@@ -159,11 +191,17 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
           <Label htmlFor="categoria">Categoría / género</Label>
           <Input
             id="categoria"
+            list="categorias-existentes"
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
             placeholder="Terror, Manga, Thriller…"
             className="mt-1"
           />
+          <datalist id="categorias-existentes">
+            {categoriasExistentes.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </div>
         <div className="flex items-end gap-4 pb-1">
           <label className="flex items-center gap-2 text-sm">
@@ -238,9 +276,13 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
             .
           </p>
         ) : (
-          <div className="mt-3 grid gap-6 sm:grid-cols-2">
-            <ListaItems titulo="Libros" items={libros} cantidades={cantidades} onToggle={toggleItem} onCantidad={(id, c) => setCantidades((prev) => ({ ...prev, [id]: c }))} />
-            <ListaItems titulo="Accesorios" items={accesorios} cantidades={cantidades} onToggle={toggleItem} onCantidad={(id, c) => setCantidades((prev) => ({ ...prev, [id]: c }))} />
+          <div className="mt-3">
+            <SelectorItems
+              itemsDisponibles={itemsDisponibles}
+              cantidades={cantidades}
+              onToggle={toggleItem}
+              onCantidad={(id, c) => setCantidades((prev) => ({ ...prev, [id]: c }))}
+            />
           </div>
         )}
       </div>
@@ -249,54 +291,5 @@ export function ProductoForm({ producto, itemsDisponibles }: Props) {
         {guardando ? 'Guardando…' : producto ? 'Guardar cambios' : 'Crear producto'}
       </Button>
     </form>
-  )
-}
-
-function ListaItems({
-  titulo,
-  items,
-  cantidades,
-  onToggle,
-  onCantidad,
-}: {
-  titulo: string
-  items: ItemCatalogo[]
-  cantidades: Record<string, number>
-  onToggle: (id: string, checked: boolean) => void
-  onCantidad: (id: string, cantidad: number) => void
-}) {
-  if (items.length === 0) return null
-  return (
-    <div>
-      <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{titulo}</h3>
-      <ul className="space-y-2">
-        {items.map((item) => {
-          const elegido = item.id in cantidades
-          return (
-            <li key={item.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={elegido}
-                onChange={(e) => onToggle(item.id, e.target.checked)}
-                className="size-4 shrink-0"
-              />
-              <span className="min-w-0 flex-1 truncate text-sm">
-                {item.nombre}
-                {item.autor ? ` — ${item.autor}` : ''}
-              </span>
-              {elegido && (
-                <Input
-                  type="number"
-                  min={1}
-                  value={cantidades[item.id]}
-                  onChange={(e) => onCantidad(item.id, Math.max(1, Number(e.target.value)))}
-                  className="h-8 w-16 shrink-0"
-                />
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
   )
 }

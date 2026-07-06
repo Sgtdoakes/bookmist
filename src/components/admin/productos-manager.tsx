@@ -2,14 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { formatARS } from '@/lib/format'
-import type { Producto } from '@/types/db'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import type { Producto, ProductoTipo } from '@/types/db'
 import { actualizarProducto, borrarProducto } from '@/app/admin/productos/actions'
+
+const TIPO_LABEL: Record<ProductoTipo, string> = { caja: 'Caja', kit: 'Kit' }
 
 export function ProductosManager({ productosIniciales }: { productosIniciales: Producto[] }) {
   const [items, setItems] = useState<Producto[]>(productosIniciales)
@@ -27,15 +30,31 @@ export function ProductosManager({ productosIniciales }: { productosIniciales: P
   }
 
   return (
-    <div className="space-y-2">
-      {items.map((p) => (
-        <FilaProducto
-          key={p.id}
-          producto={p}
-          onPatch={patch}
-          onRemove={(id) => setItems((prev) => prev.filter((x) => x.id !== id))}
-        />
-      ))}
+    <div className="rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-14"></TableHead>
+            <TableHead>Nombre</TableHead>
+            <TableHead>Categoría</TableHead>
+            <TableHead>Precio</TableHead>
+            <TableHead>Stock</TableHead>
+            <TableHead>Visible</TableHead>
+            <TableHead>Destacado</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((p) => (
+            <FilaProducto
+              key={p.id}
+              producto={p}
+              onPatch={patch}
+              onRemove={(id) => setItems((prev) => prev.filter((x) => x.id !== id))}
+            />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -92,81 +111,85 @@ function FilaProducto({
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border p-3">
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{p.nombre}</p>
-        <p className="truncate text-sm text-muted-foreground">
-          {p.tipo === 'caja' ? 'Caja' : 'Kit'}
-          {p.categoria ? ` · ${p.categoria}` : ''} · {formatARS(p.precio)}
-        </p>
-      </div>
-
-      <div>
-        <Label className="text-xs text-muted-foreground">Precio</Label>
-        <Input
-          type="number"
-          inputMode="numeric"
-          value={precio}
-          onChange={(e) => setPrecio(e.target.value)}
-          className="h-9 w-28"
-        />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Stock</Label>
+    <TableRow>
+      <TableCell>
+        <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted/30">
+          {p.imagen_principal && (
+            <Image src={p.imagen_principal} alt="" fill sizes="40px" className="object-cover" />
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <p className="font-medium">{p.nombre}</p>
+        <Badge variant="secondary" className="mt-0.5">
+          {TIPO_LABEL[p.tipo]}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">{p.categoria ?? '—'}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            inputMode="numeric"
+            value={precio}
+            onChange={(e) => setPrecio(e.target.value)}
+            className="h-8 w-24"
+          />
+        </div>
+      </TableCell>
+      <TableCell>
         <Input
           type="number"
           inputMode="numeric"
           value={stock}
           onChange={(e) => setStock(e.target.value)}
-          className="h-9 w-20"
+          className="h-8 w-16"
         />
-      </div>
-
-      <Button type="button" onClick={guardar} disabled={!cambiado || guardando} className="h-9">
-        {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar'}
-      </Button>
-
-      <div className="flex h-9 items-center gap-3 text-sm">
-        <label className="flex items-center gap-1">
-          <input
-            type="checkbox"
-            checked={p.activo}
+      </TableCell>
+      <TableCell>
+        <input
+          type="checkbox"
+          checked={p.activo}
+          disabled={trabajando}
+          onChange={(e) => toggle('activo', e.target.checked)}
+          className="size-4"
+          aria-label="Visible"
+        />
+      </TableCell>
+      <TableCell>
+        <input
+          type="checkbox"
+          checked={p.destacado}
+          disabled={trabajando}
+          onChange={(e) => toggle('destacado', e.target.checked)}
+          className="size-4"
+          aria-label="Destacado"
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-1">
+          {cambiado && (
+            <Button type="button" size="sm" onClick={guardar} disabled={guardando}>
+              {guardando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Guardar'}
+            </Button>
+          )}
+          <Link href={`/admin/productos/${p.id}`}>
+            <Button type="button" variant="outline" size="icon-sm" aria-label="Editar producto">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={borrar}
             disabled={trabajando}
-            onChange={(e) => toggle('activo', e.target.checked)}
-            className="size-4"
-          />
-          Visible
-        </label>
-        <label className="flex items-center gap-1">
-          <input
-            type="checkbox"
-            checked={p.destacado}
-            disabled={trabajando}
-            onChange={(e) => toggle('destacado', e.target.checked)}
-            className="size-4"
-          />
-          Destacado
-        </label>
-      </div>
-
-      <Link
-        href={`/admin/productos/${p.id}`}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md border hover:bg-foreground/10"
-        aria-label="Editar producto"
-      >
-        <Pencil className="h-4 w-4" />
-      </Link>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9"
-        onClick={borrar}
-        disabled={trabajando}
-        aria-label="Borrar producto"
-      >
-        <Trash2 className="h-4 w-4 text-destructive" />
-      </Button>
-    </div>
+            aria-label="Borrar producto"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
   )
 }
