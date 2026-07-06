@@ -5,12 +5,13 @@ import { ArrowRight } from 'lucide-react'
 import { Blob } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { PrimaryButton } from '@/components/public/buttons'
+import type { HeroConfig } from '@/lib/secciones'
 
 // El carrusel del hero queda como imagen estática con puntos clicables (igual
 // que el wireframe de Dani): todavía no hay fotos reales para armar un
 // carrusel funcional de verdad. Se activa cuando Bookmist tenga fotografía
 // propia de las cajas/kits.
-export function Hero() {
+export function Hero({ eyebrow, titulo, subtitulo, ctaTexto }: HeroConfig) {
   const [activeDot, setActiveDot] = useState(0)
 
   return (
@@ -20,15 +21,13 @@ export function Hero() {
 
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:grid-cols-2 md:px-10 md:py-28">
         <div>
-          <p className="font-script mb-2 text-2xl text-muted md:text-3xl">Bookmist Editorial</p>
+          <p className="font-script mb-2 text-2xl text-muted md:text-3xl">{eyebrow}</p>
           <h1 className="mb-5 font-heading text-4xl font-semibold leading-tight text-foreground md:text-6xl">
-            Palabras que se sienten en las manos
+            {titulo}
           </h1>
-          <p className="mb-8 max-w-md text-base text-muted md:text-lg">
-            Kits literarios pensados para pausar el ruido y perderte, otra vez, en una buena historia.
-          </p>
+          <p className="mb-8 max-w-md text-base text-muted md:text-lg">{subtitulo}</p>
           <PrimaryButton>
-            Descubrir los kits <ArrowRight size={17} />
+            {ctaTexto} <ArrowRight size={17} />
           </PrimaryButton>
         </div>
 

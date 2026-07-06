@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Package, Library, ShoppingBag, Truck, AlertTriangle } from 'lucide-react'
+import { Package, Library, ShoppingBag, Truck, AlertTriangle, LayoutTemplate } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function AdminHome() {
@@ -38,6 +38,12 @@ export default function AdminHome() {
           icon={<AlertTriangle className="h-8 w-8" />}
           titulo="Modo reponiendo stock"
           desc="Pausá la tienda a mano o mirá si se activó sola"
+        />
+        <Accion
+          href="/admin/pagina"
+          icon={<LayoutTemplate className="h-8 w-8" />}
+          titulo="Página de inicio"
+          desc="Arrastrá para reordenar, ocultá y editá el texto de cada sección"
         />
       </div>
     </div>

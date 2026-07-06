@@ -1,18 +1,18 @@
 # Bookmist 📚✨
 
 Sitio web de **Bookmist**, marca de cajas y kits literarios (libros curados +
-accesorios). Este repo cubre, por ahora, las **Fases 1 a 5a**: landing pública
+accesorios). Este repo cubre, por ahora, las **Fases 1 a 5b**: landing pública
 conectada a un catálogo real en Supabase, catálogo/carrito/checkout con pago
 manual (transferencia/efectivo) y online con **Mercado Pago** (Checkout Pro:
 QR, billetera y tarjetas en una sola integración), envío con **costo manual
 por zona** (la API real de Andreani es la Fase 4b, cuando exista el contrato
-comercial), y un **panel de administración** (`/admin`) para gestionar
+comercial), un **panel de administración** (`/admin`) para gestionar
 cajas/kits, la biblioteca de libros/accesorios, pedidos, zonas de envío y el
-modo "reponiendo stock". Bookmist envía a todo el país (sin retiro en
-persona), así que el checkout siempre pide dirección de envío. El **CMS de
-secciones arrastrables** (armar la home/otras páginas visualmente) queda
-para la Fase 5b, todavía no está — ver el historial de la conversación de
-planificación para el roadmap completo.
+modo "reponiendo stock", y un **CMS de secciones arrastrables** para armar
+la home (reordenar, ocultar y editar el texto de cada bloque sin tocar
+código). Bookmist envía a todo el país (sin retiro en persona), así que el
+checkout siempre pide dirección de envío — ver el historial de la
+conversación de planificación para el roadmap completo.
 
 ---
 
@@ -66,11 +66,13 @@ contenido de cada archivo de la carpeta [`supabase/migrations`](./supabase/migra
    zonas activas, escritura solo autenticado).
 9. `0009_configuracion.sql` — tabla `configuracion` (clave/valor), usada por
    el modo "reponiendo stock" (Fase 5a).
+10. `0010_pagina_secciones.sql` — tabla `pagina_secciones` (Fase 5b): las
+    secciones editables de la home (una fila por tipo de bloque).
 
-Después, para cargar cajas/kits y zonas de envío de ejemplo (tomados del
-wireframe de Dani), ejecutá:
+Después, para cargar cajas/kits, zonas de envío y las secciones de la home
+con el contenido original de Dani, ejecutá:
 
-10. [`supabase/seed.sql`](./supabase/seed.sql)
+11. [`supabase/seed.sql`](./supabase/seed.sql)
 
 > Podés copiar y pegar cada archivo en una pestaña nueva del SQL Editor y apretar **Run**.
 
@@ -198,6 +200,25 @@ solo Daniela la apaga a mano. El webhook de Mercado Pago (`/api/mercadopago/webh
 y el propio panel de administración nunca quedan tapados, para poder seguir
 cobrando pagos pendientes y reactivar el sitio.
 
+### CMS de secciones de la home (`/admin/pagina`, Fase 5b)
+
+- La home tiene 7 bloques fijos (portada, beneficios, categorías, más
+  vendidos, sobre mí, reseñas, Instagram) guardados en la tabla
+  `pagina_secciones`. Desde `/admin/pagina` se puede **arrastrar para
+  reordenarlos**, **ocultarlos** individualmente, y **editar su texto**
+  (título, bajada, lista de beneficios/reseñas, etc.).
+- No es un lienzo libre como en Martín Libros: no se pueden crear tipos de
+  bloque nuevos ni duplicar uno existente — el diseño de Dani ya define qué
+  bloques hay. Lo editable es el orden, la visibilidad y el contenido de
+  texto de cada uno.
+- **Si la tabla está vacía** (recién creado el proyecto, o todavía no se
+  corrió el seed), la home muestra exactamente el mismo contenido que tenía
+  hardcodeado antes de esta fase — nunca se rompe ni queda en blanco (ver
+  `src/lib/secciones.ts`).
+- El nombre/precio de "Más vendidos" sigue viniendo en vivo de la tabla
+  `productos` (marcados como destacados); el CMS solo controla el título y
+  la bajada de esa sección, no qué productos aparecen ahí.
+
 ---
 
 ## Cómo se actualiza el contenido (ISR)
@@ -278,7 +299,7 @@ supabase/seed.sql         Datos de ejemplo
 design-reference/         Wireframe original de Dani (jsx) + capturas de referencia
 src/app/(public)/         Landing, catálogo, carrito, checkout, confirmación de pedido
 src/app/admin/            Panel de administración (login, productos, items, pedidos,
-                          zonas, modo mantenimiento)
+                          zonas, modo mantenimiento, secciones de la home)
 src/app/mantenimiento/    Pantalla pública de "volvemos pronto"
 src/app/api/checkout/     Ruta de creación de pedidos (service role, valida stock real)
 src/app/api/mercadopago/  Webhook de confirmación de pago (Checkout Pro)
@@ -290,6 +311,7 @@ src/components/admin/     Componentes propios del panel de administración
 src/lib/                  Supabase, helpers, formato, slugs, config de marca
 src/lib/pedidos.ts        Ajuste de stock compartido (admin + webhook de Mercado Pago)
 src/lib/mantenimiento.ts  Lógica del modo "reponiendo stock" (automático + manual)
+src/lib/secciones.ts      Secciones editables de la home + su contenido por defecto
 src/lib/__tests__/        Tests unitarios (Vitest)
 src/types/db.ts           Tipos de la base de datos
 src/proxy.ts              Middleware (Next 16 renombró `middleware` a `proxy`)
@@ -314,8 +336,6 @@ Estos ítems no bloquean el desarrollo, pero sí lanzar el sitio real:
 - Deshabilitar el registro público en Supabase y crear la cuenta real de
   Daniela (paso 6 de la puesta en marcha) — sin esto, el panel `/admin`
   queda abierto a cualquiera que se registre.
-- CMS de secciones arrastrables (armar la home visualmente) — Fase 5b,
-  todavía no está.
 
 ---
 

@@ -51,3 +51,47 @@ from (values
 join productos p      on p.slug   = v.producto_slug
 join items_catalogo i on i.nombre = v.item_nombre
 on conflict (producto_id, item_id) do nothing;
+
+-- Secciones de la home (Fase 5b) — mismo contenido que ya estaba hardcodeado,
+-- ahora editable desde /admin/pagina. Si nunca se corre este seed, la home
+-- sigue mostrando este mismo contenido por defecto (ver src/lib/secciones.ts).
+insert into pagina_secciones (pagina, tipo, orden, activo, config) values
+  ('home', 'hero', 1, true, '{
+    "eyebrow": "Bookmist Editorial",
+    "titulo": "Palabras que se sienten en las manos",
+    "subtitulo": "Kits literarios pensados para pausar el ruido y perderte, otra vez, en una buena historia.",
+    "ctaTexto": "Descubrir los kits"
+  }'),
+  ('home', 'beneficios', 2, true, '{
+    "items": [
+      { "emoji": "💳", "texto": "3 cuotas sin interés +$75.000" },
+      { "emoji": "📦", "texto": "Envíos a todo el país" },
+      { "emoji": "💸", "texto": "10% OFF transferencia" }
+    ]
+  }'),
+  ('home', 'categorias', 3, true, '{
+    "eyebrow": "Explorá",
+    "titulo": "Nuestras categorías"
+  }'),
+  ('home', 'mas_vendidos', 4, true, '{
+    "eyebrow": "Los favoritos de la comunidad",
+    "titulo": "Más vendidos"
+  }'),
+  ('home', 'sobre_mi', 5, true, '{
+    "eyebrow": "Sobre mí",
+    "titulo": "Hola, soy Daniela",
+    "texto": "Soy Daniela, y este emprendimiento nace de mi pasión por descubrir historias increíbles. Siempre fui de sumergirme en el terror, los thrillers, la ficción contemporánea y el manga...",
+    "texto2": "Este es un proyecto que armo con las manos y con calma, pensando cada kit como si fuera un regalo para una amiga lectora.",
+    "firma": "— Daniela, fundadora de Bookmist"
+  }'),
+  ('home', 'resenas', 6, true, '{
+    "eyebrow": "Lo que dicen nuestras lectoras",
+    "titulo": "Reseñas",
+    "items": [
+      { "nombre": "Martina R.", "texto": "Abrí la caja y sentí que me abrazaban. Cada detalle tiene alma, se nota que está pensado con cariño." },
+      { "nombre": "Lucía G.", "texto": "El marcapáginas de plumas es precioso, y el libro que eligieron para mí fue exactamente lo que necesitaba leer." },
+      { "nombre": "Sofía P.", "texto": "Se nota el cuidado en cada textura. Mi rincón de lectura ahora es muchísimo más lindo gracias a Bookmist." }
+    ]
+  }'),
+  ('home', 'instagram', 7, true, '{}')
+on conflict (pagina, tipo) do nothing;

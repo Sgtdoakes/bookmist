@@ -6,7 +6,15 @@ import { OutlineButton } from '@/components/public/buttons'
 import { ProductCard } from '@/components/public/product-card'
 import type { Producto } from '@/types/db'
 
-export function BestSellersScroller({ productos }: { productos: Producto[] }) {
+export function BestSellersScroller({
+  eyebrow,
+  titulo,
+  productos,
+}: {
+  eyebrow: string
+  titulo: string
+  productos: Producto[]
+}) {
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   const scroll = (dir: number) => {
@@ -17,8 +25,8 @@ export function BestSellersScroller({ productos }: { productos: Producto[] }) {
     <>
       <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-script mb-1 text-2xl text-muted">Los favoritos de la comunidad</p>
-          <h2 className="font-heading text-3xl font-semibold text-foreground md:text-4xl">Más vendidos</h2>
+          <p className="font-script mb-1 text-2xl text-muted">{eyebrow}</p>
+          <h2 className="font-heading text-3xl font-semibold text-foreground md:text-4xl">{titulo}</h2>
         </div>
         <div className="flex gap-3">
           <OutlineButton onClick={() => scroll(-1)} className="h-10 w-10" aria-label="Anterior">

@@ -1,21 +1,23 @@
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import type { CategoriasConfig } from '@/lib/secciones'
 
 // Grilla de categorías de navegación (no confundir con el género literario de
-// cada producto): son las 3 grandes familias de la marca. Se mantiene
-// estática, igual que el wireframe — no depende de una tabla normalizada.
+// cada producto): son las 3 grandes familias de la marca. El título/eyebrow
+// se puede editar desde el admin, pero las 3 tarjetas quedan fijas — no
+// dependen de una tabla normalizada.
 const CATEGORIES = [
   { title: 'Kits literarios', sub: 'Libro + objetos elegidos para vivir la historia' },
   { title: 'Cajas literarias', sub: 'Papelería y detalles para tu rincón de lectura' },
   { title: 'Marcapáginas', sub: 'Pequeños detalles hechos a mano' },
 ]
 
-export function CategoryGrid() {
+export function CategoryGrid({ eyebrow, titulo }: CategoriasConfig) {
   return (
     <section className="w-full bg-background py-14 md:py-24">
       <div className="mx-auto max-w-7xl px-4 md:px-10">
         <div className="mb-8 text-center md:mb-12">
-          <p className="font-script mb-1 text-xl text-muted md:text-2xl">Explorá</p>
-          <h2 className="font-heading text-2xl font-semibold text-foreground md:text-4xl">Nuestras categorías</h2>
+          <p className="font-script mb-1 text-xl text-muted md:text-2xl">{eyebrow}</p>
+          <h2 className="font-heading text-2xl font-semibold text-foreground md:text-4xl">{titulo}</h2>
         </div>
 
         <div className="grid grid-cols-3 gap-2.5 md:gap-7">
