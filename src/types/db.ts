@@ -20,6 +20,7 @@ export type Database = {
           precio: number
           stock: number
           imagen_principal: string | null
+          imagenes_galeria: string[]
           destacado: boolean
           activo: boolean
           orden: number
@@ -36,6 +37,7 @@ export type Database = {
           precio?: number
           stock?: number
           imagen_principal?: string | null
+          imagenes_galeria?: string[]
           destacado?: boolean
           activo?: boolean
           orden?: number
@@ -53,8 +55,10 @@ export type Database = {
           autor: string | null
           descripcion: string | null
           imagen: string | null
+          imagenes_galeria: string[]
           precio: number | null
           stock: number | null
+          activo: boolean
           created_at: string
           updated_at: string
         }
@@ -65,8 +69,10 @@ export type Database = {
           autor?: string | null
           descripcion?: string | null
           imagen?: string | null
+          imagenes_galeria?: string[]
           precio?: number | null
           stock?: number | null
+          activo?: boolean
           created_at?: string
           updated_at?: string
         }

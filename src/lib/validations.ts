@@ -29,3 +29,20 @@ export const checkoutSchema = checkoutBase.extend({
   items: z.array(checkoutItemSchema).min(1, 'El carrito está vacío'),
 })
 export type CheckoutInput = z.infer<typeof checkoutSchema>
+
+// --- Biblioteca de libros y accesorios (admin) ---------------------------
+export const itemFormSchema = z.object({
+  tipo: z.enum(['libro', 'accesorio']),
+  nombre: z.string().trim().min(1, 'El nombre es obligatorio').max(200),
+  autor: z.string().trim().max(200).nullish(),
+  descripcion: z.string().trim().max(2000).nullish(),
+  precio: z.coerce.number().min(0, 'El precio no puede ser negativo').nullish(),
+  stock: z.coerce.number().int().min(0, 'El stock no puede ser negativo').nullish(),
+  activo: z.boolean(),
+})
+// z.coerce hace que el tipo de entrada (lo que espera react-hook-form en los
+// inputs sin controlar) difiera del tipo de salida (lo que llega al submit
+// ya coercionado) — dos tipos separados, patrón recomendado por
+// @hookform/resolvers para esquemas con coerce.
+export type ItemFormInput = z.input<typeof itemFormSchema>
+export type ItemFormOutput = z.infer<typeof itemFormSchema>

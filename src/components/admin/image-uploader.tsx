@@ -1,0 +1,172 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import Image from 'next/image'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, ImagePlus, Loader2, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { subirImagen } from '@/app/admin/media/actions'
+
+type Props = {
+  carpeta: 'productos' | 'items'
+  entidadId: string
+  portada: string | null
+  galeria: string[]
+  onPortadaChange: (url: string | null) => void
+  onGaleriaChange: (urls: string[]) => void
+}
+
+// Uploader reutilizable: 1 portada (reemplaza) + N fotos de galería
+// (agregar/quitar/reordenar arrastrando). Sube directo a Supabase Storage vía
+// subirImagen() y devuelve la URL al padre — el padre decide cuándo persistir.
+export function ImageUploader({
+  carpeta,
+  entidadId,
+  portada,
+  galeria,
+  onPortadaChange,
+  onGaleriaChange,
+}: Props) {
+  const portadaInputRef = useRef<HTMLInputElement>(null)
+  const galeriaInputRef = useRef<HTMLInputElement>(null)
+  const [subiendoPortada, setSubiendoPortada] = useState(false)
+  const [subiendoGaleria, setSubiendoGaleria] = useState(false)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  async function subir(archivo: File) {
+    const r = await subirImagen(archivo, carpeta, entidadId)
+    if (!r.ok) {
+      toast.error(r.error)
+      return null
+    }
+    return r.url
+  }
+
+  async function onPortadaFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]
+    e.target.value = ''
+    if (!archivo) return
+    setSubiendoPortada(true)
+    const url = await subir(archivo)
+    setSubiendoPortada(false)
+    if (url) onPortadaChange(url)
+  }
+
+  async function onGaleriaFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]
+    e.target.value = ''
+    if (!archivo) return
+    setSubiendoGaleria(true)
+    const url = await subir(archivo)
+    setSubiendoGaleria(false)
+    if (url) onGaleriaChange([...galeria, url])
+  }
+
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const from = galeria.indexOf(String(active.id))
+    const to = galeria.indexOf(String(over.id))
+    if (from < 0 || to < 0) return
+    onGaleriaChange(arrayMove(galeria, from, to))
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => portadaInputRef.current?.click()}
+          className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed bg-muted/30"
+        >
+          {subiendoPortada ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : portada ? (
+            <Image src={portada} alt="Portada" fill sizes="80px" className="object-cover" />
+          ) : (
+            <ImagePlus className="h-5 w-5 text-muted-foreground" />
+          )}
+        </button>
+        <input ref={portadaInputRef} type="file" accept="image/*" className="hidden" onChange={onPortadaFile} />
+        <div className="text-sm">
+          <p className="font-medium">Portada</p>
+          <div className="mt-1 flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => portadaInputRef.current?.click()}>
+              {portada ? 'Cambiar' : 'Subir'}
+            </Button>
+            {portada && (
+              <Button type="button" size="sm" variant="ghost" onClick={() => onPortadaChange(null)}>
+                Quitar
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium">Galería</p>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={galeria} strategy={horizontalListSortingStrategy}>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {galeria.map((url) => (
+                <GaleriaThumb key={url} url={url} onQuitar={() => onGaleriaChange(galeria.filter((u) => u !== url))} />
+              ))}
+              <button
+                type="button"
+                onClick={() => galeriaInputRef.current?.click()}
+                disabled={subiendoGaleria}
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                aria-label="Agregar foto a la galería"
+              >
+                {subiendoGaleria ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              </button>
+            </div>
+          </SortableContext>
+        </DndContext>
+        <input ref={galeriaInputRef} type="file" accept="image/*" className="hidden" onChange={onGaleriaFile} />
+      </div>
+    </div>
+  )
+}
+
+function GaleriaThumb({ url, onQuitar }: { url: string; onQuitar: () => void }) {
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: url })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group relative h-16 w-16 shrink-0 touch-none overflow-hidden rounded-lg border ${isDragging ? 'opacity-40' : ''}`}
+    >
+      <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+      <button
+        type="button"
+        className="absolute inset-0 flex cursor-grab items-center justify-center bg-black/0 text-white opacity-0 transition-opacity active:cursor-grabbing group-hover:bg-black/20 group-hover:opacity-100"
+        aria-label="Arrastrar para reordenar"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onQuitar}
+        className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+        aria-label="Quitar foto"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  )
+}

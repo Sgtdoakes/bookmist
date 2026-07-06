@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ItemsManager } from '@/components/admin/items-manager'
+import { getProductosParaSelector } from '@/app/admin/items/actions'
 import type { ItemCatalogo } from '@/types/db'
 
 export const metadata = { title: 'Biblioteca de libros y accesorios' }
@@ -21,10 +22,10 @@ async function getItemsAdmin(): Promise<ItemCatalogo[]> {
 }
 
 export default async function AdminItemsPage() {
-  const items = await getItemsAdmin()
+  const [items, productosDisponibles] = await Promise.all([getItemsAdmin(), getProductosParaSelector()])
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="mx-auto max-w-5xl px-4 py-6">
       <Link
         href="/admin"
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -39,7 +40,7 @@ export default async function AdminItemsPage() {
       </p>
 
       <div className="mt-6">
-        <ItemsManager itemsIniciales={items} />
+        <ItemsManager itemsIniciales={items} productosDisponibles={productosDisponibles} />
       </div>
     </div>
   )
