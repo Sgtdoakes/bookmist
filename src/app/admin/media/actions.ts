@@ -25,7 +25,7 @@ async function usuarioAutenticado() {
 // (mismo patrón de responsabilidad que subirPortada() en Martín Libros).
 export async function subirImagen(
   archivo: File,
-  carpeta: 'productos' | 'items',
+  carpeta: 'productos' | 'items' | 'secciones',
   entidadId: string,
 ): Promise<Ok | Err> {
   if (!(await usuarioAutenticado())) return { ok: false, error: 'Tu sesión expiró.' }

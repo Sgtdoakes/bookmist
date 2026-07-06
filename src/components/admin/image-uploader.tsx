@@ -18,24 +18,28 @@ import { Button } from '@/components/ui/button'
 import { subirImagen } from '@/app/admin/media/actions'
 
 type Props = {
-  carpeta: 'productos' | 'items'
+  carpeta: 'productos' | 'items' | 'secciones'
   entidadId: string
   portada: string | null
-  galeria: string[]
+  galeria?: string[]
   onPortadaChange: (url: string | null) => void
-  onGaleriaChange: (urls: string[]) => void
+  onGaleriaChange?: (urls: string[]) => void
+  soloPortada?: boolean
 }
 
 // Uploader reutilizable: 1 portada (reemplaza) + N fotos de galería
 // (agregar/quitar/reordenar arrastrando). Sube directo a Supabase Storage vía
 // subirImagen() y devuelve la URL al padre — el padre decide cuándo persistir.
+// `soloPortada` oculta la galería para bloques que solo necesitan 1 imagen
+// (ej. banner).
 export function ImageUploader({
   carpeta,
   entidadId,
   portada,
-  galeria,
+  galeria = [],
   onPortadaChange,
   onGaleriaChange,
+  soloPortada = false,
 }: Props) {
   const portadaInputRef = useRef<HTMLInputElement>(null)
   const galeriaInputRef = useRef<HTMLInputElement>(null)
@@ -70,7 +74,7 @@ export function ImageUploader({
     setSubiendoGaleria(true)
     const url = await subir(archivo)
     setSubiendoGaleria(false)
-    if (url) onGaleriaChange([...galeria, url])
+    if (url) onGaleriaChange?.([...galeria, url])
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -79,7 +83,7 @@ export function ImageUploader({
     const from = galeria.indexOf(String(active.id))
     const to = galeria.indexOf(String(over.id))
     if (from < 0 || to < 0) return
-    onGaleriaChange(arrayMove(galeria, from, to))
+    onGaleriaChange?.(arrayMove(galeria, from, to))
   }
 
   return (
@@ -114,13 +118,18 @@ export function ImageUploader({
         </div>
       </div>
 
+      {!soloPortada && (
       <div>
         <p className="text-sm font-medium">Galería</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={galeria} strategy={horizontalListSortingStrategy}>
             <div className="mt-2 flex flex-wrap gap-2">
               {galeria.map((url) => (
-                <GaleriaThumb key={url} url={url} onQuitar={() => onGaleriaChange(galeria.filter((u) => u !== url))} />
+                <GaleriaThumb
+                  key={url}
+                  url={url}
+                  onQuitar={() => onGaleriaChange?.(galeria.filter((u) => u !== url))}
+                />
               ))}
               <button
                 type="button"
@@ -136,6 +145,7 @@ export function ImageUploader({
         </DndContext>
         <input ref={galeriaInputRef} type="file" accept="image/*" className="hidden" onChange={onGaleriaFile} />
       </div>
+      )}
     </div>
   )
 }

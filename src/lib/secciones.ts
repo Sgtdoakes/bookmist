@@ -1,11 +1,15 @@
 import { createClient } from '@/lib/supabase/public'
 import { storeConfig } from '@/lib/store-config'
+import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { PaginaSeccionRow } from '@/types/db'
 
-// Secciones editables de la home (Fase 5b). Set fijo de bloques predefinidos
-// (no un lienzo libre como en Martín Libros): Daniela puede reordenarlos,
-// ocultarlos y editar su texto desde /admin/pagina, pero no crear tipos
-// nuevos — el diseño de Dani ya define qué bloques existen.
+// Secciones editables de las páginas (Fase 5b, extendido en 6c). Los 7 tipos
+// originales son la "página furniture" fija del diseño de Dani (uno por
+// página, sin estilo editable). `texto`, `productos` y `banner` son bloques
+// libres: se pueden agregar/duplicar/quitar en cualquier cantidad y en
+// cualquier página (`home`, `productos`, `producto_detalle`), y tienen
+// estilo (fondo/tamaño/radio/alineación) editable — el "lienzo libre" que
+// antes no existía.
 
 export type SeccionTipo =
   | 'hero'
@@ -15,6 +19,14 @@ export type SeccionTipo =
   | 'sobre_mi'
   | 'resenas'
   | 'instagram'
+  | 'texto'
+  | 'productos'
+  | 'banner'
+
+// Tipos "furniture" fijos (uno por página, definidos por el diseño original
+// de Dani) vs. bloques libres (repetibles, con estilo editable) — el
+// builder del admin solo ofrece agregar estos últimos.
+export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner']
 
 export type HeroConfig = { eyebrow: string; titulo: string; subtitulo: string; ctaTexto: string }
 export type BeneficioItem = { emoji: string; texto: string }
@@ -26,6 +38,36 @@ export type ResenaItem = { nombre: string; texto: string }
 export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem[] }
 export type InstagramConfig = { titulo: string }
 
+export type TextoConfig = {
+  eyebrow: string
+  titulo: string
+  texto: string
+  ctaTexto: string
+  ctaHref: string
+  estilo: EstiloBloque
+}
+
+export type ProductosFuente = 'destacados' | 'novedades' | 'categoria' | 'manual'
+export type ProductosConfig = {
+  eyebrow: string
+  titulo: string
+  fuente: ProductosFuente
+  categoria: string
+  productos: string[]
+  limite: number
+  estilo: EstiloBloque
+}
+
+export type BannerConfig = {
+  eyebrow: string
+  titulo: string
+  texto: string
+  imagen: string | null
+  ctaTexto: string
+  ctaHref: string
+  estilo: EstiloBloque
+}
+
 export type SeccionConfigMap = {
   hero: HeroConfig
   beneficios: BeneficiosConfig
@@ -34,6 +76,9 @@ export type SeccionConfigMap = {
   sobre_mi: SobreMiConfig
   resenas: ResenasConfig
   instagram: InstagramConfig
+  texto: TextoConfig
+  productos: ProductosConfig
+  banner: BannerConfig
 }
 
 // Union discriminada: en un switch/if sobre `tipo`, TypeScript angosta
@@ -91,11 +136,38 @@ function defaults(): SeccionConfigMap {
       ],
     },
     instagram: { titulo: `Seguinos en ${storeConfig.instagramHandle}` },
+    texto: {
+      eyebrow: '',
+      titulo: 'Título del bloque',
+      texto: 'Escribí acá el contenido de este bloque.',
+      ctaTexto: '',
+      ctaHref: '',
+      estilo: {},
+    },
+    productos: {
+      eyebrow: '',
+      titulo: 'Productos',
+      fuente: 'destacados',
+      categoria: '',
+      productos: [],
+      limite: 8,
+      estilo: {},
+    },
+    banner: {
+      eyebrow: '',
+      titulo: 'Título del banner',
+      texto: '',
+      imagen: null,
+      ctaTexto: '',
+      ctaHref: '',
+      estilo: {},
+    },
   }
 }
 
 // Orden por defecto (el orden actual del diseño de Dani), para cuando la
-// tabla está vacía.
+// tabla está vacía. Los bloques libres (texto/productos/banner) nunca
+// forman parte de este set — solo existen si Dani los agrega a mano.
 const ORDEN_DEFECTO: SeccionTipo[] = [
   'hero',
   'beneficios',
@@ -106,8 +178,12 @@ const ORDEN_DEFECTO: SeccionTipo[] = [
   'instagram',
 ]
 
+// Todos los tipos válidos (furniture fijo + bloques libres) — para validar
+// filas leídas de la base, tanto acá como en el inspector del admin.
+export const TIPOS_CONOCIDOS: SeccionTipo[] = [...ORDEN_DEFECTO, ...TIPOS_BLOQUE_LIBRE]
+
 function esSeccionTipo(v: string): v is SeccionTipo {
-  return (ORDEN_DEFECTO as string[]).includes(v)
+  return (TIPOS_CONOCIDOS as string[]).includes(v)
 }
 
 // Combina lo guardado con los valores por defecto: un campo ausente en la

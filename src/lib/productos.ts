@@ -87,6 +87,58 @@ export async function getProductoConItems(slug: string): Promise<ProductoConItem
   }
 }
 
+// Últimos productos cargados (fuente "novedades" del bloque de productos).
+export async function getNovedades(limit = 12): Promise<Producto[]> {
+  if (!configured()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('activo', true)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) throw error
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
+// Productos de una categoría puntual (fuente "categoria" del bloque de productos).
+export async function getProductosPorCategoria(categoria: string, limit = 12): Promise<Producto[]> {
+  if (!configured() || !categoria) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('activo', true)
+      .eq('categoria', categoria)
+      .order('orden', { ascending: true })
+      .limit(limit)
+    if (error) throw error
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
+// Selección manual de productos (fuente "manual" del bloque de productos) —
+// preserva el orden elegido por Dani, no el orden de la tabla.
+export async function getProductosPorIds(ids: string[]): Promise<Producto[]> {
+  if (!configured() || ids.length === 0) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.from('productos').select('*').eq('activo', true).in('id', ids)
+    if (error) throw error
+    const porId = new Map((data ?? []).map((p) => [p.id, p]))
+    return ids.map((id) => porId.get(id)).filter((p): p is Producto => !!p)
+  } catch {
+    return []
+  }
+}
+
 export async function getCategoriasDistintas(): Promise<string[]> {
   if (!configured()) return []
   try {

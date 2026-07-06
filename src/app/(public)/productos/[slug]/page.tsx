@@ -5,6 +5,7 @@ import { BookOpen, Gift } from 'lucide-react'
 import { getProductoConItems } from '@/lib/productos'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { AddToCart } from '@/components/public/add-to-cart'
+import { SeccionesDePagina } from '@/components/public/secciones-renderer'
 import { formatARS } from '@/lib/format'
 
 // ISR: sin esto, la ficha de producto queda estática desde el build.
@@ -99,6 +100,10 @@ export default async function ProductoDetallePage({ params }: Props) {
 
           <AddToCart producto={producto} showQuantity />
         </div>
+      </div>
+
+      <div className="mt-16">
+        <SeccionesDePagina pagina="producto_detalle" />
       </div>
     </div>
   )
