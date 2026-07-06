@@ -1,5 +1,6 @@
 import { obtenerPago } from '@/lib/mercadopago'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ajustarStockPedido } from '@/lib/pedidos'
 
 // Webhook de Mercado Pago. MP avisa cuando cambia un pago.
 // Nunca confiamos en el body del aviso: volvemos a pedirle a Mercado Pago el
@@ -25,10 +26,20 @@ export async function POST(request: Request) {
       const pago = await obtenerPago(String(pagoId))
       if (pago && pago.status === 'approved' && pago.external_reference) {
         const supabase = createAdminClient()
-        await supabase
+        // MP reintenta el mismo aviso varias veces: si ya estaba pagado, no
+        // volvemos a descontar el stock (idempotente).
+        const { data: order } = await supabase
           .from('orders')
-          .update({ estado: 'pagado', mp_payment_id: pago.id })
+          .select('estado')
           .eq('id', pago.external_reference)
+          .maybeSingle()
+        if (order && order.estado !== 'pagado') {
+          await supabase
+            .from('orders')
+            .update({ estado: 'pagado', mp_payment_id: pago.id })
+            .eq('id', pago.external_reference)
+          await ajustarStockPedido(supabase, pago.external_reference, -1)
+        }
       }
     }
   } catch {

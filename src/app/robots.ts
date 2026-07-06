@@ -7,10 +7,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      // El panel de administración (Fase 5, todavía no existe) y las páginas
-      // de carrito/checkout/pedido (privadas o sin contenido indexable) no
+      // El panel de administración, el modo mantenimiento y las páginas de
+      // carrito/checkout/pedido (privadas o sin contenido indexable) no
       // deben rastrearse.
-      disallow: ['/admin', '/carrito', '/checkout', '/pedido'],
+      disallow: ['/admin', '/carrito', '/checkout', '/pedido', '/mantenimiento'],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   }

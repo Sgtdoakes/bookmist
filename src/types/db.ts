@@ -197,6 +197,12 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['zonas_envio']['Insert']>
         Relationships: []
       }
+      configuracion: {
+        Row: { clave: string; valor: string; updated_at: string }
+        Insert: { clave: string; valor: string; updated_at?: string }
+        Update: Partial<Database['public']['Tables']['configuracion']['Insert']>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -232,3 +238,6 @@ export type OrderInsert = Database['public']['Tables']['orders']['Insert']
 export type OrderItem = Database['public']['Tables']['order_items']['Row']
 export type OrderItemInsert = Database['public']['Tables']['order_items']['Insert']
 export type ZonaEnvio = Database['public']['Tables']['zonas_envio']['Row']
+
+// Pedido con sus items resueltos (para el panel de administración).
+export type OrderConItems = Order & { order_items: OrderItem[] }

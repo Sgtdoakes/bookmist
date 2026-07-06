@@ -1,8 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { EstadoPedido } from '@/types/db'
 
-// Estados en los que un pedido "retiene" stock: no se canceló todavía.
-const ESTADOS_ACTIVOS: EstadoPedido[] = ['pendiente', 'pagado']
+// Solo 'pendiente' reserva sin haber tocado el stock físico todavía. Un
+// pedido 'pagado' ya se restó de productos.stock de verdad (ver
+// src/lib/pedidos.ts), así que no hay que volver a descontarlo acá — sumarlo
+// otra vez sería un doble descuento.
+const ESTADOS_ACTIVOS: EstadoPedido[] = ['pendiente']
 
 function configured() {
   return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY

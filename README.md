@@ -1,22 +1,25 @@
 # Bookmist 📚✨
 
 Sitio web de **Bookmist**, marca de cajas y kits literarios (libros curados +
-accesorios). Este repo cubre, por ahora, las **Fases 1 a 4a**: landing pública
+accesorios). Este repo cubre, por ahora, las **Fases 1 a 5a**: landing pública
 conectada a un catálogo real en Supabase, catálogo/carrito/checkout con pago
 manual (transferencia/efectivo) y online con **Mercado Pago** (Checkout Pro:
-QR, billetera y tarjetas en una sola integración), y envío con **costo manual
-por zona** (Daniela carga las zonas y su costo; la integración real con la
-API de Andreani es la Fase 4b, cuando exista el contrato comercial). Bookmist
-envía a todo el país (sin retiro en persona), así que el checkout siempre
-pide dirección de envío. El panel de administración llega en la Fase 5 — ver
-el historial de la conversación de planificación para el roadmap completo.
+QR, billetera y tarjetas en una sola integración), envío con **costo manual
+por zona** (la API real de Andreani es la Fase 4b, cuando exista el contrato
+comercial), y un **panel de administración** (`/admin`) para gestionar
+cajas/kits, la biblioteca de libros/accesorios, pedidos, zonas de envío y el
+modo "reponiendo stock". Bookmist envía a todo el país (sin retiro en
+persona), así que el checkout siempre pide dirección de envío. El **CMS de
+secciones arrastrables** (armar la home/otras páginas visualmente) queda
+para la Fase 5b, todavía no está — ver el historial de la conversación de
+planificación para el roadmap completo.
 
 ---
 
 ## Stack técnico
 
 - **Next.js 16** (App Router) + **TypeScript** (tipado estricto)
-- **Supabase**: base de datos PostgreSQL y storage (Auth se suma en la Fase 5)
+- **Supabase**: base de datos PostgreSQL, Auth (panel de administración) y storage
 - **Tailwind CSS v4** + **shadcn/ui**
 - **Vitest** para tests unitarios
 - Pensado para desplegar en **Vercel** (free tier) + **Supabase** (free tier)
@@ -61,11 +64,13 @@ contenido de cada archivo de la carpeta [`supabase/migrations`](./supabase/migra
    columna `zona_envio` en `orders` (Fase 4a).
 8. `0008_zonas_envio_rls.sql` — RLS de `zonas_envio` (lectura pública de
    zonas activas, escritura solo autenticado).
+9. `0009_configuracion.sql` — tabla `configuracion` (clave/valor), usada por
+   el modo "reponiendo stock" (Fase 5a).
 
 Después, para cargar cajas/kits y zonas de envío de ejemplo (tomados del
 wireframe de Dani), ejecutá:
 
-9. [`supabase/seed.sql`](./supabase/seed.sql)
+10. [`supabase/seed.sql`](./supabase/seed.sql)
 
 > Podés copiar y pegar cada archivo en una pestaña nueva del SQL Editor y apretar **Run**.
 
@@ -91,14 +96,22 @@ Las claves de Supabase están en **Project Settings → API**:
 npm run dev
 ```
 
-Abrí [http://localhost:3000](http://localhost:3000).
+Abrí [http://localhost:3000](http://localhost:3000). El panel de
+administración está en [http://localhost:3000/admin](http://localhost:3000/admin).
 
-> **Nota sobre el panel de administración:** todavía no existe (`/admin`
-> llega en la Fase 5, con login de Supabase). Cuando se agregue, va a ser
-> obligatorio deshabilitar el registro público en Supabase (**Authentication
-> → Sign In / Providers → Allow new users to sign up = OFF**) y crear las
-> cuentas de Daniela a mano — el sistema considera admin a cualquier usuario
-> que pueda iniciar sesión. Dejarlo anotado acá para no perderlo de vista.
+### 6. ⚠️ Cerrar el registro público y crear el usuario admin
+
+> **Esto es obligatorio y es la base de la seguridad del panel.** El sistema
+> considera **admin a cualquier usuario que pueda iniciar sesión**. Si dejás
+> el registro abierto, cualquier persona podría crearse una cuenta y entrar
+> al panel a editar el stock, los pedidos y los precios.
+
+1. En Supabase, andá a **Authentication → Sign In / Providers** (o
+   **Settings**) y **deshabilitá el registro público** (*"Allow new users to
+   sign up"* / *Enable signups* en **OFF**).
+2. Creá la cuenta de Daniela a mano en **Authentication → Users → Add user**
+   (email + contraseña). Repetí por cada persona que tenga que entrar al
+   panel.
 
 ---
 
@@ -155,6 +168,38 @@ Abrí [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## Panel de administración (`/admin`)
+
+- **Cajas y kits** (`/admin/productos`): editar precio/stock al instante, o
+  entrar a un producto para editar todo, incluido el contenido curado ("qué
+  incluye": libros/accesorios elegidos de la biblioteca).
+- **Biblioteca de libros y accesorios** (`/admin/items`): los ítems reusables
+  que después se eligen para armar el contenido de cada caja/kit.
+- **Pedidos** (`/admin/pedidos`): cambiar el estado (pendiente → pagado →
+  cancelado) y avisar por WhatsApp. Al confirmar el pago, el stock se
+  descuenta de verdad; si un pedido ya pagado se cancela, el stock se repone.
+- **Zonas de envío** (`/admin/zonas`): alta/edición/borrado de zonas y costo.
+- **Modo reponiendo stock** (`/admin/mantenimiento`): ver más abajo.
+
+### Modo "reponiendo stock"
+
+Tapa el sitio público con una pantalla de "volvemos pronto" (`/mantenimiento`)
+en vez del catálogo. Vos seguís viendo el sitio normal mientras tengas la
+sesión de admin iniciada (el bypass es la sesión real, no una contraseña
+aparte). Se activa de dos formas:
+
+1. **Automático**: cuando ninguna caja/kit visible tiene stock. Se revisa
+   cada vez que el stock cambia (pedido pagado/cancelado, o edición manual).
+2. **Manual**: con el botón en `/admin/mantenimiento`, para pausar la tienda
+   por cualquier otro motivo (vacaciones, mudanza, etc.).
+
+Una activación manual **nunca** se desactiva sola aunque vuelva el stock —
+solo Daniela la apaga a mano. El webhook de Mercado Pago (`/api/mercadopago/webhook`)
+y el propio panel de administración nunca quedan tapados, para poder seguir
+cobrando pagos pendientes y reactivar el sitio.
+
+---
+
 ## Cómo se actualiza el contenido (ISR)
 
 La home, el catálogo, cada ficha de producto y el checkout usan **ISR**
@@ -198,6 +243,17 @@ falta redeployar. Sin esto, quedarían fijas desde el momento del build.
   aprobado" (`src/lib/mercadopago.ts`).
 - **Aislamiento de la service role key**: `src/lib/supabase/admin.ts` está
   marcado `server-only` y nunca se importa desde código de cliente.
+- **Admin = cualquier usuario que pueda iniciar sesión**: por eso cerrar el
+  registro público en Supabase (paso 6 de la puesta en marcha) no es
+  opcional — es la única barrera entre "cualquiera con un email" y el panel
+  completo. Todas las server actions del admin (`src/app/admin/**/actions.ts`)
+  además revalidan la sesión en cada llamada, no solo en la carga de la página.
+- **Modo mantenimiento sin agujero de bypass**: el gate corre en
+  `src/lib/supabase/middleware.ts`, junto al refresco de sesión de cada
+  request, y solo consulta el estado de mantenimiento cuando el visitante NO
+  tiene sesión (una consulta liviana de 2 filas, nunca para el admin
+  logueado). Excluye explícitamente `/api/*` para que el webhook de Mercado
+  Pago nunca quede bloqueado.
 - **Headers de seguridad** en `next.config.ts`: CSP, `X-Frame-Options: DENY`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`,
   HSTS.
@@ -221,13 +277,19 @@ supabase/migrations/      Migraciones SQL (esquema, RLS, funciones)
 supabase/seed.sql         Datos de ejemplo
 design-reference/         Wireframe original de Dani (jsx) + capturas de referencia
 src/app/(public)/         Landing, catálogo, carrito, checkout, confirmación de pedido
+src/app/admin/            Panel de administración (login, productos, items, pedidos,
+                          zonas, modo mantenimiento)
+src/app/mantenimiento/    Pantalla pública de "volvemos pronto"
 src/app/api/checkout/     Ruta de creación de pedidos (service role, valida stock real)
 src/app/api/mercadopago/  Webhook de confirmación de pago (Checkout Pro)
 src/app/robots.ts         SEO: robots.txt
 src/app/sitemap.ts        SEO: sitemap.xml (home + catálogo + cada producto activo)
 src/components/ui/        Componentes de shadcn/ui
 src/components/public/    Componentes propios del sitio público
+src/components/admin/     Componentes propios del panel de administración
 src/lib/                  Supabase, helpers, formato, slugs, config de marca
+src/lib/pedidos.ts        Ajuste de stock compartido (admin + webhook de Mercado Pago)
+src/lib/mantenimiento.ts  Lógica del modo "reponiendo stock" (automático + manual)
 src/lib/__tests__/        Tests unitarios (Vitest)
 src/types/db.ts           Tipos de la base de datos
 src/proxy.ts              Middleware (Next 16 renombró `middleware` a `proxy`)
@@ -249,8 +311,11 @@ Estos ítems no bloquean el desarrollo, pero sí lanzar el sitio real:
   `supabase/seed.sql`).
 - Cuenta/contrato comercial con Andreani para automatizar la cotización real
   (Fase 4b) — hasta entonces, el costo por zona es manual.
-- Sin panel de administración todavía (Fase 5): los pedidos y las zonas de
-  envío se revisan/cargan a mano desde el **Table Editor de Supabase**.
+- Deshabilitar el registro público en Supabase y crear la cuenta real de
+  Daniela (paso 6 de la puesta en marcha) — sin esto, el panel `/admin`
+  queda abierto a cualquiera que se registre.
+- CMS de secciones arrastrables (armar la home visualmente) — Fase 5b,
+  todavía no está.
 
 ---
 

@@ -64,7 +64,13 @@
   --secondary: #9d8fb8; /* Lavanda */
   --secondary-foreground: #3d3258;
   --muted: #c9bedf; /* Lila Suave */
-  --muted-foreground: #3d3258;
+  /* Texto "apagado" (descripciones, timestamps, etc.) — se usa casi siempre
+     solo, directo sobre el fondo oscuro de la página (no solo pareado con
+     --muted), así que tiene que leerse ahí: un crema tenue, no el violeta
+     oscuro que tendría sentido sobre --muted. La única combinación real con
+     bg-muted (el badge de tipo de ítem en el admin) usa --card-foreground
+     a propósito en vez de este token. */
+  --muted-foreground: rgba(237, 232, 245, 0.65);
   --accent: #9d8fb8;
   --accent-foreground: #ede8f5;
   --destructive: oklch(0.577 0.245 27.325);
