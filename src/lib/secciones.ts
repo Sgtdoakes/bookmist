@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/public'
 import { storeConfig } from '@/lib/store-config'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
-import type { PaginaSeccionRow } from '@/types/db'
+import type { PaginaSeccionRow, Producto } from '@/types/db'
 
 // Secciones editables de las páginas (Fase 5b, extendido en 6c). Los 7 tipos
 // originales son la "página furniture" fija del diseño de Dani (uno por
@@ -22,11 +22,12 @@ export type SeccionTipo =
   | 'texto'
   | 'productos'
   | 'banner'
+  | 'libre'
 
 // Tipos "furniture" fijos (uno por página, definidos por el diseño original
 // de Dani) vs. bloques libres (repetibles, con estilo editable) — el
 // builder del admin solo ofrece agregar estos últimos.
-export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner']
+export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre']
 
 export type HeroConfig = { eyebrow: string; titulo: string; subtitulo: string; ctaTexto: string }
 export type BeneficioItem = { emoji: string; texto: string }
@@ -68,6 +69,18 @@ export type BannerConfig = {
   estilo: EstiloBloque
 }
 
+// Bloque "Libre": armado por piezas sueltas (no un esquema fijo de campos).
+// Cada elemento tiene su propio `id` estable (para poder reordenar por
+// drag-and-drop en el lienzo sin depender del índice del array).
+export type ElementoLibreTipo = 'titulo' | 'parrafo' | 'imagen' | 'boton' | 'espacio'
+export type ElementoLibre =
+  | { id: string; tipo: 'titulo'; texto: string }
+  | { id: string; tipo: 'parrafo'; texto: string }
+  | { id: string; tipo: 'imagen'; url: string | null }
+  | { id: string; tipo: 'boton'; texto: string; href: string }
+  | { id: string; tipo: 'espacio'; alto: 'sm' | 'md' | 'lg' }
+export type LibreConfig = { elementos: ElementoLibre[]; estilo: EstiloBloque }
+
 export type SeccionConfigMap = {
   hero: HeroConfig
   beneficios: BeneficiosConfig
@@ -79,6 +92,7 @@ export type SeccionConfigMap = {
   texto: TextoConfig
   productos: ProductosConfig
   banner: BannerConfig
+  libre: LibreConfig
 }
 
 // Union discriminada: en un switch/if sobre `tipo`, TypeScript angosta
@@ -162,6 +176,10 @@ function defaults(): SeccionConfigMap {
       ctaHref: '',
       estilo: {},
     },
+    libre: {
+      elementos: [{ id: crypto.randomUUID(), tipo: 'titulo', texto: 'Título' }],
+      estilo: {},
+    },
   }
 }
 
@@ -240,6 +258,13 @@ export type SeccionAdmin = {
   activo: boolean
   config: Record<string, unknown>
 }
+
+// Lo que necesita el lienzo en vivo del admin para renderizar un bloque:
+// igual a `SeccionResuelta`, pero con los productos ya resueltos (no la
+// fuente/ids) para 'productos' y 'mas_vendidos' — los únicos dos tipos que
+// necesitan datos del servidor para saber qué mostrar. El resto de los
+// tipos son puros: su config YA ES su contenido.
+export type SeccionPreview = SeccionResuelta & { productosResueltos?: Producto[] }
 
 // Todas las secciones (incl. inactivas) para el builder del admin. A
 // diferencia de getSeccionesPagina, esto lo llaman Server Components/Actions

@@ -2,11 +2,17 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { filasAAdmin, type SeccionAdmin, type SeccionTipo } from '@/lib/secciones'
+import { getDestacados } from '@/lib/productos'
+import { resolverProductosBloque } from '@/components/public/productos-bloque'
+import {
+  filasAAdmin,
+  resolverSeccion,
+  TIPOS_CONOCIDOS,
+  type SeccionAdmin,
+  type SeccionPreview,
+  type SeccionTipo,
+} from '@/lib/secciones'
 
-type OkId = { ok: true; id: string }
-
-type Ok = { ok: true }
 type Err = { ok: false; error: string }
 
 async function clienteAutenticado() {
@@ -23,6 +29,10 @@ function revalidarPublico() {
   revalidatePath('/admin/pagina')
 }
 
+function esSeccionTipoConocido(tipo: string): tipo is SeccionTipo {
+  return (TIPOS_CONOCIDOS as string[]).includes(tipo)
+}
+
 export async function getSeccionesAdmin(pagina = 'home'): Promise<SeccionAdmin[]> {
   const supabase = await clienteAutenticado()
   if (!supabase) return []
@@ -35,101 +45,94 @@ export async function getSeccionesAdmin(pagina = 'home'): Promise<SeccionAdmin[]
   return filasAAdmin(data ?? [])
 }
 
-// Persiste el nuevo orden de arrastre: `ids` viene en el orden final deseado.
-export async function guardarOrden(ids: string[]): Promise<Ok | Err> {
+// Resuelve un lote de bloques (borrador, todavía no guardado) a datos
+// pintables — para 'productos'/'mas_vendidos' trae los productos reales
+// según la fuente configurada; el resto de los tipos son puros y se
+// devuelven tal cual. Lo llama el lienzo del admin al agregar un bloque o
+// al cambiar algo que afecta QUÉ se muestra (fuente/categoría/selección
+// manual), con debounce del lado del cliente.
+export async function previewSecciones(
+  items: { id: string; tipo: string; config: Record<string, unknown> }[],
+): Promise<SeccionPreview[]> {
   const supabase = await clienteAutenticado()
-  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  if (!supabase) return []
 
-  const resultados = await Promise.all(
-    ids.map((id, index) => supabase.from('pagina_secciones').update({ orden: index }).eq('id', id)),
-  )
-  const fallo = resultados.find((r) => r.error)
-  if (fallo) return { ok: false, error: 'No se pudo guardar el nuevo orden.' }
-
-  revalidarPublico()
-  return { ok: true }
+  const resultados: SeccionPreview[] = []
+  for (const item of items) {
+    if (!esSeccionTipoConocido(item.tipo)) continue
+    // resolverSeccion() pone id=tipo (pensado solo como key para .map() en
+    // el sitio público) — acá hace falta el id REAL de la fila para poder
+    // indexar el preview por id en el lienzo del admin.
+    const resuelta = { ...resolverSeccion(item.tipo, item.config), id: item.id }
+    if (resuelta.tipo === 'productos') {
+      const productosResueltos = await resolverProductosBloque(resuelta.config)
+      resultados.push({ ...resuelta, productosResueltos })
+    } else if (resuelta.tipo === 'mas_vendidos') {
+      const productosResueltos = await getDestacados(12)
+      resultados.push({ ...resuelta, productosResueltos })
+    } else {
+      resultados.push(resuelta)
+    }
+  }
+  return resultados
 }
 
-export async function toggleActivoSeccion(id: string, activo: boolean): Promise<Ok | Err> {
-  const supabase = await clienteAutenticado()
-  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
-
-  const { error } = await supabase.from('pagina_secciones').update({ activo }).eq('id', id)
-  if (error) return { ok: false, error: 'No se pudo cambiar la visibilidad.' }
-
-  revalidarPublico()
-  return { ok: true }
+export type LayoutItem = {
+  id: string // uuid real (existe en la base) o temporal generado al agregar/duplicar (se inserta al guardar)
+  tipo: SeccionTipo
+  activo: boolean
+  config: Record<string, unknown>
 }
 
-export async function guardarConfigSeccion(
-  id: string,
-  config: Record<string, unknown>,
-): Promise<Ok | Err> {
+// Persiste el borrador completo del lienzo de una sola vez: borra lo que se
+// sacó, actualiza lo que sigue e inserta lo nuevo, con orden = índice.
+// Devuelve las filas frescas (con ids reales) para resetear el editor.
+export async function guardarLayout(
+  pagina: string,
+  items: LayoutItem[],
+): Promise<{ ok: true; secciones: SeccionAdmin[] } | Err> {
   const supabase = await clienteAutenticado()
   if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  if (items.some((it) => !esSeccionTipoConocido(it.tipo))) {
+    return { ok: false, error: 'Tipo de bloque inválido.' }
+  }
 
-  const { error } = await supabase.from('pagina_secciones').update({ config }).eq('id', id)
-  if (error) return { ok: false, error: 'No se pudo guardar el contenido.' }
-
-  revalidarPublico()
-  return { ok: true }
-}
-
-// Agrega un bloque libre nuevo (texto/productos/banner) al final de la
-// página — arranca oculto para que Dani lo pueda cargar con calma antes de
-// mostrarlo.
-export async function crearSeccion(pagina: string, tipo: SeccionTipo): Promise<OkId | Err> {
-  const supabase = await clienteAutenticado()
-  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
-
-  const { data: existentes } = await supabase
+  const { data: existentes, error: errLeer } = await supabase
     .from('pagina_secciones')
-    .select('orden')
+    .select('id')
     .eq('pagina', pagina)
-    .order('orden', { ascending: false })
-    .limit(1)
-  const siguienteOrden = (existentes?.[0]?.orden ?? -1) + 1
+  if (errLeer) return { ok: false, error: 'No se pudo leer el estado actual.' }
 
-  const { data, error } = await supabase
-    .from('pagina_secciones')
-    .insert({ pagina, tipo, orden: siguienteOrden, activo: false, config: {} })
-    .select('id')
-    .single()
-  if (error || !data) return { ok: false, error: 'No se pudo agregar el bloque.' }
+  const existIds = new Set((existentes ?? []).map((r) => r.id))
+  const draftIds = new Set(items.map((i) => i.id))
 
-  revalidarPublico()
-  return { ok: true, id: data.id }
-}
+  const aBorrar = [...existIds].filter((id) => !draftIds.has(id))
+  if (aBorrar.length > 0) {
+    const { error } = await supabase.from('pagina_secciones').delete().in('id', aBorrar)
+    if (error) return { ok: false, error: 'No se pudieron eliminar bloques.' }
+  }
 
-export async function duplicarSeccion(id: string): Promise<OkId | Err> {
-  const supabase = await clienteAutenticado()
-  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
-
-  const { data: original, error: errLectura } = await supabase
-    .from('pagina_secciones')
-    .select('pagina, tipo, orden, activo, config')
-    .eq('id', id)
-    .single()
-  if (errLectura || !original) return { ok: false, error: 'No se pudo duplicar el bloque.' }
-
-  const { data, error } = await supabase
-    .from('pagina_secciones')
-    .insert({ ...original, orden: original.orden + 1 })
-    .select('id')
-    .single()
-  if (error || !data) return { ok: false, error: 'No se pudo duplicar el bloque.' }
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i]
+    if (existIds.has(it.id)) {
+      const { error } = await supabase
+        .from('pagina_secciones')
+        .update({ tipo: it.tipo, activo: it.activo, config: it.config, orden: i })
+        .eq('id', it.id)
+      if (error) return { ok: false, error: 'No se pudo guardar un bloque.' }
+    } else {
+      const { error } = await supabase
+        .from('pagina_secciones')
+        .insert({ id: it.id, pagina, tipo: it.tipo, activo: it.activo, config: it.config, orden: i })
+      if (error) return { ok: false, error: 'No se pudo crear un bloque.' }
+    }
+  }
 
   revalidarPublico()
-  return { ok: true, id: data.id }
-}
-
-export async function eliminarSeccion(id: string): Promise<Ok | Err> {
-  const supabase = await clienteAutenticado()
-  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
-
-  const { error } = await supabase.from('pagina_secciones').delete().eq('id', id)
-  if (error) return { ok: false, error: 'No se pudo eliminar el bloque.' }
-
-  revalidarPublico()
-  return { ok: true }
+  const { data: frescas } = await supabase
+    .from('pagina_secciones')
+    .select('*')
+    .eq('pagina', pagina)
+    .order('orden', { ascending: true })
+  return { ok: true, secciones: filasAAdmin(frescas ?? []) }
 }

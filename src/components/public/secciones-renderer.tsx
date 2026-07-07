@@ -9,6 +9,7 @@ import { InstagramFeed } from '@/components/public/instagram-feed'
 import { TextoBloque } from '@/components/public/texto-bloque'
 import { ProductosBloque } from '@/components/public/productos-bloque'
 import { BannerBloque } from '@/components/public/banner-bloque'
+import { LibreBloque } from '@/components/public/libre-bloque'
 import { Divider } from '@/components/public/decorative'
 import { getSeccionesPagina, type SeccionResuelta } from '@/lib/secciones'
 
@@ -63,6 +64,8 @@ function RenderSeccion({ seccion: s }: { seccion: SeccionResuelta }) {
       return <ProductosBloque {...s.config} />
     case 'banner':
       return <BannerBloque {...s.config} />
+    case 'libre':
+      return <LibreBloque {...s.config} />
     default:
       return null
   }
