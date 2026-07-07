@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatARS } from '@/lib/format'
-import { storeConfig } from '@/lib/store-config'
+import type { MarcaConfig } from '@/lib/configuracion'
 import { whatsappLink } from '@/lib/whatsapp'
 import { ESTADO_PEDIDO_LABEL, ESTADO_PEDIDO_BADGE, ESTADO_SIGUIENTE, METODO_PAGO_LABEL } from '@/lib/constants'
 import type { OrderConItems, EstadoPedido } from '@/types/db'
@@ -16,7 +16,7 @@ function fecha(iso: string) {
   return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-export function PedidosManager({ pedidos }: { pedidos: OrderConItems[] }) {
+export function PedidosManager({ pedidos, marca }: { pedidos: OrderConItems[]; marca: MarcaConfig }) {
   const [items, setItems] = useState<OrderConItems[]>(pedidos)
   const [verCerrados, setVerCerrados] = useState(false)
 
@@ -82,7 +82,7 @@ export function PedidosManager({ pedidos }: { pedidos: OrderConItems[] }) {
           No hay pedidos activos. Activá la opción de arriba para ver los cancelados.
         </p>
       ) : (
-        visibles.map((p) => <TarjetaPedido key={p.id} pedido={p} onCambiar={cambiar} onVisto={visto} />)
+        visibles.map((p) => <TarjetaPedido key={p.id} pedido={p} marca={marca} onCambiar={cambiar} onVisto={visto} />)
       )}
     </div>
   )
@@ -90,17 +90,19 @@ export function PedidosManager({ pedidos }: { pedidos: OrderConItems[] }) {
 
 function TarjetaPedido({
   pedido: p,
+  marca,
   onCambiar,
   onVisto,
 }: {
   pedido: OrderConItems
+  marca: MarcaConfig
   onCambiar: (id: string, estado: EstadoPedido) => void
   onVisto: (id: string) => void
 }) {
-  const wa = storeConfig.whatsapp
+  const wa = marca.whatsapp
     ? whatsappLink(
         p.cliente_telefono,
-        `Hola ${p.cliente_nombre}, te escribimos de ${storeConfig.nombre} por tu pedido ${p.numero_pedido}.`,
+        `Hola ${p.cliente_nombre}, te escribimos de ${marca.nombre} por tu pedido ${p.numero_pedido}.`,
       )
     : null
 

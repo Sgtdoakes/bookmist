@@ -1,11 +1,18 @@
-import { storeConfig } from '@/lib/store-config'
 import { InstagramIcon, TikTokIcon } from '@/components/public/decorative'
 
-export function SocialIcons({ className = '' }: { className?: string }) {
+export function SocialIcons({
+  instagram,
+  tiktok,
+  className = '',
+}: {
+  instagram: string
+  tiktok: string
+  className?: string
+}) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <a
-        href={storeConfig.instagram}
+        href={instagram}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Instagram"
@@ -14,7 +21,7 @@ export function SocialIcons({ className = '' }: { className?: string }) {
         <InstagramIcon className="h-3.5 w-3.5" />
       </a>
       <a
-        href={storeConfig.tiktok}
+        href={tiktok}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="TikTok"

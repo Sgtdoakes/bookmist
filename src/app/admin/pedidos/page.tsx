@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { getMarcaConfig } from '@/lib/configuracion'
 import { PedidosManager } from '@/components/admin/pedidos-manager'
 import type { OrderConItems } from '@/types/db'
 
@@ -21,7 +22,7 @@ async function getPedidos(): Promise<OrderConItems[]> {
 }
 
 export default async function AdminPedidosPage() {
-  const pedidos = await getPedidos()
+  const [pedidos, marca] = await Promise.all([getPedidos(), getMarcaConfig()])
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
@@ -39,7 +40,7 @@ export default async function AdminPedidosPage() {
       </p>
 
       <div className="mt-6">
-        <PedidosManager pedidos={pedidos} />
+        <PedidosManager pedidos={pedidos} marca={marca} />
       </div>
     </div>
   )

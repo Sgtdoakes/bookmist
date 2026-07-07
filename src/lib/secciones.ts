@@ -29,15 +29,28 @@ export type SeccionTipo =
 // builder del admin solo ofrece agregar estos últimos.
 export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre']
 
-export type HeroConfig = { eyebrow: string; titulo: string; subtitulo: string; ctaTexto: string }
+export type HeroConfig = {
+  eyebrow: string
+  titulo: string
+  subtitulo: string
+  ctaTexto: string
+  estilo: EstiloBloque
+}
 export type BeneficioItem = { emoji: string; texto: string }
-export type BeneficiosConfig = { items: BeneficioItem[] }
-export type CategoriasConfig = { eyebrow: string; titulo: string }
-export type MasVendidosConfig = { eyebrow: string; titulo: string }
-export type SobreMiConfig = { eyebrow: string; titulo: string; texto: string; texto2: string; firma: string }
+export type BeneficiosConfig = { items: BeneficioItem[]; estilo: EstiloBloque }
+export type CategoriasConfig = { eyebrow: string; titulo: string; estilo: EstiloBloque }
+export type MasVendidosConfig = { eyebrow: string; titulo: string; estilo: EstiloBloque }
+export type SobreMiConfig = {
+  eyebrow: string
+  titulo: string
+  texto: string
+  texto2: string
+  firma: string
+  estilo: EstiloBloque
+}
 export type ResenaItem = { nombre: string; texto: string }
-export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem[] }
-export type InstagramConfig = { titulo: string }
+export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem[]; estilo: EstiloBloque }
+export type InstagramConfig = { titulo: string; estilo: EstiloBloque }
 
 export type TextoConfig = {
   eyebrow: string
@@ -111,6 +124,7 @@ function defaults(): SeccionConfigMap {
       titulo: 'Palabras que se sienten en las manos',
       subtitulo: 'Kits literarios pensados para pausar el ruido y perderte, otra vez, en una buena historia.',
       ctaTexto: 'Descubrir los kits',
+      estilo: {},
     },
     beneficios: {
       items: [
@@ -118,9 +132,10 @@ function defaults(): SeccionConfigMap {
         { emoji: '📦', texto: 'Envíos a todo el país' },
         { emoji: '💸', texto: '10% OFF transferencia' },
       ],
+      estilo: {},
     },
-    categorias: { eyebrow: 'Explorá', titulo: 'Nuestras categorías' },
-    mas_vendidos: { eyebrow: 'Los favoritos de la comunidad', titulo: 'Más vendidos' },
+    categorias: { eyebrow: 'Explorá', titulo: 'Nuestras categorías', estilo: {} },
+    mas_vendidos: { eyebrow: 'Los favoritos de la comunidad', titulo: 'Más vendidos', estilo: {} },
     sobre_mi: {
       eyebrow: 'Sobre mí',
       titulo: 'Hola, soy Daniela',
@@ -129,6 +144,7 @@ function defaults(): SeccionConfigMap {
       texto2:
         'Este es un proyecto que armo con las manos y con calma, pensando cada kit como si fuera un regalo para una amiga lectora.',
       firma: '— Daniela, fundadora de Bookmist',
+      estilo: {},
     },
     resenas: {
       eyebrow: 'Lo que dicen nuestras lectoras',
@@ -148,8 +164,9 @@ function defaults(): SeccionConfigMap {
           texto: 'Se nota el cuidado en cada textura. Mi rincón de lectura ahora es muchísimo más lindo gracias a Bookmist.',
         },
       ],
+      estilo: {},
     },
-    instagram: { titulo: `Seguinos en ${storeConfig.instagramHandle}` },
+    instagram: { titulo: `Seguinos en ${storeConfig.instagramHandle}`, estilo: {} },
     texto: {
       eyebrow: '',
       titulo: 'Título del bloque',

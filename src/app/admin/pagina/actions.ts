@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getDestacados } from '@/lib/productos'
 import { resolverProductosBloque } from '@/components/public/productos-bloque'
+import { generarSlug, esSlugValido } from '@/lib/slugs'
+import { SLUGS_RESERVADOS } from '@/lib/paginas'
 import {
   filasAAdmin,
   resolverSeccion,
@@ -12,6 +14,7 @@ import {
   type SeccionPreview,
   type SeccionTipo,
 } from '@/lib/secciones'
+import type { PaginaRow } from '@/types/db'
 
 type Err = { ok: false; error: string }
 
@@ -135,4 +138,62 @@ export async function guardarLayout(
     .eq('pagina', pagina)
     .order('orden', { ascending: true })
   return { ok: true, secciones: filasAAdmin(frescas ?? []) }
+}
+
+export async function getPaginasAdmin(): Promise<PaginaRow[]> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return []
+  const { data, error } = await supabase.from('paginas').select('*').order('orden', { ascending: true })
+  if (error) return []
+  return data ?? []
+}
+
+// Crea una página institucional nueva (sistema=false): genera el slug desde
+// el título, lo valida contra el formato y contra segmentos de ruta que ya
+// existen fijos en el código (ver SLUGS_RESERVADOS) para no crear una
+// página fantasma inalcanzable en su propia URL.
+export async function crearPagina(titulo: string): Promise<{ ok: true; pagina: PaginaRow } | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  const tituloLimpio = titulo.trim()
+  if (!tituloLimpio) return { ok: false, error: 'Ingresá un título.' }
+
+  const slug = generarSlug(tituloLimpio)
+  if (!slug || !esSlugValido(slug)) return { ok: false, error: 'Ese título no genera una URL válida.' }
+  if ((SLUGS_RESERVADOS as string[]).includes(slug)) {
+    return { ok: false, error: `"${slug}" ya es una sección fija del sitio — elegí otro título.` }
+  }
+
+  const { data: existente } = await supabase.from('paginas').select('id').eq('slug', slug).maybeSingle()
+  if (existente) return { ok: false, error: 'Ya existe una página con esa URL.' }
+
+  const { data: max } = await supabase.from('paginas').select('orden').order('orden', { ascending: false }).limit(1)
+  const orden = ((max ?? [])[0]?.orden ?? -1) + 1
+
+  const { data, error } = await supabase
+    .from('paginas')
+    .insert({ slug, titulo: tituloLimpio, sistema: false, orden })
+    .select('*')
+    .single()
+  if (error || !data) return { ok: false, error: 'No se pudo crear la página.' }
+
+  revalidarPublico()
+  return { ok: true, pagina: data }
+}
+
+// Borra una página institucional (nunca una de sistema) — sus bloques se
+// van con ella por el "on delete cascade" de la FK en pagina_secciones.
+export async function eliminarPagina(id: string): Promise<{ ok: true } | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const { data: pagina } = await supabase.from('paginas').select('sistema').eq('id', id).maybeSingle()
+  if (!pagina) return { ok: false, error: 'La página ya no existe.' }
+  if (pagina.sistema) return { ok: false, error: 'Esta página es fija del sitio, no se puede borrar.' }
+
+  const { error } = await supabase.from('paginas').delete().eq('id', id)
+  if (error) return { ok: false, error: 'No se pudo borrar la página.' }
+
+  revalidarPublico()
+  return { ok: true }
 }

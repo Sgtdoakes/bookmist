@@ -1,8 +1,12 @@
+import { resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { BeneficiosConfig } from '@/lib/secciones'
 
-export function BenefitsBar({ items }: BeneficiosConfig) {
+export function BenefitsBar({ items, estilo }: BeneficiosConfig) {
+  const fondoClase = estilo?.fondo ? resolverFondo(estilo) : 'bg-background'
+  const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-8 md:py-12'
+
   return (
-    <section className="w-full bg-background py-8 md:py-12">
+    <section className={`w-full ${fondoClase} ${padding}`}>
       <div className="mx-auto grid max-w-7xl grid-cols-3 px-4 md:px-10">
         {items.map((b, i) => (
           <div

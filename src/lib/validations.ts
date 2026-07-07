@@ -46,3 +46,27 @@ export const itemFormSchema = z.object({
 // @hookform/resolvers para esquemas con coerce.
 export type ItemFormInput = z.input<typeof itemFormSchema>
 export type ItemFormOutput = z.infer<typeof itemFormSchema>
+
+// --- Configuración de marca (admin, Fase 6f-1) ---------------------------
+const colorHex = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'Usá un color válido')
+export const marcaFormSchema = z.object({
+  nombre: z.string().trim().min(1, 'El nombre es obligatorio').max(100),
+  taglineHeader: z.string().trim().max(100),
+  taglineFooter: z.string().trim().max(150),
+  copyright: z.string().trim().max(150),
+  email: z.email('Ingresá un email válido'),
+  whatsapp: z.string().trim().max(20),
+  instagram: z.union([z.url('Ingresá una URL válida'), z.literal('')]),
+  instagramHandle: z.string().trim().max(50),
+  tiktok: z.union([z.url('Ingresá una URL válida'), z.literal('')]),
+  colorPrimario: colorHex,
+  colorSecundario: colorHex,
+  colorAcento: colorHex,
+  metodosPago: z.string().trim().max(300),
+  metodosEnvio: z.string().trim().max(300),
+})
+export type MarcaFormInput = z.input<typeof marcaFormSchema>
+export type MarcaFormOutput = z.infer<typeof marcaFormSchema>

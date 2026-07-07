@@ -1,11 +1,16 @@
 import { Quote, Star } from 'lucide-react'
+import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { ResenasConfig } from '@/lib/secciones'
 
-export function Reviews({ eyebrow, titulo, items }: ResenasConfig) {
+export function Reviews({ eyebrow, titulo, items, estilo }: ResenasConfig) {
+  const fondoClase = estilo?.fondo ? resolverFondo(estilo) : 'bg-background'
+  const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-16 md:py-24'
+  const headerAlineado = estilo?.alineacion ? resolverAlineacion(estilo).texto : 'text-center'
+
   return (
-    <section className="w-full bg-background py-16 md:py-24">
+    <section className={`w-full ${fondoClase} ${padding}`}>
       <div className="mx-auto max-w-7xl px-6 md:px-10">
-        <div className="mb-12 text-center">
+        <div className={`mb-12 ${headerAlineado}`}>
           <p className="font-script mb-1 text-2xl text-muted">{eyebrow}</p>
           <h2 className="font-heading text-3xl font-semibold text-foreground md:text-4xl">{titulo}</h2>
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
@@ -270,9 +271,9 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
         {itemsDisponibles.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
             Todavía no hay ítems en la biblioteca —{' '}
-            <a href="/admin/items" className="underline">
+            <Link href="/admin/items" className="underline">
               cargá algunos primero
-            </a>
+            </Link>
             .
           </p>
         ) : (

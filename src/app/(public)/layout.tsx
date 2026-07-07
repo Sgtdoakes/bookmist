@@ -1,3 +1,4 @@
+import { getMarcaConfig, getNavLinks } from '@/lib/configuracion'
 import { AnnouncementBar } from '@/components/public/announcement-bar'
 import { SiteHeader } from '@/components/public/site-header'
 import { SiteFooter } from '@/components/public/site-footer'
@@ -5,13 +6,15 @@ import { WhatsAppButton } from '@/components/public/whatsapp-button'
 import { CartProvider } from '@/lib/cart'
 import { Toaster } from '@/components/ui/sonner'
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const [marca, navLinks] = await Promise.all([getMarcaConfig(), getNavLinks()])
+
   return (
     <CartProvider>
       <AnnouncementBar />
-      <SiteHeader />
+      <SiteHeader marca={marca} navLinks={navLinks} />
       <main className="flex-1">{children}</main>
-      <SiteFooter />
+      <SiteFooter marca={marca} navLinks={navLinks} />
       <WhatsAppButton />
       <Toaster richColors position="top-center" />
     </CartProvider>

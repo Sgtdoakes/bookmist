@@ -1,13 +1,13 @@
 import { BookOpen } from 'lucide-react'
 import { getModoMantenimiento } from '@/lib/mantenimiento'
-import { storeConfig } from '@/lib/store-config'
+import { getMarcaConfig } from '@/lib/configuracion'
 import { SocialIcons } from '@/components/public/social-icons'
 import { Blob } from '@/components/public/decorative'
 
 export const metadata = { title: 'Volvemos pronto' }
 
 export default async function MantenimientoPage() {
-  const { mensaje } = await getModoMantenimiento()
+  const [{ mensaje }, marca] = await Promise.all([getModoMantenimiento(), getMarcaConfig()])
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 py-16 text-center text-foreground">
@@ -18,7 +18,7 @@ export default async function MantenimientoPage() {
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground">
           <BookOpen className="h-5 w-5 text-background" />
         </span>
-        <span className="font-heading text-xl font-semibold">{storeConfig.nombre}</span>
+        <span className="font-heading text-xl font-semibold">{marca.nombre}</span>
       </div>
 
       <h1 className="relative mt-8 max-w-lg font-heading text-2xl font-semibold md:text-3xl">
@@ -28,7 +28,7 @@ export default async function MantenimientoPage() {
 
       <p className="relative mt-8 text-sm text-foreground/60">Seguinos, no nos vamos a ningún lado:</p>
       <div className="relative mt-3">
-        <SocialIcons />
+        <SocialIcons instagram={marca.instagram} tiktok={marca.tiktok} />
       </div>
     </div>
   )

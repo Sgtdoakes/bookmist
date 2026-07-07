@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { checkoutSchema } from '@/lib/validations'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { storeConfig } from '@/lib/store-config'
+import { getMarcaConfig } from '@/lib/configuracion'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 import { notificarPedidoNuevo } from '@/lib/email'
 import { getReservasActivas } from '@/lib/reservas'
@@ -196,9 +196,8 @@ export async function POST(request: Request) {
     total,
     notas: data.notas ?? null,
   }
-  const waUrl = storeConfig.whatsapp
-    ? whatsappLink(storeConfig.whatsapp, construirMensajePedido(datosMsg))
-    : null
+  const marca = await getMarcaConfig()
+  const waUrl = marca.whatsapp ? whatsappLink(marca.whatsapp, construirMensajePedido(datosMsg)) : null
   await notificarPedidoNuevo(datosMsg, waUrl ?? '(WhatsApp no configurado)')
 
   return NextResponse.json({

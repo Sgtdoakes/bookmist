@@ -1,15 +1,20 @@
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { InstagramIcon } from '@/components/public/decorative'
+import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { InstagramConfig } from '@/lib/secciones'
 
 // Grilla estática (no la API real de Instagram todavía: eso es su propio
 // trabajo de OAuth/token-refresh, sin relación con "landing + catálogo real"
 // que es el objetivo de esta fase).
-export function InstagramFeed({ titulo }: InstagramConfig) {
+export function InstagramFeed({ titulo, estilo }: InstagramConfig) {
+  const fondoClase = estilo?.fondo ? resolverFondo(estilo) : 'bg-background'
+  const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-16 md:py-24'
+  const alineacionItems = estilo?.alineacion ? resolverAlineacion(estilo).items : 'justify-center'
+
   return (
-    <section className="w-full border-t border-foreground/10 bg-background py-16 md:py-24">
+    <section className={`w-full border-t border-foreground/10 ${fondoClase} ${padding}`}>
       <div className="mx-auto max-w-7xl px-6 md:px-10">
-        <div className="mb-10 flex items-center justify-center gap-2.5">
+        <div className={`mb-10 flex items-center gap-2.5 ${alineacionItems}`}>
           <InstagramIcon className="h-[22px] w-[22px] text-muted" />
           <h2 className="font-heading text-2xl font-semibold text-foreground md:text-3xl">{titulo}</h2>
         </div>

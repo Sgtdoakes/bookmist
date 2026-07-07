@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Package, Library, ShoppingBag, Truck, AlertTriangle, LayoutTemplate } from 'lucide-react'
+import { Package, Library, ShoppingBag, Truck, AlertTriangle, LayoutTemplate, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function AdminHome() {
@@ -44,6 +44,12 @@ export default function AdminHome() {
           icon={<LayoutTemplate className="h-8 w-8" />}
           titulo="Página de inicio"
           desc="Arrastrá para reordenar, ocultá y editá el texto de cada sección"
+        />
+        <Accion
+          href="/admin/configuracion"
+          icon={<Settings className="h-8 w-8" />}
+          titulo="Configuración"
+          desc="Nombre, contacto, redes, colores y links de navegación"
         />
       </div>
     </div>

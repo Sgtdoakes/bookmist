@@ -1,4 +1,5 @@
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { CategoriasConfig } from '@/lib/secciones'
 
 // Grilla de categorías de navegación (no confundir con el género literario de
@@ -11,11 +12,15 @@ const CATEGORIES = [
   { title: 'Marcapáginas', sub: 'Pequeños detalles hechos a mano' },
 ]
 
-export function CategoryGrid({ eyebrow, titulo }: CategoriasConfig) {
+export function CategoryGrid({ eyebrow, titulo, estilo }: CategoriasConfig) {
+  const fondoClase = estilo?.fondo ? resolverFondo(estilo) : 'bg-background'
+  const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-14 md:py-24'
+  const headerAlineado = estilo?.alineacion ? resolverAlineacion(estilo).texto : 'text-center'
+
   return (
-    <section className="w-full bg-background py-14 md:py-24">
+    <section className={`w-full ${fondoClase} ${padding}`}>
       <div className="mx-auto max-w-7xl px-4 md:px-10">
-        <div className="mb-8 text-center md:mb-12">
+        <div className={`mb-8 md:mb-12 ${headerAlineado}`}>
           <p className="font-script mb-1 text-xl text-muted md:text-2xl">{eyebrow}</p>
           <h2 className="font-heading text-2xl font-semibold text-foreground md:text-4xl">{titulo}</h2>
         </div>

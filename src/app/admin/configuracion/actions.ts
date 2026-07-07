@@ -1,0 +1,91 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+import { guardarValoresConfiguracion, type MarcaConfig } from '@/lib/configuracion'
+
+type Ok = { ok: true }
+type Err = { ok: false; error: string }
+
+async function clienteAutenticado() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return user ? supabase : null
+}
+
+function revalidarPublico() {
+  revalidatePath('/')
+  revalidatePath('/productos')
+  revalidatePath('/admin/configuracion')
+}
+
+export async function guardarMarcaConfig(marca: MarcaConfig): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  try {
+    await guardarValoresConfiguracion(supabase, {
+      marca_nombre: marca.nombre,
+      marca_tagline_header: marca.taglineHeader,
+      marca_tagline_footer: marca.taglineFooter,
+      marca_copyright: marca.copyright,
+      marca_email: marca.email,
+      marca_whatsapp: marca.whatsapp,
+      marca_instagram_url: marca.instagram,
+      marca_instagram_handle: marca.instagramHandle,
+      marca_tiktok_url: marca.tiktok,
+      marca_color_primario: marca.colorPrimario ?? '',
+      marca_color_secundario: marca.colorSecundario ?? '',
+      marca_color_acento: marca.colorAcento ?? '',
+      marca_metodos_pago: JSON.stringify(marca.metodosPago),
+      marca_metodos_envio: JSON.stringify(marca.metodosEnvio),
+    })
+  } catch {
+    return { ok: false, error: 'No se pudo guardar la configuración.' }
+  }
+
+  revalidarPublico()
+  return { ok: true }
+}
+
+export type NavLinkItem = { id: string; label: string; href: string; activo: boolean }
+
+// Reemplazo completo del lienzo de nav_links en una sola pasada — mismo
+// patrón diff (borrar/actualizar/insertar) que guardarLayout en
+// src/app/admin/pagina/actions.ts.
+export async function guardarNavLinks(items: NavLinkItem[]): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  if (items.some((it) => !it.label.trim() || !it.href.trim())) {
+    return { ok: false, error: 'Cada link necesita texto y destino.' }
+  }
+
+  const { data: existentes, error: errLeer } = await supabase.from('nav_links').select('id')
+  if (errLeer) return { ok: false, error: 'No se pudo leer el estado actual.' }
+
+  const existIds = new Set((existentes ?? []).map((r) => r.id))
+  const draftIds = new Set(items.map((i) => i.id))
+
+  const aBorrar = [...existIds].filter((id) => !draftIds.has(id))
+  if (aBorrar.length > 0) {
+    const { error } = await supabase.from('nav_links').delete().in('id', aBorrar)
+    if (error) return { ok: false, error: 'No se pudieron eliminar links.' }
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i]
+    const fila = { label: it.label.trim(), href: it.href.trim(), activo: it.activo, orden: i }
+    if (existIds.has(it.id)) {
+      const { error } = await supabase.from('nav_links').update(fila).eq('id', it.id)
+      if (error) return { ok: false, error: 'No se pudo guardar un link.' }
+    } else {
+      const { error } = await supabase.from('nav_links').insert({ id: it.id, ...fila })
+      if (error) return { ok: false, error: 'No se pudo crear un link.' }
+    }
+  }
+
+  revalidarPublico()
+  return { ok: true }
+}

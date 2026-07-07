@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
-import { NAV_LINKS } from '@/lib/constants'
+import type { MarcaConfig, NavLinkPublico } from '@/lib/configuracion'
 import { BookDoodle } from '@/components/public/decorative'
 import { CartButton } from '@/components/public/cart-button'
 
-export function SiteHeader() {
+export function SiteHeader({ marca, navLinks }: { marca: MarcaConfig; navLinks: NavLinkPublico[] }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -18,13 +18,15 @@ export function SiteHeader() {
             <BookDoodle className="h-5 w-5 text-background" />
           </span>
           <span className="leading-none">
-            <span className="block font-heading text-xl font-semibold text-foreground md:text-2xl">Bookmist</span>
-            <span className="font-script -mt-0.5 block text-xs text-secondary">Editorial</span>
+            <span className="block font-heading text-xl font-semibold text-foreground md:text-2xl">
+              {marca.nombre}
+            </span>
+            <span className="font-script -mt-0.5 block text-xs text-secondary">{marca.taglineHeader}</span>
           </span>
         </Link>
 
         <nav className="hidden items-center gap-9 lg:flex">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
@@ -51,7 +53,7 @@ export function SiteHeader() {
 
       {menuOpen && (
         <div className="flex flex-col gap-4 border-t border-foreground/12 px-6 pb-5 lg:hidden">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}

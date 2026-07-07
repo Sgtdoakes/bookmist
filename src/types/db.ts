@@ -209,6 +209,52 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['configuracion']['Insert']>
         Relationships: []
       }
+      paginas: {
+        Row: {
+          id: string
+          slug: string
+          titulo: string
+          activo: boolean
+          sistema: boolean
+          orden: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          titulo: string
+          activo?: boolean
+          sistema?: boolean
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['paginas']['Insert']>
+        Relationships: []
+      }
+      nav_links: {
+        Row: {
+          id: string
+          label: string
+          href: string
+          orden: number
+          activo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          href: string
+          orden?: number
+          activo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['nav_links']['Insert']>
+        Relationships: []
+      }
       pagina_secciones: {
         Row: {
           id: string
@@ -273,3 +319,5 @@ export type ZonaEnvio = Database['public']['Tables']['zonas_envio']['Row']
 export type OrderConItems = Order & { order_items: OrderItem[] }
 
 export type PaginaSeccionRow = Database['public']['Tables']['pagina_secciones']['Row']
+export type NavLink = Database['public']['Tables']['nav_links']['Row']
+export type PaginaRow = Database['public']['Tables']['paginas']['Row']

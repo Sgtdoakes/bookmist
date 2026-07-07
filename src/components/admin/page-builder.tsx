@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   LayoutTemplate,
   Monitor,
+  Plus,
   RotateCcw,
   Save,
   Smartphone,
@@ -49,7 +50,7 @@ import { ProductosBloqueView } from '@/components/public/productos-bloque'
 import { BannerBloque } from '@/components/public/banner-bloque'
 import { LibreBloque } from '@/components/public/libre-bloque'
 import { BuilderInspector, TIPO_LABEL } from '@/components/admin/builder-inspector'
-import { guardarLayout, previewSecciones } from '@/app/admin/pagina/actions'
+import { guardarLayout, previewSecciones, crearPagina, eliminarPagina } from '@/app/admin/pagina/actions'
 import {
   resolverSeccion,
   TIPOS_BLOQUE_LIBRE,
@@ -58,7 +59,7 @@ import {
   type SeccionPreview,
   type SeccionTipo,
 } from '@/lib/secciones'
-import type { Producto } from '@/types/db'
+import type { PaginaRow, Producto } from '@/types/db'
 
 // Un bloque del borrador del editor. `id` puede ser un uuid real (existe en
 // la base) o uno temporal generado al agregar/duplicar (se inserta al guardar).
@@ -88,7 +89,14 @@ function SeccionView({ s }: { s: SeccionPreview }) {
     case 'categorias':
       return <CategoryGrid {...s.config} />
     case 'mas_vendidos':
-      return <BestSellersView eyebrow={s.config.eyebrow} titulo={s.config.titulo} productos={s.productosResueltos ?? []} />
+      return (
+        <BestSellersView
+          eyebrow={s.config.eyebrow}
+          titulo={s.config.titulo}
+          productos={s.productosResueltos ?? []}
+          estilo={s.config.estilo}
+        />
+      )
     case 'sobre_mi':
       return <AboutMe {...s.config} />
     case 'resenas':
@@ -121,7 +129,7 @@ export function PageBuilder({
   productosDisponibles,
 }: {
   pagina: string
-  paginas: { valor: string; etiqueta: string }[]
+  paginas: PaginaRow[]
   inicial: SeccionAdmin[]
   previewInicial: SeccionPreview[]
   productosDisponibles: Producto[]
@@ -132,7 +140,9 @@ export function PageBuilder({
   const [baseline, setBaseline] = useState<string>(() => JSON.stringify(aBloques(inicial)))
   const [selId, setSelId] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [creandoPagina, setCreandoPagina] = useState(false)
   const [vista, setVista] = useState<'desktop' | 'movil'>('desktop')
+  const paginaActual = paginas.find((p) => p.slug === pagina) ?? null
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -376,6 +386,31 @@ export function PageBuilder({
     setPreview(indexarPreview(pv))
   }
 
+  async function nuevaPagina() {
+    if (dirty && !window.confirm('Tenés cambios sin guardar. ¿Crear una página nueva igual?')) return
+    const titulo = window.prompt('Título de la página nueva (ej: Contacto):')
+    if (!titulo?.trim()) return
+    setCreandoPagina(true)
+    const r = await crearPagina(titulo)
+    setCreandoPagina(false)
+    if (!r.ok) return toast.error(r.error)
+    toast.success('Página creada')
+    router.push(`/admin/pagina?pagina=${r.pagina.slug}`)
+    router.refresh()
+  }
+
+  async function borrarPaginaActual() {
+    if (!paginaActual || paginaActual.sistema) return
+    if (!window.confirm(`¿Borrar "${paginaActual.titulo}"? Se van a borrar todos sus bloques. No se puede deshacer.`)) {
+      return
+    }
+    const r = await eliminarPagina(paginaActual.id)
+    if (!r.ok) return toast.error(r.error)
+    toast.success('Página borrada')
+    router.push('/admin/pagina?pagina=home')
+    router.refresh()
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b bg-background px-4 py-2.5">
@@ -393,20 +428,41 @@ export function PageBuilder({
           <LayoutTemplate className="h-5 w-5 shrink-0 text-primary" />
           {paginas.map((p) => (
             <button
-              key={p.valor}
+              key={p.slug}
               type="button"
               onClick={() => {
-                if (p.valor === pagina) return
+                if (p.slug === pagina) return
                 if (dirty && !window.confirm('Tenés cambios sin guardar. ¿Cambiar de página igual?')) return
-                router.push(`/admin/pagina?pagina=${p.valor}`)
+                router.push(`/admin/pagina?pagina=${p.slug}`)
               }}
               className={`rounded-full px-3 py-1 text-sm font-medium transition ${
-                p.valor === pagina ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+                p.slug === pagina ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
               }`}
             >
-              {p.etiqueta}
+              {p.titulo}
             </button>
           ))}
+          <button
+            type="button"
+            aria-label="Nueva página"
+            title="Nueva página institucional"
+            onClick={nuevaPagina}
+            disabled={creandoPagina}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          {paginaActual && !paginaActual.sistema && (
+            <button
+              type="button"
+              aria-label="Borrar página"
+              title="Borrar esta página"
+              onClick={borrarPaginaActual}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {dirty ? (
           <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">Cambios sin guardar</span>

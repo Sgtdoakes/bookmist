@@ -1,19 +1,8 @@
 import Link from 'next/link'
 import { CreditCard, Mail, Package } from 'lucide-react'
-import { NAV_LINKS } from '@/lib/constants'
-import { storeConfig } from '@/lib/store-config'
+import type { MarcaConfig, NavLinkPublico } from '@/lib/configuracion'
 import { Blob, BookDoodle } from '@/components/public/decorative'
 import { SocialIcons } from '@/components/public/social-icons'
-
-// Reconstruido según foooter.png (la referencia de Dani): a diferencia del
-// wireframe original, acá se corrigen dos cosas, no solo el layout:
-//   - "Método de pago" muestra los medios reales que acepta Bookmist
-//     (Transferencia / Efectivo / Mercado Pago), no logos decorativos de
-//     tarjetas que no necesariamente aplican.
-//   - "Método de envío" muestra únicamente Andreani (el jsx original incluía
-//     "Correo Argentino" por error: Bookmist no envía por ahí).
-const METODOS_PAGO = ['Transferencia', 'Efectivo', 'Mercado Pago']
-const METODOS_ENVIO = ['Andreani']
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
@@ -23,7 +12,7 @@ function Badge({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SiteFooter() {
+export function SiteFooter({ marca, navLinks }: { marca: MarcaConfig; navLinks: NavLinkPublico[] }) {
   return (
     <footer className="relative w-full overflow-hidden bg-background pt-16 pb-8 md:pt-20">
       <Blob className="pointer-events-none absolute -bottom-32 -left-28 h-96 w-96 text-muted opacity-5" />
@@ -35,10 +24,8 @@ export function SiteFooter() {
             <BookDoodle className="h-5 w-5 text-foreground" />
           </span>
           <span className="leading-none">
-            <span className="block font-heading text-xl font-semibold text-foreground">Bookmist</span>
-            <span className="font-script -mt-0.5 block text-xs text-secondary">
-              Historias que se sienten en las manos
-            </span>
+            <span className="block font-heading text-xl font-semibold text-foreground">{marca.nombre}</span>
+            <span className="font-script -mt-0.5 block text-xs text-secondary">{marca.taglineFooter}</span>
           </span>
         </div>
 
@@ -47,7 +34,7 @@ export function SiteFooter() {
           <div>
             <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-foreground">Páginas</h3>
             <ul className="flex flex-col gap-3">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
@@ -63,11 +50,11 @@ export function SiteFooter() {
           <div>
             <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.16em] text-foreground">Contactanos</h3>
             <a
-              href={`mailto:${storeConfig.email}`}
+              href={`mailto:${marca.email}`}
               className="inline-flex items-center gap-2 text-sm font-medium text-secondary transition-colors duration-250 hover:text-foreground"
             >
               <Mail size={15} className="text-muted" />
-              {storeConfig.email}
+              {marca.email}
             </a>
           </div>
 
@@ -75,7 +62,7 @@ export function SiteFooter() {
             <h3 className="hidden text-xs font-bold uppercase tracking-[0.16em] text-foreground md:mb-5 md:block">
               Seguinos
             </h3>
-            <SocialIcons />
+            <SocialIcons instagram={marca.instagram} tiktok={marca.tiktok} />
           </div>
         </div>
 
@@ -87,7 +74,7 @@ export function SiteFooter() {
               Método de pago
             </h3>
             <div className="flex flex-wrap gap-2">
-              {METODOS_PAGO.map((m) => (
+              {marca.metodosPago.map((m) => (
                 <Badge key={m}>{m}</Badge>
               ))}
             </div>
@@ -99,7 +86,7 @@ export function SiteFooter() {
               Método de envío
             </h3>
             <div className="flex flex-wrap gap-2">
-              {METODOS_ENVIO.map((m) => (
+              {marca.metodosEnvio.map((m) => (
                 <Badge key={m}>{m}</Badge>
               ))}
             </div>
@@ -109,7 +96,7 @@ export function SiteFooter() {
         {/* Copyright */}
         <div className="flex flex-col-reverse items-center justify-between gap-4 border-t border-foreground/12 pt-8 md:flex-row">
           <p className="text-center text-xs text-foreground/50 md:text-left">
-            © {new Date().getFullYear()} Bookmist — Hecho con calma y buena tinta.
+            © {new Date().getFullYear()} {marca.nombre} — {marca.copyright}
           </p>
           <p className="font-script text-sm text-muted">Palabras que se sienten en las manos</p>
         </div>

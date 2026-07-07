@@ -27,11 +27,29 @@ export const TIPO_LABEL: Record<SeccionTipo, string> = {
   libre: 'Libre',
 }
 
-// Los 7 tipos "furniture" no tienen estilo editable (mismo diseño fijo de
-// Dani); los 4 bloques libres sí. Solo texto/libre tienen alineación (los
-// otros dos no cambian de layout con eso).
-const TIPOS_CON_ESTILO: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre']
-const TIPOS_CON_ALINEACION: SeccionTipo[] = ['texto', 'libre']
+// Todos los tipos tienen estilo editable (fondo/tamaño/radio) — los 7
+// "furniture" preservan su diseño original como default cuando no se elige
+// nada, igual que los bloques libres. Alineación solo donde tiene un
+// sentido claro de layout (encabezado o columna de texto); "beneficios" es
+// una fila fija de 3 columnas y "productos"/"banner" ya tienen su propio
+// layout de imagen, así que quedan afuera.
+const TIPOS_CON_ESTILO: SeccionTipo[] = [
+  'hero',
+  'beneficios',
+  'categorias',
+  'mas_vendidos',
+  'sobre_mi',
+  'resenas',
+  'instagram',
+  'texto',
+  'productos',
+  'banner',
+  'libre',
+]
+// "mas_vendidos" queda afuera: su encabezado comparte fila con las flechas
+// de navegación del carrusel (justify-between), no tiene un alineado de
+// texto simple para controlar.
+const TIPOS_CON_ALINEACION: SeccionTipo[] = ['hero', 'categorias', 'sobre_mi', 'resenas', 'instagram', 'texto', 'libre']
 
 type OnChange = (partial: Record<string, unknown>, reResolve: boolean) => void
 

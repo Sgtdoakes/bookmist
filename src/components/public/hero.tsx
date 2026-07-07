@@ -5,22 +5,30 @@ import { ArrowRight } from 'lucide-react'
 import { Blob } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { PrimaryButton } from '@/components/public/buttons'
+import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { HeroConfig } from '@/lib/secciones'
 
 // El carrusel del hero queda como imagen estática con puntos clicables (igual
 // que el wireframe de Dani): todavía no hay fotos reales para armar un
 // carrusel funcional de verdad. Se activa cuando Bookmist tenga fotografía
 // propia de las cajas/kits.
-export function Hero({ eyebrow, titulo, subtitulo, ctaTexto }: HeroConfig) {
+export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, estilo }: HeroConfig) {
   const [activeDot, setActiveDot] = useState(0)
+  // Default = el degradé violeta original de la marca; un fondo elegido a
+  // mano lo reemplaza. Mismo criterio para el padding: se preserva el
+  // tamaño original hasta que se elija uno explícitamente.
+  const fondoClase = resolverFondo(estilo) || 'bg-[linear-gradient(135deg,var(--background)_0%,var(--primary)_100%)]'
+  const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-20 md:py-28'
+  const alineacion = resolverAlineacion(estilo)
+  const textoAlineado = estilo?.alineacion ? `flex flex-col ${alineacion.items} ${alineacion.texto}` : ''
 
   return (
-    <section className="relative overflow-hidden bg-[linear-gradient(135deg,var(--background)_0%,var(--primary)_100%)]">
+    <section className={`relative overflow-hidden ${fondoClase}`}>
       <Blob className="absolute -top-16 -left-20 h-72 w-72 animate-[floaty_10s_ease-in-out_infinite] text-muted opacity-20" />
       <Blob className="absolute -bottom-24 -right-16 h-96 w-96 animate-[floaty_14s_ease-in-out_infinite_-4s] text-foreground opacity-10" />
 
-      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:grid-cols-2 md:px-10 md:py-28">
-        <div>
+      <div className={`relative mx-auto grid max-w-7xl items-center gap-12 px-6 md:grid-cols-2 md:px-10 ${padding}`}>
+        <div className={textoAlineado}>
           <p className="font-script mb-2 text-2xl text-muted md:text-3xl">{eyebrow}</p>
           <h1 className="mb-5 font-heading text-4xl font-semibold leading-tight text-foreground md:text-6xl">
             {titulo}
