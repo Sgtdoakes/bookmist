@@ -2,7 +2,6 @@ import { Fragment } from 'react'
 import { Hero } from '@/components/public/hero'
 import { BenefitsBar } from '@/components/public/benefits-bar'
 import { CategoryGrid } from '@/components/public/category-grid'
-import { BestSellers } from '@/components/public/best-sellers'
 import { AboutMe } from '@/components/public/about-me'
 import { Reviews } from '@/components/public/reviews'
 import { InstagramFeed } from '@/components/public/instagram-feed'
@@ -51,7 +50,7 @@ function RenderSeccion({ seccion: s }: { seccion: SeccionResuelta }) {
     case 'categorias':
       return <CategoryGrid {...s.config} />
     case 'mas_vendidos':
-      return <BestSellers {...s.config} />
+      return <ProductosBloque {...s.config} />
     case 'sobre_mi':
       return <AboutMe {...s.config} />
     case 'resenas':

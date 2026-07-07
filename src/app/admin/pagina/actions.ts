@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getDestacados } from '@/lib/productos'
 import { resolverProductosBloque } from '@/components/public/productos-bloque'
 import { generarSlug, esSlugValido } from '@/lib/slugs'
 import { SLUGS_RESERVADOS } from '@/lib/paginas'
@@ -67,11 +66,8 @@ export async function previewSecciones(
     // el sitio público) — acá hace falta el id REAL de la fila para poder
     // indexar el preview por id en el lienzo del admin.
     const resuelta = { ...resolverSeccion(item.tipo, item.config), id: item.id }
-    if (resuelta.tipo === 'productos') {
+    if (resuelta.tipo === 'productos' || resuelta.tipo === 'mas_vendidos') {
       const productosResueltos = await resolverProductosBloque(resuelta.config)
-      resultados.push({ ...resuelta, productosResueltos })
-    } else if (resuelta.tipo === 'mas_vendidos') {
-      const productosResueltos = await getDestacados(12)
       resultados.push({ ...resuelta, productosResueltos })
     } else {
       resultados.push(resuelta)

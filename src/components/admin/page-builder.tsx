@@ -41,7 +41,6 @@ import { CartProvider } from '@/lib/cart'
 import { Hero } from '@/components/public/hero'
 import { BenefitsBar } from '@/components/public/benefits-bar'
 import { CategoryGrid } from '@/components/public/category-grid'
-import { BestSellersView } from '@/components/public/best-sellers'
 import { AboutMe } from '@/components/public/about-me'
 import { Reviews } from '@/components/public/reviews'
 import { InstagramFeed } from '@/components/public/instagram-feed'
@@ -96,15 +95,6 @@ function SeccionView({ s }: { s: SeccionPreview }) {
       return <BenefitsBar {...s.config} />
     case 'categorias':
       return <CategoryGrid {...s.config} />
-    case 'mas_vendidos':
-      return (
-        <BestSellersView
-          eyebrow={s.config.eyebrow}
-          titulo={s.config.titulo}
-          productos={s.productosResueltos ?? []}
-          estilo={s.config.estilo}
-        />
-      )
     case 'sobre_mi':
       return <AboutMe {...s.config} />
     case 'resenas':
@@ -113,6 +103,7 @@ function SeccionView({ s }: { s: SeccionPreview }) {
       return <InstagramFeed {...s.config} />
     case 'texto':
       return <TextoBloque {...s.config} />
+    case 'mas_vendidos':
     case 'productos':
       return (
         <ProductosBloqueView

@@ -46,7 +46,11 @@ export type CategoriasConfig = {
   categorias: CategoriaItem[]
   estilo: EstiloBloque
 }
-export type MasVendidosConfig = { eyebrow: string; titulo: string; estilo: EstiloBloque }
+// Mismo shape que ProductosConfig (más abajo): "Más vendidos" es
+// conceptualmente el mismo carrusel de productos, con fuente configurable,
+// solo que vive en el slot furniture en vez de agregarse como bloque libre
+// — no hace falta duplicar los campos.
+export type MasVendidosConfig = ProductosConfig
 export type SobreMiConfig = {
   eyebrow: string
   titulo: string
@@ -147,14 +151,27 @@ function defaults(): SeccionConfigMap {
     categorias: {
       eyebrow: 'Explorá',
       titulo: 'Nuestras categorías',
+      // Ids fijos (no crypto.randomUUID()): defaults() se recalcula cada vez
+      // que resolverSeccion() completa un config guardado que todavía no
+      // tiene "categorias" — con ids aleatorios, dos llamadas separadas
+      // (bloques vs. baseline en PageBuilder) generarían ids distintos y el
+      // lienzo se vería "sin guardar" apenas se carga, sin que nadie tocó nada.
       categorias: [
-        { id: crypto.randomUUID(), titulo: 'Kits literarios', subtitulo: 'Libro + objetos elegidos para vivir la historia', imagen: null },
-        { id: crypto.randomUUID(), titulo: 'Cajas literarias', subtitulo: 'Papelería y detalles para tu rincón de lectura', imagen: null },
-        { id: crypto.randomUUID(), titulo: 'Marcapáginas', subtitulo: 'Pequeños detalles hechos a mano', imagen: null },
+        { id: 'cat-kits', titulo: 'Kits literarios', subtitulo: 'Libro + objetos elegidos para vivir la historia', imagen: null },
+        { id: 'cat-cajas', titulo: 'Cajas literarias', subtitulo: 'Papelería y detalles para tu rincón de lectura', imagen: null },
+        { id: 'cat-marcapaginas', titulo: 'Marcapáginas', subtitulo: 'Pequeños detalles hechos a mano', imagen: null },
       ],
       estilo: {},
     },
-    mas_vendidos: { eyebrow: 'Los favoritos de la comunidad', titulo: 'Más vendidos', estilo: {} },
+    mas_vendidos: {
+      eyebrow: 'Los favoritos de la comunidad',
+      titulo: 'Más vendidos',
+      fuente: 'destacados',
+      categoria: '',
+      productos: [],
+      limite: 12,
+      estilo: {},
+    },
     sobre_mi: {
       eyebrow: 'Sobre mí',
       titulo: 'Hola, soy Daniela',
@@ -188,7 +205,7 @@ function defaults(): SeccionConfigMap {
     },
     instagram: {
       titulo: `Seguinos en ${storeConfig.instagramHandle}`,
-      posts: Array.from({ length: 5 }, () => ({ id: crypto.randomUUID(), imagen: null })),
+      posts: Array.from({ length: 5 }, (_, i) => ({ id: `post-${i + 1}`, imagen: null })),
       estilo: {},
     },
     texto: {
@@ -218,7 +235,7 @@ function defaults(): SeccionConfigMap {
       estilo: {},
     },
     libre: {
-      elementos: [{ id: crypto.randomUUID(), tipo: 'titulo', texto: 'Título' }],
+      elementos: [{ id: 'elemento-inicial', tipo: 'titulo', texto: 'Título' }],
       estilo: {},
     },
   }

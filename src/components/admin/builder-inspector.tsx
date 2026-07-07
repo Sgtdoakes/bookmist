@@ -211,22 +211,6 @@ function Contenido({
       )
     }
 
-    case 'mas_vendidos':
-      return (
-        <>
-          <Campo label="Texto pequeño (encima del título)">
-            <Input value={texto('eyebrow')} onChange={(e) => onChange({ eyebrow: e.target.value }, false)} className="mt-1" />
-          </Campo>
-          <Campo label="Título">
-            <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
-          </Campo>
-          <p className="text-xs text-muted-foreground">
-            Muestra los productos marcados como &quot;destacado&quot; en Cajas y kits — para cambiar las fotos, editá el producto
-            en /admin/productos.
-          </p>
-        </>
-      )
-
     case 'instagram': {
       const posts = (config.posts as { id: string; imagen: string | null }[]) ?? []
       const agregar = () => onChange({ posts: [...posts, { id: crypto.randomUUID(), imagen: null }] }, false)
@@ -424,6 +408,7 @@ function Contenido({
         </>
       )
 
+    case 'mas_vendidos':
     case 'productos':
       return <ContenidoProductos config={config} productosDisponibles={productosDisponibles} onChange={onChange} />
 
