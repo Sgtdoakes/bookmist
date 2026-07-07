@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { Blob } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
@@ -8,11 +9,11 @@ import { PrimaryButton } from '@/components/public/buttons'
 import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { HeroConfig } from '@/lib/secciones'
 
-// El carrusel del hero queda como imagen estática con puntos clicables (igual
-// que el wireframe de Dani): todavía no hay fotos reales para armar un
-// carrusel funcional de verdad. Se activa cuando Bookmist tenga fotografía
-// propia de las cajas/kits.
-export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, estilo }: HeroConfig) {
+// Sin imagen cargada todavía: placeholder con puntos decorativos (igual que
+// el wireframe original). Con una imagen real subida desde el admin, se
+// muestra esa foto en su lugar — el carrusel real (varias fotos) queda para
+// cuando haga falta, por ahora es una sola imagen destacada.
+export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, imagen, estilo }: HeroConfig) {
   const [activeDot, setActiveDot] = useState(0)
   // Default = el degradé violeta original de la marca; un fondo elegido a
   // mano lo reemplaza. Mismo criterio para el padding: se preserva el
@@ -40,24 +41,32 @@ export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, estilo }: HeroConfi
         </div>
 
         <div className="relative">
-          <ImgPlaceholder
-            label="Imagen / Carrusel — Kit literario"
-            dark
-            iconSize={34}
-            className="h-72 w-full rounded-3xl shadow-2xl md:h-96"
-          />
-          <div className="mt-5 flex items-center justify-center gap-2">
-            {[0, 1, 2, 3].map((i) => (
-              <button
-                key={i}
-                onClick={() => setActiveDot(i)}
-                aria-label={`Slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  activeDot === i ? 'w-[22px] bg-foreground' : 'w-2 bg-foreground/40'
-                }`}
+          {imagen ? (
+            <div className="relative h-72 w-full overflow-hidden rounded-3xl shadow-2xl md:h-96">
+              <Image src={imagen} alt={titulo} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" priority />
+            </div>
+          ) : (
+            <>
+              <ImgPlaceholder
+                label="Imagen / Carrusel — Kit literario"
+                dark
+                iconSize={34}
+                className="h-72 w-full rounded-3xl shadow-2xl md:h-96"
               />
-            ))}
-          </div>
+              <div className="mt-5 flex items-center justify-center gap-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveDot(i)}
+                    aria-label={`Slide ${i + 1}`}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      activeDot === i ? 'w-[22px] bg-foreground' : 'w-2 bg-foreground/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

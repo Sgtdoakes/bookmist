@@ -34,11 +34,18 @@ export type HeroConfig = {
   titulo: string
   subtitulo: string
   ctaTexto: string
+  imagen: string | null
   estilo: EstiloBloque
 }
 export type BeneficioItem = { emoji: string; texto: string }
 export type BeneficiosConfig = { items: BeneficioItem[]; estilo: EstiloBloque }
-export type CategoriasConfig = { eyebrow: string; titulo: string; estilo: EstiloBloque }
+export type CategoriaItem = { id: string; titulo: string; subtitulo: string; imagen: string | null }
+export type CategoriasConfig = {
+  eyebrow: string
+  titulo: string
+  categorias: CategoriaItem[]
+  estilo: EstiloBloque
+}
 export type MasVendidosConfig = { eyebrow: string; titulo: string; estilo: EstiloBloque }
 export type SobreMiConfig = {
   eyebrow: string
@@ -46,11 +53,13 @@ export type SobreMiConfig = {
   texto: string
   texto2: string
   firma: string
+  imagen: string | null
   estilo: EstiloBloque
 }
 export type ResenaItem = { nombre: string; texto: string }
 export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem[]; estilo: EstiloBloque }
-export type InstagramConfig = { titulo: string; estilo: EstiloBloque }
+export type PostInstagram = { id: string; imagen: string | null }
+export type InstagramConfig = { titulo: string; posts: PostInstagram[]; estilo: EstiloBloque }
 
 export type TextoConfig = {
   eyebrow: string
@@ -124,6 +133,7 @@ function defaults(): SeccionConfigMap {
       titulo: 'Palabras que se sienten en las manos',
       subtitulo: 'Kits literarios pensados para pausar el ruido y perderte, otra vez, en una buena historia.',
       ctaTexto: 'Descubrir los kits',
+      imagen: null,
       estilo: {},
     },
     beneficios: {
@@ -134,7 +144,16 @@ function defaults(): SeccionConfigMap {
       ],
       estilo: {},
     },
-    categorias: { eyebrow: 'Explorá', titulo: 'Nuestras categorías', estilo: {} },
+    categorias: {
+      eyebrow: 'Explorá',
+      titulo: 'Nuestras categorías',
+      categorias: [
+        { id: crypto.randomUUID(), titulo: 'Kits literarios', subtitulo: 'Libro + objetos elegidos para vivir la historia', imagen: null },
+        { id: crypto.randomUUID(), titulo: 'Cajas literarias', subtitulo: 'Papelería y detalles para tu rincón de lectura', imagen: null },
+        { id: crypto.randomUUID(), titulo: 'Marcapáginas', subtitulo: 'Pequeños detalles hechos a mano', imagen: null },
+      ],
+      estilo: {},
+    },
     mas_vendidos: { eyebrow: 'Los favoritos de la comunidad', titulo: 'Más vendidos', estilo: {} },
     sobre_mi: {
       eyebrow: 'Sobre mí',
@@ -144,6 +163,7 @@ function defaults(): SeccionConfigMap {
       texto2:
         'Este es un proyecto que armo con las manos y con calma, pensando cada kit como si fuera un regalo para una amiga lectora.',
       firma: '— Daniela, fundadora de Bookmist',
+      imagen: null,
       estilo: {},
     },
     resenas: {
@@ -166,7 +186,11 @@ function defaults(): SeccionConfigMap {
       ],
       estilo: {},
     },
-    instagram: { titulo: `Seguinos en ${storeConfig.instagramHandle}`, estilo: {} },
+    instagram: {
+      titulo: `Seguinos en ${storeConfig.instagramHandle}`,
+      posts: Array.from({ length: 5 }, () => ({ id: crypto.randomUUID(), imagen: null })),
+      estilo: {},
+    },
     texto: {
       eyebrow: '',
       titulo: 'Título del bloque',

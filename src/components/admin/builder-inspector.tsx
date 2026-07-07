@@ -162,10 +162,55 @@ function Contenido({
           <Campo label="Texto del botón">
             <Input value={texto('ctaTexto')} onChange={(e) => onChange({ ctaTexto: e.target.value }, false)} className="mt-1" />
           </Campo>
+          <Campo label="Imagen">
+            <div className="mt-1">
+              <ImageUploader
+                carpeta="secciones"
+                entidadId={id}
+                portada={(config.imagen as string | null) ?? null}
+                onPortadaChange={(url) => onChange({ imagen: url }, false)}
+                soloPortada
+              />
+            </div>
+          </Campo>
         </>
       )
 
-    case 'categorias':
+    case 'categorias': {
+      const categorias = (config.categorias as { id: string; titulo: string; subtitulo: string; imagen: string | null }[]) ?? []
+      const set = (i: number, patch: Partial<{ titulo: string; subtitulo: string; imagen: string | null }>) =>
+        onChange({ categorias: categorias.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) }, false)
+      return (
+        <>
+          <Campo label="Texto pequeño (encima del título)">
+            <Input value={texto('eyebrow')} onChange={(e) => onChange({ eyebrow: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <Campo label="Título">
+            <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <div className="space-y-4 border-t pt-3">
+            {categorias.map((cat, i) => (
+              <div key={cat.id} className="space-y-2 rounded-lg border p-3">
+                <ImageUploader
+                  carpeta="secciones"
+                  entidadId={`${id}-cat-${cat.id}`}
+                  portada={cat.imagen}
+                  onPortadaChange={(url) => set(i, { imagen: url })}
+                  soloPortada
+                />
+                <Input value={cat.titulo} onChange={(e) => set(i, { titulo: e.target.value })} aria-label="Título de la categoría" />
+                <Input
+                  value={cat.subtitulo}
+                  onChange={(e) => set(i, { subtitulo: e.target.value })}
+                  aria-label="Subtítulo de la categoría"
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )
+    }
+
     case 'mas_vendidos':
       return (
         <>
@@ -175,15 +220,47 @@ function Contenido({
           <Campo label="Título">
             <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
           </Campo>
+          <p className="text-xs text-muted-foreground">
+            Muestra los productos marcados como &quot;destacado&quot; en Cajas y kits — para cambiar las fotos, editá el producto
+            en /admin/productos.
+          </p>
         </>
       )
 
-    case 'instagram':
+    case 'instagram': {
+      const posts = (config.posts as { id: string; imagen: string | null }[]) ?? []
+      const agregar = () => onChange({ posts: [...posts, { id: crypto.randomUUID(), imagen: null }] }, false)
+      const quitar = (i: number) => onChange({ posts: posts.filter((_, idx) => idx !== i) }, false)
       return (
-        <Campo label="Título">
-          <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
-        </Campo>
+        <>
+          <Campo label="Título">
+            <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <div className="space-y-3 border-t pt-3">
+            <Label className="text-xs font-medium text-muted-foreground">Fotos</Label>
+            {posts.map((post, i) => (
+              <div key={post.id} className="flex items-center gap-2">
+                <div className="flex-1">
+                  <ImageUploader
+                    carpeta="secciones"
+                    entidadId={`${id}-ig-${post.id}`}
+                    portada={post.imagen}
+                    onPortadaChange={(url) => onChange({ posts: posts.map((p, idx) => (idx === i ? { ...p, imagen: url } : p)) }, false)}
+                    soloPortada
+                  />
+                </div>
+                <Button type="button" size="icon" variant="ghost" onClick={() => quitar(i)} aria-label="Quitar foto">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" size="sm" variant="outline" onClick={agregar}>
+              <Plus className="h-4 w-4" /> Agregar foto
+            </Button>
+          </div>
+        </>
       )
+    }
 
     case 'sobre_mi':
       return (
@@ -202,6 +279,17 @@ function Contenido({
           </Campo>
           <Campo label="Firma">
             <Input value={texto('firma')} onChange={(e) => onChange({ firma: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <Campo label="Foto">
+            <div className="mt-1">
+              <ImageUploader
+                carpeta="secciones"
+                entidadId={id}
+                portada={(config.imagen as string | null) ?? null}
+                onPortadaChange={(url) => onChange({ imagen: url }, false)}
+                soloPortada
+              />
+            </div>
           </Campo>
         </>
       )

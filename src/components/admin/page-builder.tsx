@@ -65,8 +65,16 @@ import type { PaginaRow, Producto } from '@/types/db'
 // la base) o uno temporal generado al agregar/duplicar (se inserta al guardar).
 type Bloque = { id: string; tipo: SeccionTipo; activo: boolean; config: Record<string, unknown> }
 
+// Mergea con los defaults de cada tipo (resolverSeccion) en vez de usar el
+// config crudo de la fila: si un bloque se guardó antes de que un tipo
+// sumara un campo nuevo (ej. "categorias" en Categorías, "imagen" en Hero),
+// el borrador ya arranca con ese campo presente — si no, el inspector se ve
+// vacío para ese campo hasta que se guarde una vez.
 function aBloques(secciones: SeccionAdmin[]): Bloque[] {
-  return secciones.map((s) => ({ id: s.id, tipo: s.tipo as SeccionTipo, activo: s.activo, config: s.config ?? {} }))
+  return secciones.map((s) => {
+    const tipo = s.tipo as SeccionTipo
+    return { id: s.id, tipo, activo: s.activo, config: resolverSeccion(tipo, s.config ?? {}).config as Record<string, unknown> }
+  })
 }
 function indexarPreview(secciones: SeccionPreview[]): Record<string, SeccionPreview> {
   return Object.fromEntries(secciones.map((s) => [s.id, s]))

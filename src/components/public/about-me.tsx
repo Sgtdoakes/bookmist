@@ -1,9 +1,10 @@
+import Image from 'next/image'
 import { Blob, FeatherDoodle } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { SobreMiConfig } from '@/lib/secciones'
 
-export function AboutMe({ eyebrow, titulo, texto, texto2, firma, estilo }: SobreMiConfig) {
+export function AboutMe({ eyebrow, titulo, texto, texto2, firma, imagen, estilo }: SobreMiConfig) {
   const fondoClase = estilo?.fondo ? resolverFondo(estilo) : 'bg-background'
   const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-16 md:py-24'
   const alineacion = resolverAlineacion(estilo)
@@ -14,7 +15,13 @@ export function AboutMe({ eyebrow, titulo, texto, texto2, firma, estilo }: Sobre
       <Blob className="absolute top-10 right-0 h-64 w-64 animate-[floaty_14s_ease-in-out_infinite_-4s] text-muted opacity-10" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 md:grid-cols-2 md:px-10">
         <div className="relative">
-          <ImgPlaceholder label="Foto de perfil / taller" className="h-80 w-full rounded-3xl shadow-xl md:h-96" />
+          {imagen ? (
+            <div className="relative h-80 w-full overflow-hidden rounded-3xl shadow-xl md:h-96">
+              <Image src={imagen} alt={titulo} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+            </div>
+          ) : (
+            <ImgPlaceholder label="Foto de perfil / taller" className="h-80 w-full rounded-3xl shadow-xl md:h-96" />
+          )}
           <FeatherDoodle className="absolute -bottom-6 -right-6 hidden h-20 w-14 text-muted md:block" />
         </div>
 
