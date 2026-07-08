@@ -30,6 +30,14 @@ export const checkoutSchema = checkoutBase.extend({
 })
 export type CheckoutInput = z.infer<typeof checkoutSchema>
 
+// --- QR de transferencia (Fase 6g) ----------------------------------------
+export const qrTransferenciaSchema = z.object({
+  cuentaId: z.string().min(1),
+  monto: z.number().positive().max(100_000_000),
+  referencia: z.string().trim().max(25).nullish(),
+})
+export type QrTransferenciaInput = z.infer<typeof qrTransferenciaSchema>
+
 // --- Biblioteca de libros y accesorios (admin) ---------------------------
 export const itemFormSchema = z.object({
   tipo: z.enum(['libro', 'accesorio']),

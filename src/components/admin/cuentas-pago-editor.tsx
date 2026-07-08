@@ -10,7 +10,7 @@ import type { CuentaPago } from '@/lib/configuracion'
 import { guardarCuentasPago } from '@/app/admin/configuracion/actions'
 
 function cuentaVacia(): CuentaPago {
-  return { id: crypto.randomUUID(), etiqueta: '', banco: '', alias: '', cbu: '', titular: '' }
+  return { id: crypto.randomUUID(), etiqueta: '', banco: '', alias: '', cbu: '', titular: '', cuit: '' }
 }
 
 export function CuentasPagoEditor({ cuentasIniciales }: { cuentasIniciales: CuentaPago[] }) {
@@ -144,7 +144,23 @@ function FilaCuenta({
             className="mt-1 font-mono"
           />
         </div>
+        <div>
+          <Label htmlFor={`cuenta-cuit-${cuenta.id}`}>CUIT/CUIL del titular (para el QR real)</Label>
+          <Input
+            id={`cuenta-cuit-${cuenta.id}`}
+            value={cuenta.cuit}
+            onChange={(e) => onPatch(cuenta.id, { cuit: e.target.value })}
+            placeholder="20-12345678-9"
+            className="mt-1 font-mono"
+          />
+        </div>
       </div>
+      {!cuenta.cuit && (cuenta.cbu || cuenta.alias) && (
+        <p className="text-xs text-amber-600">
+          Sin CUIT/CUIL, esta cuenta muestra CBU/alias para copiar pero no genera el QR escaneable
+          (obligatorio por la Comunicación &quot;A&quot; 6425 del BCRA).
+        </p>
+      )}
     </div>
   )
 }

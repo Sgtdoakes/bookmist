@@ -23,9 +23,17 @@ function FieldError({ msg }: { msg?: string }) {
   return <p className="mt-1 text-sm text-red-300">{msg}</p>
 }
 
-function NotaMetodoPago({ metodo, cuentasPago }: { metodo: MetodoPago; cuentasPago: CuentaPago[] }) {
+function NotaMetodoPago({
+  metodo,
+  cuentasPago,
+  monto,
+}: {
+  metodo: MetodoPago
+  cuentasPago: CuentaPago[]
+  monto: number
+}) {
   if ((metodo === 'transferencia' || metodo === 'deposito') && cuentasPago.length > 0) {
-    return <DatosTransferenciaBox cuentas={cuentasPago} />
+    return <DatosTransferenciaBox cuentas={cuentasPago} monto={monto} />
   }
   if (metodo === 'mercadopago') {
     return (
@@ -221,7 +229,7 @@ export function CheckoutForm({
                   </span>
                   {metodoPago === m && (
                     <div className="pl-7">
-                      <NotaMetodoPago metodo={m} cuentasPago={cuentasPago} />
+                      <NotaMetodoPago metodo={m} cuentasPago={cuentasPago} monto={total} />
                     </div>
                   )}
                 </label>

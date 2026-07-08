@@ -93,7 +93,9 @@ export function PedidoConfirmadoContent({
       {order &&
         (order.metodo_pago === 'transferencia' || order.metodo_pago === 'deposito') &&
         cuentasPago.length > 0 &&
-        vista.tipo !== 'rechazado' && <DatosTransferenciaBox cuentas={cuentasPago} />}
+        vista.tipo !== 'rechazado' && (
+          <DatosTransferenciaBox cuentas={cuentasPago} monto={order.total} referencia={numero} />
+        )}
 
       {order && order.metodo_pago === 'efectivo' && vista.tipo !== 'rechazado' && (
         <p className="mt-4 text-sm text-foreground/70">

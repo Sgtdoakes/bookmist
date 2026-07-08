@@ -2,7 +2,8 @@
 
 import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
-import type { CuentaPago } from '@/lib/configuracion'
+import { QrPagoTransferencia } from '@/components/public/qr-pago-transferencia'
+import { cuentaConQr, type CuentaPago } from '@/lib/configuracion'
 
 function copiar(valor: string, etiqueta: string) {
   if (!valor) return
@@ -34,8 +35,18 @@ function FilaDato({ label, valor }: { label: string; valor: string }) {
 
 // Datos reales para cerrar el pago ahí mismo (checkout y confirmación de
 // pedido) — varias cuentas para que el cliente elija la que le convenga y
-// evite comisiones entre bancos.
-export function DatosTransferenciaBox({ cuentas }: { cuentas: CuentaPago[] }) {
+// evite comisiones entre bancos. Si la cuenta tiene CUIT cargado, se genera
+// un QR real (BCRA "Transferencias 3.0") con el monto exacto; si no, solo
+// se muestran los datos para copiar a mano.
+export function DatosTransferenciaBox({
+  cuentas,
+  monto,
+  referencia,
+}: {
+  cuentas: CuentaPago[]
+  monto?: number
+  referencia?: string
+}) {
   if (cuentas.length === 0) return null
 
   return (
@@ -43,6 +54,9 @@ export function DatosTransferenciaBox({ cuentas }: { cuentas: CuentaPago[] }) {
       {cuentas.map((c) => (
         <div key={c.id} className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
           {c.etiqueta && <p className="text-sm font-semibold text-foreground">{c.etiqueta}</p>}
+          {monto != null && cuentaConQr(c) && (
+            <QrPagoTransferencia cuentaId={c.id} monto={monto} referencia={referencia} />
+          )}
           <FilaDato label="Titular" valor={c.titular} />
           <FilaDato label="Banco" valor={c.banco} />
           <FilaDato label="CBU" valor={c.cbu} />
@@ -50,8 +64,9 @@ export function DatosTransferenciaBox({ cuentas }: { cuentas: CuentaPago[] }) {
         </div>
       ))}
       <p className="text-xs text-foreground/60">
-        Hacé la transferencia o el depósito a la cuenta que más te convenga y mandanos el comprobante por
-        WhatsApp para confirmar tu pedido. Usá el número de pedido como referencia.
+        Escaneá el QR con tu app bancaria o de billetera y el monto ya va a estar cargado. Si preferís, hacé la
+        transferencia o el depósito a mano con estos datos. Mandanos el comprobante por WhatsApp para confirmar
+        tu pedido.
       </p>
     </div>
   )
