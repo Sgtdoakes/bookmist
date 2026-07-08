@@ -70,20 +70,3 @@ export const marcaFormSchema = z.object({
 })
 export type MarcaFormInput = z.input<typeof marcaFormSchema>
 export type MarcaFormOutput = z.infer<typeof marcaFormSchema>
-
-// --- Datos de transferencia / depósito bancario (admin, Fase 6g) ---------
-// Se dejan sin mínimos estrictos: mientras falte titular o CBU/alias, el
-// checkout oculta las opciones "Transferencia"/"Depósito" (ver
-// transferenciaCompleta() en src/lib/configuracion.ts) — no hace falta
-// forzar el llenado acá.
-export const datosTransferenciaFormSchema = z.object({
-  titular: z.string().trim().max(150),
-  cbu: z
-    .string()
-    .trim()
-    .regex(/^(\d{22})?$/, 'El CBU tiene 22 dígitos'),
-  alias: z.string().trim().max(50),
-  banco: z.string().trim().max(100),
-})
-export type DatosTransferenciaFormInput = z.input<typeof datosTransferenciaFormSchema>
-export type DatosTransferenciaFormOutput = z.infer<typeof datosTransferenciaFormSchema>

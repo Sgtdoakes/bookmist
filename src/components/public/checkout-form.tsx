@@ -15,7 +15,7 @@ import { formatARS } from '@/lib/format'
 import { checkoutFormSchema, type CheckoutFormInput } from '@/lib/validations'
 import { METODO_PAGO_LABEL } from '@/lib/constants'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
-import type { DatosTransferencia } from '@/lib/configuracion'
+import type { CuentaPago } from '@/lib/configuracion'
 import type { MetodoPago, ZonaEnvio } from '@/types/db'
 
 function FieldError({ msg }: { msg?: string }) {
@@ -23,9 +23,9 @@ function FieldError({ msg }: { msg?: string }) {
   return <p className="mt-1 text-sm text-red-300">{msg}</p>
 }
 
-function NotaMetodoPago({ metodo, datosTransferencia }: { metodo: MetodoPago; datosTransferencia: DatosTransferencia | null }) {
-  if ((metodo === 'transferencia' || metodo === 'deposito') && datosTransferencia) {
-    return <DatosTransferenciaBox datos={datosTransferencia} />
+function NotaMetodoPago({ metodo, cuentasPago }: { metodo: MetodoPago; cuentasPago: CuentaPago[] }) {
+  if ((metodo === 'transferencia' || metodo === 'deposito') && cuentasPago.length > 0) {
+    return <DatosTransferenciaBox cuentas={cuentasPago} />
   }
   if (metodo === 'mercadopago') {
     return (
@@ -43,11 +43,11 @@ function NotaMetodoPago({ metodo, datosTransferencia }: { metodo: MetodoPago; da
 export function CheckoutForm({
   zonas,
   mpEnabled,
-  datosTransferencia,
+  cuentasPago,
 }: {
   zonas: ZonaEnvio[]
   mpEnabled: boolean
-  datosTransferencia: DatosTransferencia | null
+  cuentasPago: CuentaPago[]
 }) {
   const router = useRouter()
   const { items, ready, totalPrecio, clear } = useCart()
@@ -66,7 +66,7 @@ export function CheckoutForm({
       cliente_telefono: '',
       direccion_envio: '',
       zona_id: '',
-      metodo_pago: mpEnabled ? 'mercadopago' : datosTransferencia ? 'transferencia' : 'efectivo',
+      metodo_pago: mpEnabled ? 'mercadopago' : cuentasPago.length > 0 ? 'transferencia' : 'efectivo',
       notas: '',
     },
   })
@@ -200,7 +200,7 @@ export function CheckoutForm({
           <div className="space-y-2">
             {(Object.keys(METODO_PAGO_LABEL) as MetodoPago[])
               .filter((m) => m !== 'mercadopago' || mpEnabled)
-              .filter((m) => (m !== 'transferencia' && m !== 'deposito') || !!datosTransferencia)
+              .filter((m) => (m !== 'transferencia' && m !== 'deposito') || cuentasPago.length > 0)
               .map((m) => (
                 <label
                   key={m}
@@ -221,7 +221,7 @@ export function CheckoutForm({
                   </span>
                   {metodoPago === m && (
                     <div className="pl-7">
-                      <NotaMetodoPago metodo={m} datosTransferencia={datosTransferencia} />
+                      <NotaMetodoPago metodo={m} cuentasPago={cuentasPago} />
                     </div>
                   )}
                 </label>

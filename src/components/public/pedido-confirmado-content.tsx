@@ -8,7 +8,7 @@ import { PrimaryButton, OutlineButton } from '@/components/public/buttons'
 import { formatARS } from '@/lib/format'
 import { resolverVistaPedido, type VistaPedidoTipo } from '@/lib/pedido-confirmacion'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
-import type { DatosTransferencia } from '@/lib/configuracion'
+import type { CuentaPago } from '@/lib/configuracion'
 import type { MetodoPago } from '@/types/db'
 
 type LastOrder = {
@@ -30,10 +30,10 @@ const ICONO_POR_TIPO: Record<VistaPedidoTipo, React.ReactNode> = {
 
 export function PedidoConfirmadoContent({
   numero,
-  datosTransferencia,
+  cuentasPago,
 }: {
   numero: string
-  datosTransferencia: DatosTransferencia | null
+  cuentasPago: CuentaPago[]
 }) {
   const searchParams = useSearchParams()
   const status = searchParams.get('status')
@@ -92,8 +92,8 @@ export function PedidoConfirmadoContent({
 
       {order &&
         (order.metodo_pago === 'transferencia' || order.metodo_pago === 'deposito') &&
-        datosTransferencia &&
-        vista.tipo !== 'rechazado' && <DatosTransferenciaBox datos={datosTransferencia} />}
+        cuentasPago.length > 0 &&
+        vista.tipo !== 'rechazado' && <DatosTransferenciaBox cuentas={cuentasPago} />}
 
       {order && order.metodo_pago === 'efectivo' && vista.tipo !== 'rechazado' && (
         <p className="mt-4 text-sm text-foreground/70">

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { guardarValoresConfiguracion, type MarcaConfig, type DatosTransferencia } from '@/lib/configuracion'
+import { guardarValoresConfiguracion, type MarcaConfig, type CuentaPago } from '@/lib/configuracion'
 
 type Ok = { ok: true }
 type Err = { ok: false; error: string }
@@ -50,17 +50,12 @@ export async function guardarMarcaConfig(marca: MarcaConfig): Promise<Ok | Err> 
   return { ok: true }
 }
 
-export async function guardarDatosTransferencia(datos: DatosTransferencia): Promise<Ok | Err> {
+export async function guardarCuentasPago(cuentas: CuentaPago[]): Promise<Ok | Err> {
   const supabase = await clienteAutenticado()
   if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
 
   try {
-    await guardarValoresConfiguracion(supabase, {
-      pago_transferencia_titular: datos.titular,
-      pago_transferencia_cbu: datos.cbu,
-      pago_transferencia_alias: datos.alias,
-      pago_transferencia_banco: datos.banco,
-    })
+    await guardarValoresConfiguracion(supabase, { pago_cuentas: JSON.stringify(cuentas) })
   } catch {
     return { ok: false, error: 'No se pudieron guardar los datos de pago.' }
   }

@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getMarcaConfig, getDatosTransferencia } from '@/lib/configuracion'
+import { getMarcaConfig, getCuentasPago } from '@/lib/configuracion'
 import { ConfiguracionForm } from '@/components/admin/configuracion-form'
 import { NavLinksEditor } from '@/components/admin/nav-links-editor'
-import { DatosTransferenciaForm } from '@/components/admin/datos-transferencia-form'
+import { CuentasPagoEditor } from '@/components/admin/cuentas-pago-editor'
 import type { NavLink } from '@/types/db'
 
 export const metadata = { title: 'Configuración' }
@@ -17,10 +17,10 @@ async function getNavLinksAdmin(): Promise<NavLink[]> {
 }
 
 export default async function AdminConfiguracionPage() {
-  const [marca, navLinks, datosTransferencia] = await Promise.all([
+  const [marca, navLinks, cuentasPago] = await Promise.all([
     getMarcaConfig(),
     getNavLinksAdmin(),
-    getDatosTransferencia(),
+    getCuentasPago(),
   ])
 
   return (
@@ -40,7 +40,7 @@ export default async function AdminConfiguracionPage() {
 
       <div className="mt-6 space-y-8">
         <ConfiguracionForm marcaInicial={marca} />
-        <DatosTransferenciaForm datosIniciales={datosTransferencia} />
+        <CuentasPagoEditor cuentasIniciales={cuentasPago} />
         <NavLinksEditor linksIniciales={navLinks} />
       </div>
     </div>

@@ -111,53 +111,58 @@ export async function getMarcaConfig(): Promise<MarcaConfig> {
   }
 }
 
-// Datos de transferencia/depósito bancario (Fase 6g) — mismas claves KV que
-// marca, para que el checkout pueda cerrar el pago ahí mismo en vez de
-// "te contactamos para coordinar". Se guarda siempre (aunque esté
-// incompleto, para que el admin pueda ver/editar lo que ya cargó) — quien
-// consume el dato públicamente debe chequear transferenciaCompleta() antes
-// de mostrarlo/habilitar la opción, así nunca se expone una cuenta a medio
-// cargar.
-export type DatosTransferencia = {
-  titular: string
-  cbu: string
-  alias: string
+// Cuentas para transferencia/depósito bancario (Fase 6g) — una lista, no una
+// sola cuenta: en Argentina es normal ofrecer varios destinos (distintos
+// bancos/billeteras) para que quien paga evite comisiones entre bancos.
+// Vive en una sola clave KV como JSON (mismo patrón que
+// `marca_metodos_pago`) — no hace falta una tabla nueva para esto.
+export type CuentaPago = {
+  id: string
+  etiqueta: string
   banco: string
+  alias: string
+  cbu: string
+  titular: string
 }
 
-const CLAVES_TRANSFERENCIA = [
-  'pago_transferencia_titular',
-  'pago_transferencia_cbu',
-  'pago_transferencia_alias',
-  'pago_transferencia_banco',
-] as const
+const CLAVE_CUENTAS_PAGO = 'pago_cuentas'
 
-export async function getDatosTransferencia(): Promise<DatosTransferencia> {
-  const vacio: DatosTransferencia = { titular: '', cbu: '', alias: '', banco: '' }
-  if (!configured()) return vacio
+function cuentaVacia(): CuentaPago {
+  return { id: crypto.randomUUID(), etiqueta: '', banco: '', alias: '', cbu: '', titular: '' }
+}
+
+function parseCuentas(valor: string | undefined): CuentaPago[] {
+  if (!valor) return []
+  try {
+    const arr = JSON.parse(valor)
+    if (!Array.isArray(arr)) return []
+    return arr.map((c) => ({ ...cuentaVacia(), ...c }))
+  } catch {
+    return []
+  }
+}
+
+export async function getCuentasPago(): Promise<CuentaPago[]> {
+  if (!configured()) return []
   try {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('configuracion')
-      .select('clave, valor')
-      .in('clave', CLAVES_TRANSFERENCIA)
+      .select('valor')
+      .eq('clave', CLAVE_CUENTAS_PAGO)
+      .maybeSingle()
     if (error) throw error
-    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
-    return {
-      titular: map.get('pago_transferencia_titular')?.trim() ?? '',
-      cbu: map.get('pago_transferencia_cbu')?.trim() ?? '',
-      alias: map.get('pago_transferencia_alias')?.trim() ?? '',
-      banco: map.get('pago_transferencia_banco')?.trim() ?? '',
-    }
+    return parseCuentas(data?.valor)
   } catch {
-    return vacio
+    return []
   }
 }
 
-// Un titular + (CBU o alias) es lo mínimo para que alguien pueda mandar
-// plata de verdad — sin esto, mostrar la opción sería otra promesa vacía.
-export function transferenciaCompleta(d: DatosTransferencia): boolean {
-  return !!d.titular && (!!d.cbu || !!d.alias)
+// Una cuenta sirve para mandar plata real con solo CBU o alias — el titular
+// es un dato de más (el banco de quien envía ya lo muestra solo), así que
+// no bloquea que se muestre.
+export function cuentaValida(c: CuentaPago): boolean {
+  return !!c.cbu || !!c.alias
 }
 
 export type NavLinkPublico = { label: string; href: string }
