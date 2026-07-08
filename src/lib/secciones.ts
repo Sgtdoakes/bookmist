@@ -279,7 +279,13 @@ export function resolverSeccion<K extends SeccionTipo>(
   >
 }
 
-function seccionesPorDefecto(): SeccionResuelta[] {
+// El set de 7 secciones fijas (hero/beneficios/categorías/...) es
+// específico del diseño original de la home — solo tiene sentido como
+// fallback ahí. Cualquier otra página (catálogo, ficha de producto,
+// institucionales) con 0 filas guardadas simplemente no tiene bloques
+// todavía: [] es la respuesta correcta, no "mostrar la home".
+function seccionesPorDefecto(pagina: string): SeccionResuelta[] {
+  if (pagina !== 'home') return []
   return ORDEN_DEFECTO.map((tipo) => resolverSeccion(tipo, {}))
 }
 
@@ -290,7 +296,7 @@ function configured() {
 // Secciones activas de una página, en orden, ya resueltas (con sus valores
 // por defecto aplicados). Es lo que consume la página pública.
 export async function getSeccionesPagina(pagina: string): Promise<SeccionResuelta[]> {
-  if (!configured()) return seccionesPorDefecto()
+  if (!configured()) return seccionesPorDefecto(pagina)
   try {
     const supabase = createClient()
     const { data, error } = await supabase
@@ -300,12 +306,12 @@ export async function getSeccionesPagina(pagina: string): Promise<SeccionResuelt
       .eq('activo', true)
       .order('orden', { ascending: true })
     if (error) throw error
-    if (!data || data.length === 0) return seccionesPorDefecto()
+    if (!data || data.length === 0) return seccionesPorDefecto(pagina)
     return data
       .filter((r) => esSeccionTipo(r.tipo))
       .map((r) => resolverSeccion(r.tipo as SeccionTipo, r.config ?? {}))
   } catch {
-    return seccionesPorDefecto()
+    return seccionesPorDefecto(pagina)
   }
 }
 
