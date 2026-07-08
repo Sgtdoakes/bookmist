@@ -34,16 +34,15 @@ export async function getDestacados(limit = 12): Promise<Producto[]> {
   }
 }
 
-// Catálogo completo (página /productos).
-export async function getProductosActivos(): Promise<Producto[]> {
+// Catálogo completo (página /productos, y fuente "todos" del bloque de
+// productos — sin límite por defecto: es pensado para "mostrame todo".
+export async function getProductosActivos(limit?: number): Promise<Producto[]> {
   if (!configured()) return []
   try {
     const supabase = createClient()
-    const { data, error } = await supabase
-      .from('productos')
-      .select('*')
-      .eq('activo', true)
-      .order('orden', { ascending: true })
+    let query = supabase.from('productos').select('*').eq('activo', true).order('orden', { ascending: true })
+    if (limit) query = query.limit(limit)
+    const { data, error } = await query
     if (error) throw error
     return data ?? []
   } catch {

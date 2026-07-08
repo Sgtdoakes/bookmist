@@ -450,6 +450,7 @@ function ContenidoProductos({
             onChange={(e) => onChange({ fuente: e.target.value as ProductosFuente }, true)}
             className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
           >
+            <option value="todos">Todos los productos activos</option>
             <option value="destacados">Destacados</option>
             <option value="novedades">Novedades (últimos cargados)</option>
             <option value="categoria">Una categoría puntual</option>

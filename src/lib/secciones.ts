@@ -74,7 +74,7 @@ export type TextoConfig = {
   estilo: EstiloBloque
 }
 
-export type ProductosFuente = 'destacados' | 'novedades' | 'categoria' | 'manual'
+export type ProductosFuente = 'todos' | 'destacados' | 'novedades' | 'categoria' | 'manual'
 export type ProductosConfig = {
   eyebrow: string
   titulo: string

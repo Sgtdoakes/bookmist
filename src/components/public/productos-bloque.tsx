@@ -1,4 +1,4 @@
-import { getDestacados, getNovedades, getProductosPorCategoria, getProductosPorIds } from '@/lib/productos'
+import { getDestacados, getNovedades, getProductosActivos, getProductosPorCategoria, getProductosPorIds } from '@/lib/productos'
 import { BestSellersScroller } from '@/components/public/best-sellers-scroller'
 import { resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
@@ -16,6 +16,8 @@ export async function resolverProductosBloque(config: {
   limite: number
 }): Promise<Producto[]> {
   switch (config.fuente) {
+    case 'todos':
+      return getProductosActivos(config.limite)
     case 'destacados':
       return getDestacados(config.limite)
     case 'novedades':
