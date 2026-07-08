@@ -301,15 +301,20 @@ export async function getSeccionesPagina(pagina: string): Promise<SeccionResuelt
     const supabase = createClient()
     const { data, error } = await supabase
       .from('pagina_secciones')
-      .select('tipo, config')
+      .select('id, tipo, config')
       .eq('pagina', pagina)
       .eq('activo', true)
       .order('orden', { ascending: true })
     if (error) throw error
     if (!data || data.length === 0) return seccionesPorDefecto(pagina)
+    // resolverSeccion() pone id=tipo (pensado para cuando cada tipo aparece
+    // una sola vez, como los furniture de la home) — con bloques libres
+    // repetibles (varios "productos"/"texto"/etc. en la misma página) eso
+    // genera ids duplicados y React se queja de keys repetidas. Acá sí hace
+    // falta el id real de la fila.
     return data
       .filter((r) => esSeccionTipo(r.tipo))
-      .map((r) => resolverSeccion(r.tipo as SeccionTipo, r.config ?? {}))
+      .map((r) => ({ ...resolverSeccion(r.tipo as SeccionTipo, r.config ?? {}), id: r.id }))
   } catch {
     return seccionesPorDefecto(pagina)
   }
