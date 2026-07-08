@@ -70,7 +70,7 @@ export function NavLinksEditor({ linksIniciales }: { linksIniciales: NavLink[] }
           Todavía no hay links cargados.
         </p>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext id="nav-links" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={items.map((it) => it.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {items.map((it) => (
