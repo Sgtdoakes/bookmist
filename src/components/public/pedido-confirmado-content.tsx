@@ -7,11 +7,15 @@ import { CheckCircle2, Clock, XCircle, MessageCircle } from 'lucide-react'
 import { PrimaryButton, OutlineButton } from '@/components/public/buttons'
 import { formatARS } from '@/lib/format'
 import { resolverVistaPedido, type VistaPedidoTipo } from '@/lib/pedido-confirmacion'
+import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
+import type { DatosTransferencia } from '@/lib/configuracion'
+import type { MetodoPago } from '@/types/db'
 
 type LastOrder = {
   numero: string
   whatsapp_url: string | null
   total: number
+  metodo_pago?: MetodoPago
   items: { nombre: string; cantidad: number; precio: number }[]
 }
 
@@ -24,7 +28,13 @@ const ICONO_POR_TIPO: Record<VistaPedidoTipo, React.ReactNode> = {
   generico: <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-400" />,
 }
 
-export function PedidoConfirmadoContent({ numero }: { numero: string }) {
+export function PedidoConfirmadoContent({
+  numero,
+  datosTransferencia,
+}: {
+  numero: string
+  datosTransferencia: DatosTransferencia | null
+}) {
   const searchParams = useSearchParams()
   const status = searchParams.get('status')
   const vista = resolverVistaPedido(status)
@@ -78,6 +88,17 @@ export function PedidoConfirmadoContent({ numero }: { numero: string }) {
             <span>{formatARS(order.total)}</span>
           </div>
         </div>
+      )}
+
+      {order &&
+        (order.metodo_pago === 'transferencia' || order.metodo_pago === 'deposito') &&
+        datosTransferencia &&
+        vista.tipo !== 'rechazado' && <DatosTransferenciaBox datos={datosTransferencia} />}
+
+      {order && order.metodo_pago === 'efectivo' && vista.tipo !== 'rechazado' && (
+        <p className="mt-4 text-sm text-foreground/70">
+          Coordinamos el pago en efectivo al momento de la entrega.
+        </p>
       )}
 
       {order?.whatsapp_url && vista.tipo !== 'rechazado' && (

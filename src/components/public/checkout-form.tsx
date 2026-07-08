@@ -14,14 +14,41 @@ import { useCart } from '@/lib/cart'
 import { formatARS } from '@/lib/format'
 import { checkoutFormSchema, type CheckoutFormInput } from '@/lib/validations'
 import { METODO_PAGO_LABEL } from '@/lib/constants'
-import type { ZonaEnvio } from '@/types/db'
+import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
+import type { DatosTransferencia } from '@/lib/configuracion'
+import type { MetodoPago, ZonaEnvio } from '@/types/db'
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null
   return <p className="mt-1 text-sm text-red-300">{msg}</p>
 }
 
-export function CheckoutForm({ zonas, mpEnabled }: { zonas: ZonaEnvio[]; mpEnabled: boolean }) {
+function NotaMetodoPago({ metodo, datosTransferencia }: { metodo: MetodoPago; datosTransferencia: DatosTransferencia | null }) {
+  if ((metodo === 'transferencia' || metodo === 'deposito') && datosTransferencia) {
+    return <DatosTransferenciaBox datos={datosTransferencia} />
+  }
+  if (metodo === 'mercadopago') {
+    return (
+      <p className="mt-2 text-xs text-foreground/60">
+        Al confirmar te llevamos a Mercado Pago para pagar ahora mismo: tarjeta en cuotas, dinero en cuenta o QR.
+      </p>
+    )
+  }
+  if (metodo === 'efectivo') {
+    return <p className="mt-2 text-xs text-foreground/60">Coordinamos el pago en efectivo al momento de la entrega.</p>
+  }
+  return null
+}
+
+export function CheckoutForm({
+  zonas,
+  mpEnabled,
+  datosTransferencia,
+}: {
+  zonas: ZonaEnvio[]
+  mpEnabled: boolean
+  datosTransferencia: DatosTransferencia | null
+}) {
   const router = useRouter()
   const { items, ready, totalPrecio, clear } = useCart()
   const [enviando, setEnviando] = useState(false)
@@ -39,7 +66,7 @@ export function CheckoutForm({ zonas, mpEnabled }: { zonas: ZonaEnvio[]; mpEnabl
       cliente_telefono: '',
       direccion_envio: '',
       zona_id: '',
-      metodo_pago: 'transferencia',
+      metodo_pago: mpEnabled ? 'mercadopago' : datosTransferencia ? 'transferencia' : 'efectivo',
       notas: '',
     },
   })
@@ -87,6 +114,7 @@ export function CheckoutForm({ zonas, mpEnabled }: { zonas: ZonaEnvio[]; mpEnabl
             numero: json.numero_pedido,
             whatsapp_url: json.whatsapp_url,
             total: json.total,
+            metodo_pago: values.metodo_pago,
             items: items.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
           }),
         )
@@ -170,30 +198,35 @@ export function CheckoutForm({ zonas, mpEnabled }: { zonas: ZonaEnvio[]; mpEnabl
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-foreground">¿Cómo querés pagar?</h2>
           <div className="space-y-2">
-            {(Object.keys(METODO_PAGO_LABEL) as Array<keyof typeof METODO_PAGO_LABEL>)
+            {(Object.keys(METODO_PAGO_LABEL) as MetodoPago[])
               .filter((m) => m !== 'mercadopago' || mpEnabled)
+              .filter((m) => (m !== 'transferencia' && m !== 'deposito') || !!datosTransferencia)
               .map((m) => (
                 <label
                   key={m}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                  className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-3 transition-colors ${
                     metodoPago === m
                       ? 'border-primary bg-primary/10'
                       : 'border-foreground/16 hover:bg-foreground/5'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    value={m}
-                    {...register('metodo_pago')}
-                    className="mt-1 size-4 accent-[var(--primary)]"
-                  />
-                  <span className="font-medium text-foreground">{METODO_PAGO_LABEL[m]}</span>
+                  <span className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      value={m}
+                      {...register('metodo_pago')}
+                      className="mt-1 size-4 accent-[var(--primary)]"
+                    />
+                    <span className="font-medium text-foreground">{METODO_PAGO_LABEL[m]}</span>
+                  </span>
+                  {metodoPago === m && (
+                    <div className="pl-7">
+                      <NotaMetodoPago metodo={m} datosTransferencia={datosTransferencia} />
+                    </div>
+                  )}
                 </label>
               ))}
           </div>
-          <p className="text-xs text-foreground/60">
-            Te contactamos para coordinar los datos de pago apenas confirmes el pedido.
-          </p>
         </section>
 
         <section className="space-y-2">
@@ -237,7 +270,9 @@ export function CheckoutForm({ zonas, mpEnabled }: { zonas: ZonaEnvio[]; mpEnabl
             {enviando ? 'Enviando…' : 'Confirmar pedido'}
           </PrimaryButton>
           <p className="mt-2 text-center text-xs text-foreground/60">
-            Te vamos a contactar para coordinar el pago y el envío.
+            {metodoPago === 'mercadopago'
+              ? 'Te llevamos a Mercado Pago para pagar al toque.'
+              : 'Coordinamos el envío por WhatsApp apenas confirmes.'}
           </p>
         </div>
       </aside>

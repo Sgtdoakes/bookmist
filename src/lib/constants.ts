@@ -14,8 +14,9 @@ export const NAV_LINKS = [
 
 export const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
   transferencia: 'Transferencia bancaria',
+  deposito: 'Depósito bancario',
   efectivo: 'Efectivo',
-  mercadopago: 'Mercado Pago (QR, billetera o tarjeta)',
+  mercadopago: 'Mercado Pago (tarjeta en cuotas, QR o billetera)',
 }
 
 export const ESTADO_PEDIDO_LABEL: Record<EstadoPedido, string> = {

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { OutlineButton, PrimaryButton } from '@/components/public/buttons'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
@@ -37,8 +38,12 @@ export default function CarritoPage() {
       <ul className="mt-6 divide-y divide-foreground/10 rounded-2xl border border-foreground/10">
         {items.map((item) => (
           <li key={item.producto_id} className="flex gap-4 p-4">
-            <div className="w-16 shrink-0">
-              <ImgPlaceholder label="" className="aspect-square w-full rounded-lg" iconSize={16} />
+            <div className="relative w-16 shrink-0 overflow-hidden rounded-lg">
+              {item.imagen ? (
+                <Image src={item.imagen} alt={item.nombre} fill sizes="64px" className="object-cover" />
+              ) : (
+                <ImgPlaceholder label="" className="aspect-square w-full" iconSize={16} />
+              )}
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col">

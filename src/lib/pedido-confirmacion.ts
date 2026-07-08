@@ -36,6 +36,6 @@ export function resolverVistaPedido(status: string | null): VistaPedido {
   return {
     tipo: 'generico',
     titulo: '¡Gracias por tu pedido!',
-    mensaje: 'Tu pedido fue recibido. Te vamos a contactar para coordinar el pago y el envío.',
+    mensaje: 'Tu pedido fue recibido. Revisá cómo completar el pago más abajo.',
   }
 }

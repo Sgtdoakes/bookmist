@@ -3,7 +3,7 @@
 
 export type ProductoTipo = 'caja' | 'kit'
 export type ItemTipo = 'libro' | 'accesorio'
-export type MetodoPago = 'transferencia' | 'efectivo' | 'mercadopago'
+export type MetodoPago = 'transferencia' | 'efectivo' | 'mercadopago' | 'deposito'
 export type EstadoPedido = 'pendiente' | 'pagado' | 'cancelado'
 
 export type Database = {

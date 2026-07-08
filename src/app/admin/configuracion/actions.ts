@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { guardarValoresConfiguracion, type MarcaConfig } from '@/lib/configuracion'
+import { guardarValoresConfiguracion, type MarcaConfig, type DatosTransferencia } from '@/lib/configuracion'
 
 type Ok = { ok: true }
 type Err = { ok: false; error: string }
@@ -47,6 +47,26 @@ export async function guardarMarcaConfig(marca: MarcaConfig): Promise<Ok | Err> 
   }
 
   revalidarPublico()
+  return { ok: true }
+}
+
+export async function guardarDatosTransferencia(datos: DatosTransferencia): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  try {
+    await guardarValoresConfiguracion(supabase, {
+      pago_transferencia_titular: datos.titular,
+      pago_transferencia_cbu: datos.cbu,
+      pago_transferencia_alias: datos.alias,
+      pago_transferencia_banco: datos.banco,
+    })
+  } catch {
+    return { ok: false, error: 'No se pudieron guardar los datos de pago.' }
+  }
+
+  revalidarPublico()
+  revalidatePath('/checkout')
   return { ok: true }
 }
 

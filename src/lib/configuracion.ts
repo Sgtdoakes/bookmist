@@ -111,6 +111,55 @@ export async function getMarcaConfig(): Promise<MarcaConfig> {
   }
 }
 
+// Datos de transferencia/depósito bancario (Fase 6g) — mismas claves KV que
+// marca, para que el checkout pueda cerrar el pago ahí mismo en vez de
+// "te contactamos para coordinar". Se guarda siempre (aunque esté
+// incompleto, para que el admin pueda ver/editar lo que ya cargó) — quien
+// consume el dato públicamente debe chequear transferenciaCompleta() antes
+// de mostrarlo/habilitar la opción, así nunca se expone una cuenta a medio
+// cargar.
+export type DatosTransferencia = {
+  titular: string
+  cbu: string
+  alias: string
+  banco: string
+}
+
+const CLAVES_TRANSFERENCIA = [
+  'pago_transferencia_titular',
+  'pago_transferencia_cbu',
+  'pago_transferencia_alias',
+  'pago_transferencia_banco',
+] as const
+
+export async function getDatosTransferencia(): Promise<DatosTransferencia> {
+  const vacio: DatosTransferencia = { titular: '', cbu: '', alias: '', banco: '' }
+  if (!configured()) return vacio
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('configuracion')
+      .select('clave, valor')
+      .in('clave', CLAVES_TRANSFERENCIA)
+    if (error) throw error
+    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
+    return {
+      titular: map.get('pago_transferencia_titular')?.trim() ?? '',
+      cbu: map.get('pago_transferencia_cbu')?.trim() ?? '',
+      alias: map.get('pago_transferencia_alias')?.trim() ?? '',
+      banco: map.get('pago_transferencia_banco')?.trim() ?? '',
+    }
+  } catch {
+    return vacio
+  }
+}
+
+// Un titular + (CBU o alias) es lo mínimo para que alguien pueda mandar
+// plata de verdad — sin esto, mostrar la opción sería otra promesa vacía.
+export function transferenciaCompleta(d: DatosTransferencia): boolean {
+  return !!d.titular && (!!d.cbu || !!d.alias)
+}
+
 export type NavLinkPublico = { label: string; href: string }
 
 const NAV_LINKS_POR_DEFECTO: NavLinkPublico[] = NAV_LINKS.map((l) => ({ label: l.label, href: l.href }))
