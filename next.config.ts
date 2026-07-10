@@ -30,6 +30,14 @@ const cspHeader = `
 `
 
 const nextConfig: NextConfig = {
+  // Los Server Actions capean el body en 1MB por defecto (Next.js) — subirImagen()
+  // ya valida hasta 5MB (src/app/admin/media/actions.ts) pero sin esto cualquier
+  // foto real de celular quedaba cortada por el framework antes de llegar ahí.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '5mb',
+    },
+  },
   images: {
     // El optimizador de imágenes de Vercel (free) tiene cupo bajo; igual que
     // en Martín Libros, servimos directo desde Supabase Storage/Cloudflare R2
