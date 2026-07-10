@@ -23,17 +23,9 @@ function FieldError({ msg }: { msg?: string }) {
   return <p className="mt-1 text-sm text-red-300">{msg}</p>
 }
 
-function NotaMetodoPago({
-  metodo,
-  cuentasPago,
-  monto,
-}: {
-  metodo: MetodoPago
-  cuentasPago: CuentaPago[]
-  monto: number
-}) {
-  if ((metodo === 'transferencia' || metodo === 'deposito') && cuentasPago.length > 0) {
-    return <DatosTransferenciaBox cuentas={cuentasPago} monto={monto} />
+function NotaMetodoPago({ metodo, cuentasPago }: { metodo: MetodoPago; cuentasPago: CuentaPago[] }) {
+  if (metodo === 'transferencia' && cuentasPago.length > 0) {
+    return <DatosTransferenciaBox cuentas={cuentasPago} />
   }
   if (metodo === 'mercadopago') {
     return (
@@ -41,9 +33,6 @@ function NotaMetodoPago({
         Al confirmar te llevamos a Mercado Pago para pagar ahora mismo: tarjeta en cuotas, dinero en cuenta o QR.
       </p>
     )
-  }
-  if (metodo === 'efectivo') {
-    return <p className="mt-2 text-xs text-foreground/60">Coordinamos el pago en efectivo al momento de la entrega.</p>
   }
   return null
 }
@@ -74,7 +63,7 @@ export function CheckoutForm({
       cliente_telefono: '',
       direccion_envio: '',
       zona_id: '',
-      metodo_pago: mpEnabled ? 'mercadopago' : cuentasPago.length > 0 ? 'transferencia' : 'efectivo',
+      metodo_pago: mpEnabled ? 'mercadopago' : 'transferencia',
       notas: '',
     },
   })
@@ -206,9 +195,9 @@ export function CheckoutForm({
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-foreground">¿Cómo querés pagar?</h2>
           <div className="space-y-2">
-            {(Object.keys(METODO_PAGO_LABEL) as MetodoPago[])
+            {(['transferencia', 'mercadopago'] as MetodoPago[])
               .filter((m) => m !== 'mercadopago' || mpEnabled)
-              .filter((m) => (m !== 'transferencia' && m !== 'deposito') || cuentasPago.length > 0)
+              .filter((m) => m !== 'transferencia' || cuentasPago.length > 0)
               .map((m) => (
                 <label
                   key={m}
@@ -229,7 +218,7 @@ export function CheckoutForm({
                   </span>
                   {metodoPago === m && (
                     <div className="pl-7">
-                      <NotaMetodoPago metodo={m} cuentasPago={cuentasPago} monto={total} />
+                      <NotaMetodoPago metodo={m} cuentasPago={cuentasPago} />
                     </div>
                   )}
                 </label>

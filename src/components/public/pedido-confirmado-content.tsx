@@ -90,17 +90,8 @@ export function PedidoConfirmadoContent({
         </div>
       )}
 
-      {order &&
-        (order.metodo_pago === 'transferencia' || order.metodo_pago === 'deposito') &&
-        cuentasPago.length > 0 &&
-        vista.tipo !== 'rechazado' && (
-          <DatosTransferenciaBox cuentas={cuentasPago} monto={order.total} referencia={numero} />
-        )}
-
-      {order && order.metodo_pago === 'efectivo' && vista.tipo !== 'rechazado' && (
-        <p className="mt-4 text-sm text-foreground/70">
-          Coordinamos el pago en efectivo al momento de la entrega.
-        </p>
+      {order && order.metodo_pago === 'transferencia' && cuentasPago.length > 0 && vista.tipo !== 'rechazado' && (
+        <DatosTransferenciaBox cuentas={cuentasPago} />
       )}
 
       {order?.whatsapp_url && vista.tipo !== 'rechazado' && (

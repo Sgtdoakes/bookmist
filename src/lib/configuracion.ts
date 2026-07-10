@@ -123,16 +123,12 @@ export type CuentaPago = {
   alias: string
   cbu: string
   titular: string
-  // CUIT/CUIL del titular — campo obligatorio del QR interoperable de
-  // transferencias (BCRA Comunicación "A" 6425, posición 50). Sin esto no
-  // se puede generar un QR real, solo mostrar CBU/alias para copiar.
-  cuit: string
 }
 
 const CLAVE_CUENTAS_PAGO = 'pago_cuentas'
 
 function cuentaVacia(): CuentaPago {
-  return { id: crypto.randomUUID(), etiqueta: '', banco: '', alias: '', cbu: '', titular: '', cuit: '' }
+  return { id: crypto.randomUUID(), etiqueta: '', banco: '', alias: '', cbu: '', titular: '' }
 }
 
 function parseCuentas(valor: string | undefined): CuentaPago[] {
@@ -167,11 +163,6 @@ export async function getCuentasPago(): Promise<CuentaPago[]> {
 // no bloquea que se muestre.
 export function cuentaValida(c: CuentaPago): boolean {
   return !!c.cbu || !!c.alias
-}
-
-// El QR real (BCRA A 6425) exige además el CUIT/CUIL.
-export function cuentaConQr(c: CuentaPago): boolean {
-  return cuentaValida(c) && !!c.cuit
 }
 
 export type NavLinkPublico = { label: string; href: string }
