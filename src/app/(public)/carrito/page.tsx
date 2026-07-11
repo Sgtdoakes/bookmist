@@ -38,11 +38,11 @@ export default function CarritoPage() {
       <ul className="mt-6 divide-y divide-foreground/10 rounded-2xl border border-foreground/10">
         {items.map((item) => (
           <li key={item.producto_id} className="flex gap-4 p-4">
-            <div className="relative w-16 shrink-0 overflow-hidden rounded-lg">
+            <div className="relative aspect-[3/4] w-16 shrink-0 self-start overflow-hidden rounded-lg">
               {item.imagen ? (
                 <Image src={item.imagen} alt={item.nombre} fill sizes="64px" className="object-cover" />
               ) : (
-                <ImgPlaceholder label="" className="aspect-square w-full" iconSize={16} />
+                <ImgPlaceholder label="" className="aspect-[3/4] w-full" iconSize={16} />
               )}
             </div>
 

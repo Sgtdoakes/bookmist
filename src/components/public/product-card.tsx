@@ -8,7 +8,7 @@ import type { Producto } from '@/types/db'
 export function ProductCard({ producto }: { producto: Producto }) {
   return (
     <div className="h-full w-full overflow-hidden rounded-2xl bg-card shadow-md">
-      <Link href={`/productos/${producto.slug}`} className="relative block h-56 w-full">
+      <Link href={`/productos/${producto.slug}`} className="relative block aspect-[3/4] w-full">
         {producto.imagen_principal ? (
           <Image
             src={producto.imagen_principal}
@@ -18,7 +18,7 @@ export function ProductCard({ producto }: { producto: Producto }) {
             className="object-cover"
           />
         ) : (
-          <ImgPlaceholder label="Imagen producto" className="h-56 w-full" />
+          <ImgPlaceholder label="Imagen producto" className="aspect-[3/4] w-full" />
         )}
       </Link>
       <div className="p-5">

@@ -119,7 +119,7 @@ function FilaProducto({
           type="button"
           onClick={() => p.imagen_principal && setZoom(true)}
           disabled={!p.imagen_principal}
-          className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted/30 disabled:cursor-default"
+          className="group relative aspect-[3/4] h-14 shrink-0 overflow-hidden rounded-md border bg-muted/30 disabled:cursor-default"
           aria-label={p.imagen_principal ? `Ver imagen de ${p.nombre} en grande` : undefined}
         >
           {p.imagen_principal && (
@@ -135,7 +135,7 @@ function FilaProducto({
           <Dialog open={zoom} onOpenChange={setZoom}>
             <DialogContent className="sm:max-w-lg" showCloseButton>
               <DialogTitle>{p.nombre}</DialogTitle>
-              <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-muted/30">
+              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted/30">
                 <Image src={p.imagen_principal} alt={p.nombre} fill sizes="512px" className="object-contain" />
               </div>
             </DialogContent>
