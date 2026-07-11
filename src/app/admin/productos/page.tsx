@@ -2,19 +2,20 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductosManager } from '@/components/admin/productos-manager'
-import type { Producto } from '@/types/db'
+import type { ProductoConCategorias } from '@/types/db'
 
-export const metadata = { title: 'Cajas y kits' }
+export const metadata = { title: 'Catálogo de productos' }
 
-async function getProductosAdmin(): Promise<Producto[]> {
+async function getProductosAdmin(): Promise<ProductoConCategorias[]> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*')
+      .select('*, categorias(*)')
       .order('orden', { ascending: true })
     if (error) throw error
-    return data ?? []
+    // Cast por el embed M2M — ver getCatalogo() en src/lib/productos.ts.
+    return (data ?? []) as unknown as ProductoConCategorias[]
   } catch {
     return []
   }
@@ -35,7 +36,7 @@ export default async function AdminProductosPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Cajas y kits</h1>
+          <h1 className="text-2xl font-bold">Catálogo de productos</h1>
           <p className="mt-1 text-muted-foreground">
             Editá precio/stock al instante, o entrá a un producto para editar todo (incluido
             &quot;qué incluye&quot;).

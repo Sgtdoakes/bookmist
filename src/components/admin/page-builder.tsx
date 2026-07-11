@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   LayoutTemplate,
   Monitor,
+  Search as SearchIcon,
   Plus,
   RotateCcw,
   Save,
@@ -51,6 +52,7 @@ import { TextoBloque } from '@/components/public/texto-bloque'
 import { ProductosBloqueView } from '@/components/public/productos-bloque'
 import { BannerBloque } from '@/components/public/banner-bloque'
 import { LibreBloque } from '@/components/public/libre-bloque'
+import { CatalogoInteractivo } from '@/components/public/catalogo-interactivo'
 import { BuilderInspector, TIPO_LABEL } from '@/components/admin/builder-inspector'
 import { guardarLayout, previewSecciones, crearPagina, eliminarPagina } from '@/app/admin/pagina/actions'
 import {
@@ -61,7 +63,7 @@ import {
   type SeccionPreview,
   type SeccionTipo,
 } from '@/lib/secciones'
-import type { PaginaRow, Producto } from '@/types/db'
+import type { Categoria, PaginaRow, Producto } from '@/types/db'
 
 // Un bloque del borrador del editor. `id` puede ser un uuid real (existe en
 // la base) o uno temporal generado al agregar/duplicar (se inserta al guardar).
@@ -87,6 +89,7 @@ const RAIL_ITEMS: { tipo: SeccionTipo; icon: React.ElementType; label: string }[
   { tipo: 'productos', icon: GalleryHorizontalEnd, label: 'Productos' },
   { tipo: 'banner', icon: ImageIcon, label: 'Banner' },
   { tipo: 'libre', icon: LayoutGrid, label: 'Libre' },
+  { tipo: 'catalogo', icon: SearchIcon, label: 'Catálogo' },
 ]
 
 // Render de una sección con los MISMOS componentes que el sitio público.
@@ -120,6 +123,16 @@ function SeccionView({ s }: { s: SeccionPreview }) {
       return <BannerBloque {...s.config} />
     case 'libre':
       return <LibreBloque {...s.config} />
+    case 'catalogo':
+      return (
+        <CatalogoInteractivo
+          eyebrow={s.config.eyebrow}
+          titulo={s.config.titulo}
+          productos={s.catalogoResuelto?.productos ?? []}
+          categorias={s.catalogoResuelto?.categorias ?? []}
+          estilo={s.config.estilo}
+        />
+      )
   }
 }
 
@@ -129,6 +142,7 @@ export function PageBuilder({
   inicial,
   previewInicial,
   productosDisponibles,
+  categoriasDisponibles,
   marca,
   navLinks,
 }: {
@@ -137,6 +151,7 @@ export function PageBuilder({
   inicial: SeccionAdmin[]
   previewInicial: SeccionPreview[]
   productosDisponibles: Producto[]
+  categoriasDisponibles: Categoria[]
   marca: MarcaConfig
   navLinks: NavLinkPublico[]
 }) {
@@ -584,6 +599,7 @@ export function PageBuilder({
             tipo={selBloque.tipo}
             config={selBloque.config}
             productosDisponibles={productosDisponibles}
+            categoriasDisponibles={categoriasDisponibles}
             onChange={(partial, reResolve) => editar(selBloque.id, partial, reResolve)}
             onClose={() => setSelId(null)}
           />
@@ -676,6 +692,7 @@ function BloqueCanvas({
   } else {
     let vacio = false
     if (seccion.tipo === 'productos' || seccion.tipo === 'mas_vendidos') vacio = (seccion.productosResueltos ?? []).length === 0
+    else if (seccion.tipo === 'catalogo') vacio = (seccion.catalogoResuelto?.productos ?? []).length === 0
     else if (seccion.tipo === 'libre') vacio = seccion.config.elementos.length === 0
     else if (seccion.tipo === 'banner') vacio = !seccion.config.titulo && !seccion.config.imagen
     else if (seccion.tipo === 'texto') vacio = !seccion.config.titulo && !seccion.config.texto

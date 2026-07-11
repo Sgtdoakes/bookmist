@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { esSlugValido } from '@/lib/slugs'
-import type { Producto, ProductoInsert, ProductoUpdate } from '@/types/db'
+import { esSlugValido, generarSlug } from '@/lib/slugs'
+import type { Categoria, Producto, ProductoInsert, ProductoUpdate } from '@/types/db'
 
 type Ok = { ok: true }
 type OkId = { ok: true; id: string }
@@ -85,6 +85,96 @@ export async function getProductosParaContenido(excludeId?: string): Promise<Pro
   const { data, error } = await query
   if (error) return []
   return data ?? []
+}
+
+// --- Categorías (Fase 6i) ----------------------------------------------------
+
+export async function getCategoriasAdmin(): Promise<Categoria[]> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('categorias')
+    .select('*')
+    .order('orden', { ascending: true })
+    .order('nombre', { ascending: true })
+  if (error) return []
+  return data ?? []
+}
+
+export async function crearCategoria(nombre: string): Promise<{ ok: true; categoria: Categoria } | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  const limpio = nombre.trim()
+  if (!limpio) return { ok: false, error: 'Escribí un nombre para la categoría.' }
+  const slug = generarSlug(limpio)
+  if (!slug) return { ok: false, error: 'Ese nombre no genera una URL válida.' }
+
+  // Las nuevas van al final: después de las 4 fijas y de las ya creadas.
+  const { data: max } = await supabase.from('categorias').select('orden').order('orden', { ascending: false }).limit(1)
+  const orden = ((max ?? [])[0]?.orden ?? -1) + 1
+
+  const { data, error } = await supabase
+    .from('categorias')
+    .insert({ nombre: limpio, slug, orden })
+    .select('*')
+    .single()
+  if (error || !data) {
+    if (error?.code === '23505') return { ok: false, error: 'Ya existe una categoría con ese nombre.' }
+    return { ok: false, error: 'No se pudo crear la categoría.' }
+  }
+  return { ok: true, categoria: data }
+}
+
+// Reemplaza el set completo de categorías de un producto (mismo patrón
+// delete+insert que guardarContenidoProducto — son listas de un puñado).
+export async function guardarCategoriasProducto(
+  productoId: string,
+  categoriaIds: string[],
+): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const { error: delErr } = await supabase.from('producto_categorias').delete().eq('producto_id', productoId)
+  if (delErr) return { ok: false, error: 'No se pudieron actualizar las categorías.' }
+
+  if (categoriaIds.length > 0) {
+    const filas = categoriaIds.map((categoria_id) => ({ producto_id: productoId, categoria_id }))
+    const { error: insErr } = await supabase.from('producto_categorias').insert(filas)
+    if (insErr) return { ok: false, error: 'No se pudieron guardar las categorías.' }
+  }
+
+  revalidarPublico()
+  return { ok: true }
+}
+
+// El toggle "Destacado" de la lista: destacar = pertenecer a la categoría
+// "Destacados" (desde la Fase 6i ya no es un boolean aparte).
+export async function toggleDestacado(
+  productoId: string,
+  destacado: boolean,
+): Promise<{ ok: true; categoria: Categoria } | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const { data: cat } = await supabase.from('categorias').select('*').eq('slug', 'destacados').maybeSingle()
+  if (!cat) return { ok: false, error: 'No existe la categoría "Destacados".' }
+
+  if (destacado) {
+    const { error } = await supabase
+      .from('producto_categorias')
+      .upsert({ producto_id: productoId, categoria_id: cat.id })
+    if (error) return { ok: false, error: 'No se pudo destacar el producto.' }
+  } else {
+    const { error } = await supabase
+      .from('producto_categorias')
+      .delete()
+      .eq('producto_id', productoId)
+      .eq('categoria_id', cat.id)
+    if (error) return { ok: false, error: 'No se pudo quitar el destacado.' }
+  }
+
+  revalidarPublico()
+  return { ok: true, categoria: cat }
 }
 
 export type ContenidoInput = { item_id: string; cantidad: number }[]

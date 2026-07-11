@@ -1,7 +1,7 @@
 // Tipos de la base de datos de Supabase para Bookmist.
 // Escritos a mano para que coincidan con las migraciones en /supabase/migrations.
 
-export type ProductoTipo = 'caja' | 'kit'
+export type ProductoTipo = 'caja' | 'kit' | 'libro' | 'accesorio'
 export type MetodoPago = 'transferencia' | 'efectivo' | 'mercadopago' | 'deposito'
 export type EstadoPedido = 'pendiente' | 'pagado' | 'cancelado'
 
@@ -77,6 +77,51 @@ export type Database = {
             foreignKeyName: 'producto_items_item_id_fkey'
             columns: ['item_id']
             referencedRelation: 'productos'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      categorias: {
+        Row: {
+          id: string
+          slug: string
+          nombre: string
+          orden: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          nombre: string
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['categorias']['Insert']>
+        Relationships: []
+      }
+      producto_categorias: {
+        Row: {
+          producto_id: string
+          categoria_id: string
+        }
+        Insert: {
+          producto_id: string
+          categoria_id: string
+        }
+        Update: Partial<Database['public']['Tables']['producto_categorias']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'producto_categorias_producto_id_fkey'
+            columns: ['producto_id']
+            referencedRelation: 'productos'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'producto_categorias_categoria_id_fkey'
+            columns: ['categoria_id']
+            referencedRelation: 'categorias'
             referencedColumns: ['id']
           },
         ]
@@ -278,7 +323,13 @@ export type ProductoItem = Database['public']['Tables']['producto_items']['Row']
 // (Fase 6h: fusión de items_catalogo en productos).
 export type ProductoConItems = Producto & {
   producto_items: (ProductoItem & { item: Producto })[]
+  categorias: Categoria[]
 }
+
+export type Categoria = Database['public']['Tables']['categorias']['Row']
+
+// Producto con sus categorías resueltas (catálogo interactivo, admin).
+export type ProductoConCategorias = Producto & { categorias: Categoria[] }
 
 export type Order = Database['public']['Tables']['orders']['Row']
 export type OrderInsert = Database['public']['Tables']['orders']['Insert']

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/public'
-import type { Producto, ProductoConItems } from '@/types/db'
+import type { Categoria, Producto, ProductoConCategorias, ProductoConItems } from '@/types/db'
 
 // Capa de datos del catálogo (lado servidor). Degrada con elegancia: si
 // Supabase todavía no está configurado o falla, devuelve valores vacíos en
@@ -16,15 +16,18 @@ export function isSupabaseConfigured() {
   return configured()
 }
 
+// "Destacados" es una categoría más desde la Fase 6i (antes era un boolean
+// aparte) — el `!inner` hace que el filtro sobre la categoría embebida
+// restrinja los productos devueltos, no solo el contenido del embed.
 export async function getDestacados(limit = 12): Promise<Producto[]> {
   if (!configured()) return []
   try {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*')
+      .select('*, categorias!inner(slug)')
       .eq('activo', true)
-      .eq('destacado', true)
+      .eq('categorias.slug', 'destacados')
       .order('orden', { ascending: true })
       .limit(limit)
     if (error) throw error
@@ -67,7 +70,8 @@ export async function getProductoBySlug(slug: string): Promise<Producto | null> 
   }
 }
 
-// Producto + su contenido curado ("qué incluye"), para la página de detalle.
+// Producto + su contenido curado ("qué incluye") + categorías, para la
+// página de detalle (las categorías alimentan "productos relacionados").
 export async function getProductoConItems(slug: string): Promise<ProductoConItems | null> {
   if (!configured()) return null
   try {
@@ -77,7 +81,7 @@ export async function getProductoConItems(slug: string): Promise<ProductoConItem
       // Doble hint de FK: producto_items tiene DOS foreign keys hacia productos
       // (producto_id e item_id), así que ambos embeds necesitan desambiguarse.
       .select(
-        '*, producto_items!producto_items_producto_id_fkey(*, item:productos!producto_items_item_id_fkey(*))',
+        '*, producto_items!producto_items_producto_id_fkey(*, item:productos!producto_items_item_id_fkey(*)), categorias(*)',
       )
       .eq('slug', slug)
       .eq('activo', true)
@@ -108,16 +112,63 @@ export async function getNovedades(limit = 12): Promise<Producto[]> {
   }
 }
 
-// Productos de una categoría puntual (fuente "categoria" del bloque de productos).
+// Productos de una categoría puntual, por nombre (fuente "categoria" del
+// bloque de productos — los configs guardados referencian el nombre, que se
+// mantiene como identificador visible).
 export async function getProductosPorCategoria(categoria: string, limit = 12): Promise<Producto[]> {
   if (!configured() || !categoria) return []
   try {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*')
+      .select('*, categorias!inner(nombre)')
       .eq('activo', true)
-      .eq('categoria', categoria)
+      .eq('categorias.nombre', categoria)
+      .order('orden', { ascending: true })
+      .limit(limit)
+    if (error) throw error
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
+// Catálogo completo con categorías embebidas — la fuente del bloque
+// "catálogo" interactivo (buscador/orden/rango de precios en el cliente).
+export async function getCatalogo(): Promise<ProductoConCategorias[]> {
+  if (!configured()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*, categorias(*)')
+      .eq('activo', true)
+      .order('orden', { ascending: true })
+    if (error) throw error
+    // El generador de tipos de supabase-js no infiere el embed many-to-many
+    // (productos -> categorias vía producto_categorias); en runtime PostgREST
+    // sí lo resuelve. Cast explícito, mismo criterio que ProductoConItems.
+    return (data ?? []) as unknown as ProductoConCategorias[]
+  } catch {
+    return []
+  }
+}
+
+// Relacionados de una ficha: productos que comparten alguna categoría real
+// con el actual ("Destacados" no cuenta como parentesco — es una vidriera,
+// no una temática).
+export async function getRelacionados(producto: ProductoConItems, limit = 4): Promise<Producto[]> {
+  if (!configured()) return []
+  const slugs = (producto.categorias ?? []).map((c) => c.slug).filter((s) => s !== 'destacados')
+  if (slugs.length === 0) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*, categorias!inner(slug)')
+      .eq('activo', true)
+      .in('categorias.slug', slugs)
+      .neq('id', producto.id)
       .order('orden', { ascending: true })
       .limit(limit)
     if (error) throw error
@@ -142,16 +193,19 @@ export async function getProductosPorIds(ids: string[]): Promise<Producto[]> {
   }
 }
 
-export async function getCategoriasDistintas(): Promise<string[]> {
+// Categorías reales (tabla propia desde la Fase 6i), en el orden definido
+// en el admin. Reemplaza al viejo RPC categorias_distintas sobre texto libre.
+export async function getCategorias(): Promise<Categoria[]> {
   if (!configured()) return []
   try {
     const supabase = createClient()
-    const { data, error } = await supabase.rpc('categorias_distintas')
+    const { data, error } = await supabase
+      .from('categorias')
+      .select('*')
+      .order('orden', { ascending: true })
+      .order('nombre', { ascending: true })
     if (error) throw error
-    return (data ?? [])
-      .map((r) => r.categoria)
-      .filter((c): c is string => !!c)
-      .sort((a, b) => a.localeCompare(b, 'es'))
+    return data ?? []
   } catch {
     return []
   }

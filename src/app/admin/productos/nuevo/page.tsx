@@ -1,15 +1,14 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { ProductoForm } from '@/components/admin/producto-form'
-import { getProductosParaContenido } from '@/app/admin/productos/actions'
-import { getCategoriasDistintas } from '@/lib/productos'
+import { getCategoriasAdmin, getProductosParaContenido } from '@/app/admin/productos/actions'
 
 export const metadata = { title: 'Nuevo producto' }
 
 export default async function NuevoProductoPage() {
-  const [itemsDisponibles, categoriasExistentes] = await Promise.all([
+  const [itemsDisponibles, categoriasDisponibles] = await Promise.all([
     getProductosParaContenido(),
-    getCategoriasDistintas(),
+    getCategoriasAdmin(),
   ])
 
   return (
@@ -19,11 +18,11 @@ export default async function NuevoProductoPage() {
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        Volver a cajas y kits
+        Volver al catálogo
       </Link>
       <h1 className="text-2xl font-bold">Nuevo producto</h1>
       <div className="mt-6">
-        <ProductoForm itemsDisponibles={itemsDisponibles} categoriasExistentes={categoriasExistentes} />
+        <ProductoForm itemsDisponibles={itemsDisponibles} categoriasDisponibles={categoriasDisponibles} />
       </div>
     </div>
   )

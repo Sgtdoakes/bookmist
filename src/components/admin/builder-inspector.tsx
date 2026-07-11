@@ -11,7 +11,7 @@ import { EstiloEditor } from '@/components/admin/estilo-editor'
 import { SelectorProductos } from '@/components/admin/selector-productos'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { ElementoLibre, ElementoLibreTipo, ProductosFuente, SeccionTipo } from '@/lib/secciones'
-import type { Producto } from '@/types/db'
+import type { Categoria, Producto } from '@/types/db'
 
 export const TIPO_LABEL: Record<SeccionTipo, string> = {
   hero: 'Portada (hero)',
@@ -25,6 +25,7 @@ export const TIPO_LABEL: Record<SeccionTipo, string> = {
   productos: 'Productos',
   banner: 'Banner',
   libre: 'Libre',
+  catalogo: 'Catálogo con filtros',
 }
 
 // Todos los tipos tienen estilo editable (fondo/tamaño/radio) — los 7
@@ -45,6 +46,7 @@ const TIPOS_CON_ESTILO: SeccionTipo[] = [
   'productos',
   'banner',
   'libre',
+  'catalogo',
 ]
 // "mas_vendidos" queda afuera: su encabezado comparte fila con las flechas
 // de navegación del carrusel (justify-between), no tiene un alineado de
@@ -67,6 +69,7 @@ export function BuilderInspector({
   tipo,
   config,
   productosDisponibles,
+  categoriasDisponibles,
   onChange,
   onClose,
 }: {
@@ -74,12 +77,20 @@ export function BuilderInspector({
   tipo: SeccionTipo
   config: Record<string, unknown>
   productosDisponibles: Producto[]
+  categoriasDisponibles: Categoria[]
   onChange: OnChange
   onClose: () => void
 }) {
   const conEstilo = TIPOS_CON_ESTILO.includes(tipo)
   const contenido = (
-    <Contenido id={id} tipo={tipo} config={config} productosDisponibles={productosDisponibles} onChange={onChange} />
+    <Contenido
+      id={id}
+      tipo={tipo}
+      config={config}
+      productosDisponibles={productosDisponibles}
+      categoriasDisponibles={categoriasDisponibles}
+      onChange={onChange}
+    />
   )
 
   return (
@@ -131,12 +142,14 @@ function Contenido({
   tipo,
   config,
   productosDisponibles,
+  categoriasDisponibles,
   onChange,
 }: {
   id: string
   tipo: SeccionTipo
   config: Record<string, unknown>
   productosDisponibles: Producto[]
+  categoriasDisponibles: Categoria[]
   onChange: OnChange
 }) {
   const texto = (clave: string) => String(config[clave] ?? '')
@@ -341,6 +354,22 @@ function Contenido({
       )
     }
 
+    case 'catalogo':
+      return (
+        <>
+          <Campo label="Texto pequeño (encima del título)">
+            <Input value={texto('eyebrow')} onChange={(e) => onChange({ eyebrow: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <Campo label="Título">
+            <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <p className="text-xs text-muted-foreground">
+            El buscador, el orden, el rango de precios y las secciones por categoría son parte del
+            bloque — se arman solos con los productos y categorías del catálogo.
+          </p>
+        </>
+      )
+
     case 'texto':
       return (
         <>
@@ -410,7 +439,14 @@ function Contenido({
 
     case 'mas_vendidos':
     case 'productos':
-      return <ContenidoProductos config={config} productosDisponibles={productosDisponibles} onChange={onChange} />
+      return (
+        <ContenidoProductos
+          config={config}
+          productosDisponibles={productosDisponibles}
+          categoriasDisponibles={categoriasDisponibles}
+          onChange={onChange}
+        />
+      )
 
     case 'libre':
       return <ContenidoLibre id={id} config={config} onChange={onChange} />
@@ -420,20 +456,18 @@ function Contenido({
 function ContenidoProductos({
   config,
   productosDisponibles,
+  categoriasDisponibles,
   onChange,
 }: {
   config: Record<string, unknown>
   productosDisponibles: Producto[]
+  categoriasDisponibles: Categoria[]
   onChange: OnChange
 }) {
   const fuente = (config.fuente as ProductosFuente) ?? 'destacados'
   const categoria = String(config.categoria ?? '')
   const productos = (config.productos as string[]) ?? []
   const limite = String(config.limite ?? 8)
-
-  const categorias = Array.from(
-    new Set(productosDisponibles.map((p) => p.categoria).filter((c): c is string => !!c)),
-  ).sort((a, b) => a.localeCompare(b, 'es'))
 
   return (
     <>
@@ -470,18 +504,18 @@ function ContenidoProductos({
 
       {fuente === 'categoria' && (
         <Campo label="Categoría">
-          <Input
-            list="categorias-bloque-productos"
+          <select
             value={categoria}
             onChange={(e) => onChange({ categoria: e.target.value }, true)}
-            placeholder="Terror, Manga, Thriller…"
-            className="mt-1"
-          />
-          <datalist id="categorias-bloque-productos">
-            {categorias.map((c) => (
-              <option key={c} value={c} />
+            className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Elegí una categoría…</option>
+            {categoriasDisponibles.map((c) => (
+              <option key={c.id} value={c.nombre}>
+                {c.nombre}
+              </option>
             ))}
-          </datalist>
+          </select>
         </Campo>
       )}
 

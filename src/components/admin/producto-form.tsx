@@ -13,30 +13,44 @@ import { SelectorItems } from '@/components/admin/selector-items'
 import { generarSlug } from '@/lib/slugs'
 import {
   actualizarProducto,
+  crearCategoria,
   crearProducto,
+  guardarCategoriasProducto,
   guardarContenidoProducto,
   type ContenidoInput,
 } from '@/app/admin/productos/actions'
-import type { Producto, ProductoConItems, ProductoTipo } from '@/types/db'
+import type { Categoria, Producto, ProductoConItems, ProductoTipo } from '@/types/db'
 
 type Props = {
   producto?: ProductoConItems
   itemsDisponibles: Producto[]
-  categoriasExistentes?: string[]
+  categoriasDisponibles: Categoria[]
 }
 
-export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes = [] }: Props) {
+const TIPO_OPCIONES: { value: ProductoTipo; label: string }[] = [
+  { value: 'caja', label: 'Caja (libros + accesorios)' },
+  { value: 'kit', label: 'Kit (solo accesorios)' },
+  { value: 'libro', label: 'Libro' },
+  { value: 'accesorio', label: 'Accesorio suelto' },
+]
+
+export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles }: Props) {
   const router = useRouter()
   const [nombre, setNombre] = useState(producto?.nombre ?? '')
   const [slug, setSlug] = useState(producto?.slug ?? '')
   const [slugTocado, setSlugTocado] = useState(!!producto)
   const [tipo, setTipo] = useState<ProductoTipo>(producto?.tipo ?? 'caja')
-  const [categoria, setCategoria] = useState(producto?.categoria ?? '')
+  const [autor, setAutor] = useState(producto?.autor ?? '')
   const [descripcion, setDescripcion] = useState(producto?.descripcion ?? '')
   const [precio, setPrecio] = useState(String(producto?.precio ?? 0))
   const [stock, setStock] = useState(String(producto?.stock ?? 0))
-  const [destacado, setDestacado] = useState(producto?.destacado ?? false)
   const [activo, setActivo] = useState(producto?.activo ?? true)
+  const [categorias, setCategorias] = useState<Categoria[]>(categoriasDisponibles)
+  const [categoriaIds, setCategoriaIds] = useState<string[]>(
+    () => producto?.categorias?.map((c) => c.id) ?? [],
+  )
+  const [nuevaCategoria, setNuevaCategoria] = useState('')
+  const [creandoCategoria, setCreandoCategoria] = useState(false)
   const [imagenPrincipal, setImagenPrincipal] = useState<string | null>(producto?.imagen_principal ?? null)
   const [imagenesGaleria, setImagenesGaleria] = useState<string[]>(producto?.imagenes_galeria ?? [])
   const [guardando, setGuardando] = useState(false)
@@ -50,6 +64,22 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
   function onNombreChange(v: string) {
     setNombre(v)
     if (!slugTocado) setSlug(generarSlug(v))
+  }
+
+  function toggleCategoria(id: string, checked: boolean) {
+    setCategoriaIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+  }
+
+  async function onCrearCategoria() {
+    if (!nuevaCategoria.trim()) return
+    setCreandoCategoria(true)
+    const r = await crearCategoria(nuevaCategoria)
+    setCreandoCategoria(false)
+    if (!r.ok) return toast.error(r.error)
+    setCategorias((prev) => [...prev, r.categoria])
+    setCategoriaIds((prev) => [...prev, r.categoria.id])
+    setNuevaCategoria('')
+    toast.success(`Categoría "${r.categoria.nombre}" creada`)
   }
 
   function toggleItem(id: string, checked: boolean) {
@@ -85,11 +115,10 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
       nombre: nombre.trim(),
       slug: slug.trim(),
       tipo,
-      categoria: categoria.trim() || null,
+      autor: autor.trim() || null,
       descripcion: descripcion.trim() || null,
       precio: Number(precio),
       stock: Number(stock),
-      destacado,
       activo,
     }
 
@@ -110,6 +139,13 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
         return
       }
       id = resultado.id
+    }
+
+    const rCategorias = await guardarCategoriasProducto(id, categoriaIds)
+    if (!rCategorias.ok) {
+      setGuardando(false)
+      toast.error(rCategorias.error)
+      return
     }
 
     const contenido: ContenidoInput = Object.entries(cantidades).map(([item_id, cantidad]) => ({
@@ -184,26 +220,24 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
             onChange={(e) => setTipo(e.target.value as ProductoTipo)}
             className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
           >
-            <option value="caja">Caja (libros + accesorios)</option>
-            <option value="kit">Kit (solo accesorios)</option>
+            {TIPO_OPCIONES.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </div>
-        <div>
-          <Label htmlFor="categoria">Categoría / género</Label>
-          <Input
-            id="categoria"
-            list="categorias-existentes"
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-            placeholder="Terror, Manga, Thriller…"
-            className="mt-1"
-          />
-          <datalist id="categorias-existentes">
-            {categoriasExistentes.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </div>
+        {tipo === 'libro' && (
+          <div>
+            <Label htmlFor="autor">Autor</Label>
+            <Input
+              id="autor"
+              value={autor}
+              onChange={(e) => setAutor(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+        )}
         <div className="flex items-end gap-4 pb-1">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -214,15 +248,50 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
             />
             Visible
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={destacado}
-              onChange={(e) => setDestacado(e.target.checked)}
-              className="size-4"
-            />
-            Destacado
-          </label>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-1 block">Categorías</Label>
+        <p className="text-sm text-muted-foreground">
+          Un producto puede estar en varias — &quot;Destacados&quot; lo muestra también en la vidriera
+          de la home.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+          {categorias.map((c) => (
+            <label key={c.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={categoriaIds.includes(c.id)}
+                onChange={(e) => toggleCategoria(c.id, e.target.checked)}
+                className="size-4"
+              />
+              {c.nombre}
+            </label>
+          ))}
+        </div>
+        <div className="mt-3 flex max-w-sm gap-2">
+          <Input
+            value={nuevaCategoria}
+            onChange={(e) => setNuevaCategoria(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                onCrearCategoria()
+              }
+            }}
+            placeholder="Nueva categoría…"
+            className="h-9"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onCrearCategoria}
+            disabled={creandoCategoria || !nuevaCategoria.trim()}
+          >
+            {creandoCategoria ? 'Creando…' : 'Crear'}
+          </Button>
         </div>
       </div>
 
@@ -265,14 +334,14 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasExistentes 
       <div>
         <h2 className="font-semibold">Qué incluye</h2>
         <p className="text-sm text-muted-foreground">
-          Elegí los libros/accesorios de la biblioteca que van dentro de esta caja/kit.
+          Elegí los productos del catálogo que van dentro de esta caja/kit.
         </p>
 
         {itemsDisponibles.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            Todavía no hay ítems en la biblioteca —{' '}
-            <Link href="/admin/items" className="underline">
-              cargá algunos primero
+            Todavía no hay otros productos en el catálogo —{' '}
+            <Link href="/admin/productos/nuevo" className="underline">
+              cargá alguno primero
             </Link>
             .
           </p>

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { resolverProductosBloque } from '@/components/public/productos-bloque'
+import { resolverCatalogoBloque } from '@/components/public/catalogo-bloque'
 import { generarSlug, esSlugValido } from '@/lib/slugs'
 import { SLUGS_RESERVADOS } from '@/lib/paginas'
 import {
@@ -69,6 +70,9 @@ export async function previewSecciones(
     if (resuelta.tipo === 'productos' || resuelta.tipo === 'mas_vendidos') {
       const productosResueltos = await resolverProductosBloque(resuelta.config)
       resultados.push({ ...resuelta, productosResueltos })
+    } else if (resuelta.tipo === 'catalogo') {
+      const catalogoResuelto = await resolverCatalogoBloque()
+      resultados.push({ ...resuelta, catalogoResuelto })
     } else {
       resultados.push(resuelta)
     }

@@ -11,15 +11,31 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { formatARS } from '@/lib/format'
-import type { Producto, ProductoTipo } from '@/types/db'
-import { actualizarProducto, borrarProducto } from '@/app/admin/productos/actions'
+import type { ProductoConCategorias, ProductoTipo } from '@/types/db'
+import { actualizarProducto, borrarProducto, toggleDestacado } from '@/app/admin/productos/actions'
 
-const TIPO_LABEL: Record<ProductoTipo, string> = { caja: 'Caja', kit: 'Kit' }
+const TIPO_LABEL: Record<ProductoTipo, string> = {
+  caja: 'Caja',
+  kit: 'Kit',
+  libro: 'Libro',
+  accesorio: 'Accesorio',
+}
 
-export function ProductosManager({ productosIniciales }: { productosIniciales: Producto[] }) {
-  const [items, setItems] = useState<Producto[]>(productosIniciales)
+// "Destacados" tiene su propia columna (el toggle) — en la columna de
+// categorías solo van las temáticas reales.
+function nombresCategorias(p: ProductoConCategorias): string {
+  const nombres = p.categorias.filter((c) => c.slug !== 'destacados').map((c) => c.nombre)
+  return nombres.length > 0 ? nombres.join(', ') : '—'
+}
 
-  function patch(id: string, cambio: Partial<Producto>) {
+function esDestacado(p: ProductoConCategorias): boolean {
+  return p.categorias.some((c) => c.slug === 'destacados')
+}
+
+export function ProductosManager({ productosIniciales }: { productosIniciales: ProductoConCategorias[] }) {
+  const [items, setItems] = useState<ProductoConCategorias[]>(productosIniciales)
+
+  function patch(id: string, cambio: Partial<ProductoConCategorias>) {
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...cambio } : p)))
   }
 
@@ -66,8 +82,8 @@ function FilaProducto({
   onPatch,
   onRemove,
 }: {
-  producto: Producto
-  onPatch: (id: string, patch: Partial<Producto>) => void
+  producto: ProductoConCategorias
+  onPatch: (id: string, patch: Partial<ProductoConCategorias>) => void
   onRemove: (id: string) => void
 }) {
   const [precio, setPrecio] = useState(String(p.precio))
@@ -91,13 +107,28 @@ function FilaProducto({
     }
   }
 
-  async function toggle(field: 'activo' | 'destacado', val: boolean) {
+  async function toggleActivo(val: boolean) {
     setTrabajando(true)
-    const patchLocal = field === 'activo' ? { activo: val } : { destacado: val }
-    const r = await actualizarProducto(p.id, patchLocal)
+    const r = await actualizarProducto(p.id, { activo: val })
     setTrabajando(false)
-    if (r.ok) onPatch(p.id, patchLocal)
+    if (r.ok) onPatch(p.id, { activo: val })
     else toast.error(r.error)
+  }
+
+  // Destacar = pertenecer a la categoría "Destacados" (Fase 6i).
+  async function marcarDestacado(val: boolean) {
+    setTrabajando(true)
+    const r = await toggleDestacado(p.id, val)
+    setTrabajando(false)
+    if (r.ok) {
+      onPatch(p.id, {
+        categorias: val
+          ? [...p.categorias, r.categoria]
+          : p.categorias.filter((c) => c.slug !== 'destacados'),
+      })
+    } else {
+      toast.error(r.error)
+    }
   }
 
   async function borrar() {
@@ -135,7 +166,7 @@ function FilaProducto({
           {TIPO_LABEL[p.tipo]}
         </Badge>
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">{p.categoria ?? '—'}</TableCell>
+      <TableCell className="text-sm text-muted-foreground">{nombresCategorias(p)}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <Input
@@ -161,7 +192,7 @@ function FilaProducto({
           type="checkbox"
           checked={p.activo}
           disabled={trabajando}
-          onChange={(e) => toggle('activo', e.target.checked)}
+          onChange={(e) => toggleActivo(e.target.checked)}
           className="size-4"
           aria-label="Visible"
         />
@@ -169,9 +200,9 @@ function FilaProducto({
       <TableCell>
         <input
           type="checkbox"
-          checked={p.destacado}
+          checked={esDestacado(p)}
           disabled={trabajando}
-          onChange={(e) => toggle('destacado', e.target.checked)}
+          onChange={(e) => marcarDestacado(e.target.checked)}
           className="size-4"
           aria-label="Destacado"
         />
@@ -214,7 +245,7 @@ function DetalleProductoDialog({
   open,
   onOpenChange,
 }: {
-  producto: Producto
+  producto: ProductoConCategorias
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -233,11 +264,11 @@ function DetalleProductoDialog({
         )}
         <dl className="space-y-1.5 text-sm">
           <FilaDetalle label="Tipo" valor={TIPO_LABEL[p.tipo]} />
-          <FilaDetalle label="Categoría" valor={p.categoria ?? '—'} />
+          <FilaDetalle label="Categorías" valor={nombresCategorias(p)} />
           <FilaDetalle label="Precio" valor={formatARS(p.precio)} />
           <FilaDetalle label="Stock" valor={String(p.stock)} />
           <FilaDetalle label="Visible" valor={p.activo ? 'Sí' : 'No'} />
-          <FilaDetalle label="Destacado" valor={p.destacado ? 'Sí' : 'No'} />
+          <FilaDetalle label="Destacado" valor={esDestacado(p) ? 'Sí' : 'No'} />
           {p.descripcion && <FilaDetalle label="Descripción" valor={p.descripcion} />}
         </dl>
       </DialogContent>

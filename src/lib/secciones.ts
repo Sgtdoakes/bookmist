@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/public'
 import { storeConfig } from '@/lib/store-config'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
-import type { PaginaSeccionRow, Producto } from '@/types/db'
+import type { Categoria, PaginaSeccionRow, Producto, ProductoConCategorias } from '@/types/db'
 
 // Secciones editables de las páginas (Fase 5b, extendido en 6c). Los 7 tipos
 // originales son la "página furniture" fija del diseño de Dani (uno por
@@ -23,11 +23,12 @@ export type SeccionTipo =
   | 'productos'
   | 'banner'
   | 'libre'
+  | 'catalogo'
 
 // Tipos "furniture" fijos (uno por página, definidos por el diseño original
 // de Dani) vs. bloques libres (repetibles, con estilo editable) — el
 // builder del admin solo ofrece agregar estos últimos.
-export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre']
+export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre', 'catalogo']
 
 export type HeroConfig = {
   eyebrow: string
@@ -85,6 +86,16 @@ export type ProductosConfig = {
   estilo: EstiloBloque
 }
 
+// Catálogo interactivo (/productos): buscador + orden + rango de precios +
+// navegación por categoría, todo client-side sobre el catálogo completo.
+// La config solo define el encabezado y el estilo — los filtros son parte
+// de la experiencia del bloque, no algo que se configura.
+export type CatalogoConfig = {
+  eyebrow: string
+  titulo: string
+  estilo: EstiloBloque
+}
+
 export type BannerConfig = {
   eyebrow: string
   titulo: string
@@ -119,6 +130,7 @@ export type SeccionConfigMap = {
   productos: ProductosConfig
   banner: BannerConfig
   libre: LibreConfig
+  catalogo: CatalogoConfig
 }
 
 // Union discriminada: en un switch/if sobre `tipo`, TypeScript angosta
@@ -238,6 +250,11 @@ function defaults(): SeccionConfigMap {
       elementos: [{ id: 'elemento-inicial', tipo: 'titulo', texto: 'Título' }],
       estilo: {},
     },
+    catalogo: {
+      eyebrow: 'Nuestro catálogo',
+      titulo: 'Todos los productos',
+      estilo: {},
+    },
   }
 }
 
@@ -329,11 +346,14 @@ export type SeccionAdmin = {
 }
 
 // Lo que necesita el lienzo en vivo del admin para renderizar un bloque:
-// igual a `SeccionResuelta`, pero con los productos ya resueltos (no la
-// fuente/ids) para 'productos' y 'mas_vendidos' — los únicos dos tipos que
-// necesitan datos del servidor para saber qué mostrar. El resto de los
-// tipos son puros: su config YA ES su contenido.
-export type SeccionPreview = SeccionResuelta & { productosResueltos?: Producto[] }
+// igual a `SeccionResuelta`, pero con los datos del servidor ya resueltos —
+// productos para 'productos'/'mas_vendidos', y catálogo completo +
+// categorías para 'catalogo'. El resto de los tipos son puros: su config
+// YA ES su contenido.
+export type SeccionPreview = SeccionResuelta & {
+  productosResueltos?: Producto[]
+  catalogoResuelto?: { productos: ProductoConCategorias[]; categorias: Categoria[] }
+}
 
 // Todas las secciones (incl. inactivas) para el builder del admin. A
 // diferencia de getSeccionesPagina, esto lo llaman Server Components/Actions

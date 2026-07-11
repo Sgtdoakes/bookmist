@@ -1,5 +1,5 @@
 import { getSeccionesAdmin, previewSecciones, getPaginasAdmin } from './actions'
-import { getProductosActivos } from '@/lib/productos'
+import { getProductosActivos, getCategorias } from '@/lib/productos'
 import { getMarcaConfig, getNavLinks } from '@/lib/configuracion'
 import { PageBuilder } from '@/components/admin/page-builder'
 
@@ -9,9 +9,10 @@ type Props = { searchParams: Promise<{ pagina?: string }> }
 
 export default async function AdminPaginaPage({ searchParams }: Props) {
   const { pagina: paginaParam } = await searchParams
-  const [paginas, productosDisponibles, marca, navLinks] = await Promise.all([
+  const [paginas, productosDisponibles, categoriasDisponibles, marca, navLinks] = await Promise.all([
     getPaginasAdmin(),
     getProductosActivos(),
+    getCategorias(),
     getMarcaConfig(),
     getNavLinks(),
   ])
@@ -29,6 +30,7 @@ export default async function AdminPaginaPage({ searchParams }: Props) {
         inicial={secciones}
         previewInicial={previewInicial}
         productosDisponibles={productosDisponibles}
+        categoriasDisponibles={categoriasDisponibles}
         marca={marca}
         navLinks={navLinks}
       />

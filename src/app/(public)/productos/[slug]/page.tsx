@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BookOpen, Gift } from 'lucide-react'
-import { getProductoConItems, getProductosPorCategoria } from '@/lib/productos'
+import { getProductoConItems, getRelacionados } from '@/lib/productos'
+import type { ProductoTipo } from '@/types/db'
 import { ProductGallery } from '@/components/public/product-gallery'
 import { AddToCart } from '@/components/public/add-to-cart'
 import { ProductCard } from '@/components/public/product-card'
@@ -23,16 +24,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+const TIPO_LABEL: Record<ProductoTipo, string> = {
+  caja: 'Caja literaria',
+  kit: 'Kit',
+  libro: 'Libro',
+  accesorio: 'Accesorio',
+}
+
 export default async function ProductoDetallePage({ params }: Props) {
   const { slug } = await params
   const producto = await getProductoConItems(slug)
   if (!producto) notFound()
 
   const contenido = [...producto.producto_items].sort((a, b) => a.orden - b.orden)
-
-  const relacionados = producto.categoria
-    ? (await getProductosPorCategoria(producto.categoria, 5)).filter((p) => p.id !== producto.id).slice(0, 4)
-    : []
+  const relacionados = await getRelacionados(producto, 4)
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
@@ -44,9 +49,7 @@ export default async function ProductoDetallePage({ params }: Props) {
         />
 
         <div>
-          <p className="font-script mb-1 text-xl text-muted">
-            {producto.tipo === 'caja' ? 'Caja literaria' : 'Kit'}
-          </p>
+          <p className="font-script mb-1 text-xl text-muted">{TIPO_LABEL[producto.tipo]}</p>
           <h1 className="mb-3 font-heading text-3xl font-semibold text-foreground md:text-4xl">
             {producto.nombre}
           </h1>

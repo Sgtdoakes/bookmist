@@ -3,8 +3,7 @@ import { notFound } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductoForm } from '@/components/admin/producto-form'
-import { getProductosParaContenido } from '@/app/admin/productos/actions'
-import { getCategoriasDistintas } from '@/lib/productos'
+import { getCategoriasAdmin, getProductosParaContenido } from '@/app/admin/productos/actions'
 import type { ProductoConItems } from '@/types/db'
 
 export const metadata = { title: 'Editar producto' }
@@ -16,7 +15,7 @@ async function getProductoAdmin(id: string): Promise<ProductoConItems | null> {
       .from('productos')
       // Doble hint de FK: ver getProductoConItems() en src/lib/productos.ts
       .select(
-        '*, producto_items!producto_items_producto_id_fkey(*, item:productos!producto_items_item_id_fkey(*))',
+        '*, producto_items!producto_items_producto_id_fkey(*, item:productos!producto_items_item_id_fkey(*)), categorias(*)',
       )
       .eq('id', id)
       .maybeSingle()
@@ -31,10 +30,10 @@ type Props = { params: Promise<{ id: string }> }
 
 export default async function EditarProductoPage({ params }: Props) {
   const { id } = await params
-  const [producto, itemsDisponibles, categoriasExistentes] = await Promise.all([
+  const [producto, itemsDisponibles, categoriasDisponibles] = await Promise.all([
     getProductoAdmin(id),
     getProductosParaContenido(id),
-    getCategoriasDistintas(),
+    getCategoriasAdmin(),
   ])
   if (!producto) notFound()
 
@@ -45,11 +44,11 @@ export default async function EditarProductoPage({ params }: Props) {
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        Volver a cajas y kits
+        Volver al catálogo
       </Link>
       <h1 className="text-2xl font-bold">Editar producto</h1>
       <div className="mt-6">
-        <ProductoForm producto={producto} itemsDisponibles={itemsDisponibles} categoriasExistentes={categoriasExistentes} />
+        <ProductoForm producto={producto} itemsDisponibles={itemsDisponibles} categoriasDisponibles={categoriasDisponibles} />
       </div>
     </div>
   )
