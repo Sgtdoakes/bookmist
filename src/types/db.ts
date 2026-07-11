@@ -14,7 +14,6 @@ export type Database = {
           slug: string
           nombre: string
           tipo: ProductoTipo
-          categoria: string | null
           // Solo aplica a productos tipo "libro" (informativo, no hay tipo
           // separado desde la fusión con la biblioteca — Fase 6h).
           autor: string | null
@@ -23,7 +22,6 @@ export type Database = {
           stock: number
           imagen_principal: string | null
           imagenes_galeria: string[]
-          destacado: boolean
           activo: boolean
           orden: number
           created_at: string
@@ -34,14 +32,12 @@ export type Database = {
           slug: string
           nombre: string
           tipo: ProductoTipo
-          categoria?: string | null
           autor?: string | null
           descripcion?: string | null
           precio?: number
           stock?: number
           imagen_principal?: string | null
           imagenes_galeria?: string[]
-          destacado?: boolean
           activo?: boolean
           orden?: number
           created_at?: string
@@ -297,12 +293,7 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: {
-      categorias_distintas: {
-        Args: Record<string, never>
-        Returns: { categoria: string }[]
-      }
-    }
+    Functions: Record<string, never>
     Enums: {
       producto_tipo: ProductoTipo
       metodo_pago: MetodoPago
