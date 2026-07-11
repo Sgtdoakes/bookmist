@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Menu, X } from 'lucide-react'
 import type { MarcaConfig, NavLinkPublico } from '@/lib/configuracion'
 import { BookDoodle } from '@/components/public/decorative'
@@ -14,9 +15,15 @@ export function SiteHeader({ marca, navLinks }: { marca: MarcaConfig; navLinks: 
     <header className="sticky top-0 z-40 w-full border-b border-foreground/12 bg-background">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-10">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground">
-            <BookDoodle className="h-5 w-5 text-background" />
-          </span>
+          {marca.logoUrl ? (
+            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
+              <Image src={marca.logoUrl} alt={marca.nombre} fill sizes="40px" className="object-cover" />
+            </span>
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground">
+              <BookDoodle className="h-5 w-5 text-background" />
+            </span>
+          )}
           <span className="leading-none">
             <span className="block font-heading text-xl font-semibold text-foreground md:text-2xl">
               {marca.nombre}

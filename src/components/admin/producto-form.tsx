@@ -17,11 +17,11 @@ import {
   guardarContenidoProducto,
   type ContenidoInput,
 } from '@/app/admin/productos/actions'
-import type { ItemCatalogo, ProductoConItems, ProductoTipo } from '@/types/db'
+import type { Producto, ProductoConItems, ProductoTipo } from '@/types/db'
 
 type Props = {
   producto?: ProductoConItems
-  itemsDisponibles: ItemCatalogo[]
+  itemsDisponibles: Producto[]
   categoriasExistentes?: string[]
 }
 

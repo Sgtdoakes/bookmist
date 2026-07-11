@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Package, Library, ShoppingBag, Truck, AlertTriangle, LayoutTemplate, Settings } from 'lucide-react'
+import { Package, ShoppingBag, Truck, AlertTriangle, LayoutTemplate, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function AdminHome() {
@@ -12,14 +12,8 @@ export default function AdminHome() {
         <Accion
           href="/admin/productos"
           icon={<Package className="h-8 w-8" />}
-          titulo="Cajas y kits"
-          desc="Editá precios y stock, o cargá un producto nuevo"
-        />
-        <Accion
-          href="/admin/items"
-          icon={<Library className="h-8 w-8" />}
-          titulo="Biblioteca de libros y accesorios"
-          desc="Los ítems reusables que arman el contenido de cada caja/kit"
+          titulo="Catálogo de productos"
+          desc="Editá precios y stock, cargá uno nuevo, o armá el contenido de una caja/kit"
         />
         <Accion
           href="/admin/pedidos"

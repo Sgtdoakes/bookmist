@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { ProductoForm } from '@/components/admin/producto-form'
-import { getItemsCatalogoAdmin } from '@/app/admin/productos/actions'
+import { getProductosParaContenido } from '@/app/admin/productos/actions'
 import { getCategoriasDistintas } from '@/lib/productos'
 
 export const metadata = { title: 'Nuevo producto' }
 
 export default async function NuevoProductoPage() {
   const [itemsDisponibles, categoriasExistentes] = await Promise.all([
-    getItemsCatalogoAdmin(),
+    getProductosParaContenido(),
     getCategoriasDistintas(),
   ])
 

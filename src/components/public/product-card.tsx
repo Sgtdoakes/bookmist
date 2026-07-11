@@ -7,8 +7,8 @@ import type { Producto } from '@/types/db'
 
 export function ProductCard({ producto }: { producto: Producto }) {
   return (
-    <div className="h-full w-full overflow-hidden rounded-2xl bg-card shadow-md">
-      <Link href={`/productos/${producto.slug}`} className="relative block aspect-[3/4] w-full">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-card shadow-md">
+      <Link href={`/productos/${producto.slug}`} className="relative block aspect-[3/4] w-full shrink-0">
         {producto.imagen_principal ? (
           <Image
             src={producto.imagen_principal}
@@ -21,14 +21,16 @@ export function ProductCard({ producto }: { producto: Producto }) {
           <ImgPlaceholder label="Imagen producto" className="aspect-[3/4] w-full" />
         )}
       </Link>
-      <div className="p-5">
+      <div className="flex flex-1 flex-col p-5">
         <Link href={`/productos/${producto.slug}`}>
-          <h3 className="mb-1.5 text-sm font-semibold leading-snug text-card-foreground hover:underline">
+          <h3 className="mb-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-card-foreground hover:underline">
             {producto.nombre}
           </h3>
         </Link>
         <p className="mb-4 font-heading text-xl font-semibold text-primary">{formatARS(producto.precio)}</p>
-        <AddToCart producto={producto} />
+        <div className="mt-auto">
+          <AddToCart producto={producto} />
+        </div>
       </div>
     </div>
   )

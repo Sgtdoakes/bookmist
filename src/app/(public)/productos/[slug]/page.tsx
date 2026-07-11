@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BookOpen, Gift } from 'lucide-react'
-import { getProductoConItems } from '@/lib/productos'
+import { getProductoConItems, getProductosPorCategoria } from '@/lib/productos'
 import { ProductGallery } from '@/components/public/product-gallery'
 import { AddToCart } from '@/components/public/add-to-cart'
+import { ProductCard } from '@/components/public/product-card'
 import { SeccionesDePagina } from '@/components/public/secciones-renderer'
 import { formatARS } from '@/lib/format'
 
@@ -28,6 +29,10 @@ export default async function ProductoDetallePage({ params }: Props) {
   if (!producto) notFound()
 
   const contenido = [...producto.producto_items].sort((a, b) => a.orden - b.orden)
+
+  const relacionados = producto.categoria
+    ? (await getProductosPorCategoria(producto.categoria, 5)).filter((p) => p.id !== producto.id).slice(0, 4)
+    : []
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
@@ -61,15 +66,15 @@ export default async function ProductoDetallePage({ params }: Props) {
               <ul className="space-y-2">
                 {contenido.map((pi) => (
                   <li key={pi.id} className="flex items-start gap-2 text-sm text-foreground/85">
-                    {pi.items_catalogo.tipo === 'libro' ? (
+                    {pi.item.autor ? (
                       <BookOpen size={16} className="mt-0.5 shrink-0 text-muted" />
                     ) : (
                       <Gift size={16} className="mt-0.5 shrink-0 text-muted" />
                     )}
                     <span>
                       {pi.cantidad > 1 ? `${pi.cantidad}× ` : ''}
-                      {pi.items_catalogo.nombre}
-                      {pi.items_catalogo.autor ? ` — ${pi.items_catalogo.autor}` : ''}
+                      {pi.item.nombre}
+                      {pi.item.autor ? ` — ${pi.item.autor}` : ''}
                     </span>
                   </li>
                 ))}
@@ -80,6 +85,17 @@ export default async function ProductoDetallePage({ params }: Props) {
           <AddToCart producto={producto} showQuantity />
         </div>
       </div>
+
+      {relacionados.length > 0 && (
+        <div className="mt-16">
+          <h2 className="mb-6 font-heading text-2xl font-semibold text-foreground">Productos relacionados</h2>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4">
+            {relacionados.map((p) => (
+              <ProductCard key={p.id} producto={p} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-16">
         <SeccionesDePagina pagina="producto_detalle" />

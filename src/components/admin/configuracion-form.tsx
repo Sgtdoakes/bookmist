@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useForm, Controller, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -7,6 +8,7 @@ import { Loader2, Save } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { ImageUploader } from '@/components/admin/image-uploader'
 import { marcaFormSchema, type MarcaFormInput, type MarcaFormOutput } from '@/lib/validations'
 import type { MarcaConfig } from '@/lib/configuracion'
 import { guardarMarcaConfig } from '@/app/admin/configuracion/actions'
@@ -42,6 +44,7 @@ function aLista(valor: string): string[] {
 }
 
 export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig }) {
+  const [logoUrl, setLogoUrl] = useState<string | null>(marcaInicial.logoUrl)
   const {
     register,
     control,
@@ -55,6 +58,7 @@ export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig 
   async function onSubmit(datos: MarcaFormOutput) {
     const marca: MarcaConfig = {
       nombre: datos.nombre,
+      logoUrl,
       taglineHeader: datos.taglineHeader,
       taglineFooter: datos.taglineFooter,
       copyright: datos.copyright,
@@ -78,6 +82,17 @@ export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig 
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 rounded-lg border p-5">
       <section className="space-y-4">
         <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Identidad</h2>
+        <div>
+          <Label>Logo (ícono al lado del nombre, header y footer)</Label>
+          <p className="mb-1 text-xs text-muted-foreground">Sin logo cargado, se usa el ícono decorativo actual.</p>
+          <ImageUploader
+            carpeta="secciones"
+            entidadId="marca-logo"
+            portada={logoUrl}
+            onPortadaChange={setLogoUrl}
+            soloPortada
+          />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="marca-nombre">Nombre de la marca</Label>
@@ -151,7 +166,7 @@ export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig 
         </div>
       </section>
 
-      <Button type="submit" disabled={!isDirty || isSubmitting}>
+      <Button type="submit" disabled={(!isDirty && logoUrl === marcaInicial.logoUrl) || isSubmitting}>
         {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         Guardar
       </Button>

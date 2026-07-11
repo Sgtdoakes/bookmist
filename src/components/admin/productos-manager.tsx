@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Loader2, Pencil, Trash2, ZoomIn } from 'lucide-react'
+import { Eye, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { formatARS } from '@/lib/format'
 import type { Producto, ProductoTipo } from '@/types/db'
 import { actualizarProducto, borrarProducto } from '@/app/admin/productos/actions'
 
@@ -119,28 +120,14 @@ function FilaProducto({
           type="button"
           onClick={() => p.imagen_principal && setZoom(true)}
           disabled={!p.imagen_principal}
-          className="group relative aspect-[3/4] h-14 shrink-0 overflow-hidden rounded-md border bg-muted/30 disabled:cursor-default"
-          aria-label={p.imagen_principal ? `Ver imagen de ${p.nombre} en grande` : undefined}
+          className="relative aspect-[3/4] h-14 shrink-0 overflow-hidden rounded-md border bg-muted/30 disabled:cursor-default"
+          aria-label={p.imagen_principal ? `Ver detalle de ${p.nombre}` : undefined}
         >
           {p.imagen_principal && (
-            <>
-              <Image src={p.imagen_principal} alt="" fill sizes="56px" className="object-cover" />
-              <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/30 group-hover:opacity-100">
-                <ZoomIn className="h-4 w-4 text-white" />
-              </span>
-            </>
+            <Image src={p.imagen_principal} alt="" fill sizes="56px" className="object-cover" />
           )}
         </button>
-        {p.imagen_principal && (
-          <Dialog open={zoom} onOpenChange={setZoom}>
-            <DialogContent className="sm:max-w-lg" showCloseButton>
-              <DialogTitle>{p.nombre}</DialogTitle>
-              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted/30">
-                <Image src={p.imagen_principal} alt={p.nombre} fill sizes="512px" className="object-contain" />
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        <DetalleProductoDialog producto={p} open={zoom} onOpenChange={setZoom} />
       </TableCell>
       <TableCell>
         <p className="font-medium">{p.nombre}</p>
@@ -196,6 +183,9 @@ function FilaProducto({
               {guardando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Guardar'}
             </Button>
           )}
+          <Button type="button" variant="outline" size="icon-sm" aria-label="Ver detalle" onClick={() => setZoom(true)}>
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
           <Link href={`/admin/productos/${p.id}`}>
             <Button type="button" variant="outline" size="icon-sm" aria-label="Editar producto">
               <Pencil className="h-3.5 w-3.5" />
@@ -214,5 +204,52 @@ function FilaProducto({
         </div>
       </TableCell>
     </TableRow>
+  )
+}
+
+// Detalle completo de un producto en un modal — mismo patrón que el ojito de
+// Martín Libros: ver todo sin salir de la lista ni entrar a la ficha de edición.
+function DetalleProductoDialog({
+  producto: p,
+  open,
+  onOpenChange,
+}: {
+  producto: Producto
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg" showCloseButton>
+        <DialogTitle>{p.nombre}</DialogTitle>
+        {p.imagen_principal ? (
+          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted/30">
+            <Image src={p.imagen_principal} alt={p.nombre} fill sizes="512px" className="object-contain" />
+          </div>
+        ) : (
+          <div className="flex aspect-[3/4] w-full items-center justify-center rounded-lg bg-muted/30 text-sm text-muted-foreground">
+            Sin imagen
+          </div>
+        )}
+        <dl className="space-y-1.5 text-sm">
+          <FilaDetalle label="Tipo" valor={TIPO_LABEL[p.tipo]} />
+          <FilaDetalle label="Categoría" valor={p.categoria ?? '—'} />
+          <FilaDetalle label="Precio" valor={formatARS(p.precio)} />
+          <FilaDetalle label="Stock" valor={String(p.stock)} />
+          <FilaDetalle label="Visible" valor={p.activo ? 'Sí' : 'No'} />
+          <FilaDetalle label="Destacado" valor={p.destacado ? 'Sí' : 'No'} />
+          {p.descripcion && <FilaDetalle label="Descripción" valor={p.descripcion} />}
+        </dl>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function FilaDetalle({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">{valor}</dd>
+    </div>
   )
 }

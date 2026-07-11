@@ -2,7 +2,6 @@
 // Escritos a mano para que coincidan con las migraciones en /supabase/migrations.
 
 export type ProductoTipo = 'caja' | 'kit'
-export type ItemTipo = 'libro' | 'accesorio'
 export type MetodoPago = 'transferencia' | 'efectivo' | 'mercadopago' | 'deposito'
 export type EstadoPedido = 'pendiente' | 'pagado' | 'cancelado'
 
@@ -16,6 +15,9 @@ export type Database = {
           nombre: string
           tipo: ProductoTipo
           categoria: string | null
+          // Solo aplica a productos tipo "libro" (informativo, no hay tipo
+          // separado desde la fusión con la biblioteca — Fase 6h).
+          autor: string | null
           descripcion: string | null
           precio: number
           stock: number
@@ -33,6 +35,7 @@ export type Database = {
           nombre: string
           tipo: ProductoTipo
           categoria?: string | null
+          autor?: string | null
           descripcion?: string | null
           precio?: number
           stock?: number
@@ -45,38 +48,6 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['productos']['Insert']>
-        Relationships: []
-      }
-      items_catalogo: {
-        Row: {
-          id: string
-          tipo: ItemTipo
-          nombre: string
-          autor: string | null
-          descripcion: string | null
-          imagen: string | null
-          imagenes_galeria: string[]
-          precio: number | null
-          stock: number | null
-          activo: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          tipo: ItemTipo
-          nombre: string
-          autor?: string | null
-          descripcion?: string | null
-          imagen?: string | null
-          imagenes_galeria?: string[]
-          precio?: number | null
-          stock?: number | null
-          activo?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: Partial<Database['public']['Tables']['items_catalogo']['Insert']>
         Relationships: []
       }
       producto_items: {
@@ -105,7 +76,7 @@ export type Database = {
           {
             foreignKeyName: 'producto_items_item_id_fkey'
             columns: ['item_id']
-            referencedRelation: 'items_catalogo'
+            referencedRelation: 'productos'
             referencedColumns: ['id']
           },
         ]
@@ -289,7 +260,6 @@ export type Database = {
     }
     Enums: {
       producto_tipo: ProductoTipo
-      item_tipo: ItemTipo
       metodo_pago: MetodoPago
       estado_pedido: EstadoPedido
     }
@@ -301,12 +271,13 @@ export type Database = {
 export type Producto = Database['public']['Tables']['productos']['Row']
 export type ProductoInsert = Database['public']['Tables']['productos']['Insert']
 export type ProductoUpdate = Database['public']['Tables']['productos']['Update']
-export type ItemCatalogo = Database['public']['Tables']['items_catalogo']['Row']
 export type ProductoItem = Database['public']['Tables']['producto_items']['Row']
 
-// Producto con su contenido curado resuelto (para la página de detalle).
+// Producto con su contenido curado resuelto (para la página de detalle) —
+// "qué incluye" ahora apunta a otros productos, no a una biblioteca aparte
+// (Fase 6h: fusión de items_catalogo en productos).
 export type ProductoConItems = Producto & {
-  producto_items: (ProductoItem & { items_catalogo: ItemCatalogo })[]
+  producto_items: (ProductoItem & { item: Producto })[]
 }
 
 export type Order = Database['public']['Tables']['orders']['Row']

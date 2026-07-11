@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { esSlugValido } from '@/lib/slugs'
-import type { ProductoInsert, ProductoUpdate, ItemCatalogo } from '@/types/db'
+import type { Producto, ProductoInsert, ProductoUpdate } from '@/types/db'
 
 type Ok = { ok: true }
 type OkId = { ok: true; id: string }
@@ -74,10 +74,15 @@ export async function borrarProducto(id: string): Promise<Ok | Err> {
   return { ok: true }
 }
 
-export async function getItemsCatalogoAdmin(): Promise<ItemCatalogo[]> {
+// Productos elegibles como "ingrediente" de otro (Qué incluye) — se excluye
+// el propio producto que se está editando para que un kit no pueda
+// contenerse a sí mismo.
+export async function getProductosParaContenido(excludeId?: string): Promise<Producto[]> {
   const supabase = await clienteAutenticado()
   if (!supabase) return []
-  const { data, error } = await supabase.from('items_catalogo').select('*').order('nombre', { ascending: true })
+  let query = supabase.from('productos').select('*').order('nombre', { ascending: true })
+  if (excludeId) query = query.neq('id', excludeId)
+  const { data, error } = await query
   if (error) return []
   return data ?? []
 }

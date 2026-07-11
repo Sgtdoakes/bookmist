@@ -74,7 +74,7 @@ export async function getProductoConItems(slug: string): Promise<ProductoConItem
     const supabase = createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*, producto_items(*, items_catalogo(*))')
+      .select('*, producto_items(*, item:productos!producto_items_item_id_fkey(*))')
       .eq('slug', slug)
       .eq('activo', true)
       .order('orden', { referencedTable: 'producto_items', ascending: true })

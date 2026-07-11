@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductoForm } from '@/components/admin/producto-form'
-import { getItemsCatalogoAdmin } from '@/app/admin/productos/actions'
+import { getProductosParaContenido } from '@/app/admin/productos/actions'
 import { getCategoriasDistintas } from '@/lib/productos'
 import type { ProductoConItems } from '@/types/db'
 
@@ -14,7 +14,7 @@ async function getProductoAdmin(id: string): Promise<ProductoConItems | null> {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*, producto_items(*, items_catalogo(*))')
+      .select('*, producto_items(*, item:productos!producto_items_item_id_fkey(*))')
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
@@ -30,7 +30,7 @@ export default async function EditarProductoPage({ params }: Props) {
   const { id } = await params
   const [producto, itemsDisponibles, categoriasExistentes] = await Promise.all([
     getProductoAdmin(id),
-    getItemsCatalogoAdmin(),
+    getProductosParaContenido(id),
     getCategoriasDistintas(),
   ])
   if (!producto) notFound()

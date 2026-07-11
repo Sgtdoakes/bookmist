@@ -17,6 +17,8 @@ function configured() {
 
 export type MarcaConfig = {
   nombre: string
+  // null = usa el ícono decorativo fijo (BookDoodle) en vez de una imagen real.
+  logoUrl: string | null
   taglineHeader: string
   taglineFooter: string
   copyright: string
@@ -35,6 +37,7 @@ export type MarcaConfig = {
 
 const CLAVES_MARCA = [
   'marca_nombre',
+  'marca_logo_url',
   'marca_tagline_header',
   'marca_tagline_footer',
   'marca_copyright',
@@ -56,6 +59,7 @@ const DEFAULTS_METODOS_ENVIO = ['Andreani']
 function defaults(): MarcaConfig {
   return {
     nombre: storeConfig.nombre,
+    logoUrl: null,
     taglineHeader: 'Editorial',
     taglineFooter: 'Historias que se sienten en las manos',
     copyright: 'Hecho con calma y buena tinta.',
@@ -92,6 +96,7 @@ export async function getMarcaConfig(): Promise<MarcaConfig> {
     const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
     return {
       nombre: map.get('marca_nombre')?.trim() || base.nombre,
+      logoUrl: map.get('marca_logo_url')?.trim() || null,
       taglineHeader: map.get('marca_tagline_header')?.trim() || base.taglineHeader,
       taglineFooter: map.get('marca_tagline_footer')?.trim() || base.taglineFooter,
       copyright: map.get('marca_copyright')?.trim() || base.copyright,

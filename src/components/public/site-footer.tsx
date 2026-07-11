@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { CreditCard, Mail, Package } from 'lucide-react'
 import type { MarcaConfig, NavLinkPublico } from '@/lib/configuracion'
 import { Blob, BookDoodle } from '@/components/public/decorative'
@@ -20,9 +21,15 @@ export function SiteFooter({ marca, navLinks }: { marca: MarcaConfig; navLinks: 
       <div className="relative mx-auto max-w-7xl px-6 md:px-10">
         {/* Marca */}
         <div className="mb-12 flex items-center gap-2.5 md:mb-16">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
-            <BookDoodle className="h-5 w-5 text-foreground" />
-          </span>
+          {marca.logoUrl ? (
+            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
+              <Image src={marca.logoUrl} alt={marca.nombre} fill sizes="40px" className="object-cover" />
+            </span>
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+              <BookDoodle className="h-5 w-5 text-foreground" />
+            </span>
+          )}
           <span className="leading-none">
             <span className="block font-heading text-xl font-semibold text-foreground">{marca.nombre}</span>
             <span className="font-script -mt-0.5 block text-xs text-secondary">{marca.taglineFooter}</span>
