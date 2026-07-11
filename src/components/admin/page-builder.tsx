@@ -25,6 +25,9 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { SiteHeader } from '@/components/public/site-header'
+import { SiteFooter } from '@/components/public/site-footer'
+import type { MarcaConfig, NavLinkPublico } from '@/lib/configuracion'
 import {
   DndContext,
   PointerSensor,
@@ -126,12 +129,16 @@ export function PageBuilder({
   inicial,
   previewInicial,
   productosDisponibles,
+  marca,
+  navLinks,
 }: {
   pagina: string
   paginas: PaginaRow[]
   inicial: SeccionAdmin[]
   previewInicial: SeccionPreview[]
   productosDisponibles: Producto[]
+  marca: MarcaConfig
+  navLinks: NavLinkPublico[]
 }) {
   const router = useRouter()
   const [bloques, setBloques] = useState<Bloque[]>(() => aBloques(inicial))
@@ -141,6 +148,10 @@ export function PageBuilder({
   const [guardando, setGuardando] = useState(false)
   const [creandoPagina, setCreandoPagina] = useState(false)
   const [vista, setVista] = useState<'desktop' | 'movil'>('desktop')
+  // Vista previa limpia: misma info del borrador (sin guardar), pero con el
+  // header/footer reales y sin las barras de edición flotantes — para ver
+  // exactamente cómo va a quedar publicado antes de tocar "Guardar".
+  const [previewLimpio, setPreviewLimpio] = useState(false)
   const paginaActual = paginas.find((p) => p.slug === pagina) ?? null
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -494,6 +505,19 @@ export function PageBuilder({
           </button>
         </div>
 
+        <Button
+          type="button"
+          size="sm"
+          variant={previewLimpio ? 'default' : 'outline'}
+          onClick={() => {
+            setPreviewLimpio((v) => !v)
+            setSelId(null)
+          }}
+        >
+          <Eye className="h-4 w-4" />
+          {previewLimpio ? 'Salir de vista previa' : 'Vista previa'}
+        </Button>
+
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="ghost" onClick={descartar} disabled={!dirty || guardando}>
             <RotateCcw className="h-4 w-4" />
@@ -507,7 +531,7 @@ export function PageBuilder({
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <Rail onAgregar={agregar} />
+        {!previewLimpio && <Rail onAgregar={agregar} />}
 
         <div className="flex-1 overflow-auto bg-muted/30 p-4 sm:p-6">
           <div
@@ -516,6 +540,7 @@ export function PageBuilder({
             }`}
           >
             <CartProvider>
+              {previewLimpio && <SiteHeader marca={marca} navLinks={navLinks} />}
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <div className="space-y-10 px-4 py-10">
                   {bloques.length === 0 && (
@@ -533,6 +558,7 @@ export function PageBuilder({
                         seleccionado={selId === b.id}
                         esPrimera={i === 0}
                         esUltima={i === bloques.length - 1}
+                        soloLectura={previewLimpio}
                         onSeleccionar={() => setSelId(b.id)}
                         onSubir={() => mover(i, -1)}
                         onBajar={() => mover(i, 1)}
@@ -546,11 +572,12 @@ export function PageBuilder({
                   </SortableContext>
                 </div>
               </DndContext>
+              {previewLimpio && <SiteFooter marca={marca} navLinks={navLinks} />}
             </CartProvider>
           </div>
         </div>
 
-        {selBloque && (
+        {!previewLimpio && selBloque && (
           <BuilderInspector
             key={selBloque.id}
             id={selBloque.id}
@@ -595,6 +622,7 @@ function BloqueCanvas({
   seleccionado,
   esPrimera,
   esUltima,
+  soloLectura = false,
   onSeleccionar,
   onSubir,
   onBajar,
@@ -610,6 +638,7 @@ function BloqueCanvas({
   seleccionado: boolean
   esPrimera: boolean
   esUltima: boolean
+  soloLectura?: boolean
   onSeleccionar: () => void
   onSubir: () => void
   onBajar: () => void
@@ -651,6 +680,13 @@ function BloqueCanvas({
     else if (seccion.tipo === 'banner') vacio = !seccion.config.titulo && !seccion.config.imagen
     else if (seccion.tipo === 'texto') vacio = !seccion.config.titulo && !seccion.config.texto
     contenido = vacio ? placeholder : <SeccionView s={seccion} />
+  }
+
+  if (soloLectura) {
+    // Bloques ocultos ("activo=false") tampoco se muestran en el sitio
+    // real — la vista previa limpia tiene que reflejar exactamente eso.
+    if (!bloque.activo) return null
+    return <section data-bloque-id={bloque.id}>{contenido}</section>
   }
 
   return (

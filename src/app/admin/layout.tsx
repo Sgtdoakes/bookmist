@@ -1,17 +1,19 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { BookOpen, LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import { cerrarSesion } from './actions'
 import { Button } from '@/components/ui/button'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // El proxy (src/proxy.ts) ya validó la sesión contra Supabase y redirige
+  // a /login si no hay usuario, o afuera de /login si sí lo hay — para
+  // cuando este layout renderiza, el pathname solo puede ser /admin/login
+  // sin sesión. Confiar en eso evita un segundo round-trip de auth.getUser()
+  // en cada navegación del panel.
+  const pathname = (await headers()).get('x-pathname')
 
   // Página de login: sin chrome del panel.
-  if (!user) {
+  if (pathname === '/admin/login') {
     return <div className="flex-1">{children}</div>
   }
 

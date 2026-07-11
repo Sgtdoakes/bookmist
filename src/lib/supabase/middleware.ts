@@ -5,7 +5,12 @@ import { getModoMantenimiento } from '@/lib/mantenimiento'
 
 // Refresca la sesión de Supabase en cada request y protege las rutas /admin.
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request })
+  // Reenviamos el pathname como header para que Server Components downstream
+  // (ej. admin/layout.tsx) puedan leerlo con headers() sin volver a llamar
+  // auth.getUser() — el proxy ya es la única fuente de verdad de la sesión.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', request.nextUrl.pathname)
+  let response = NextResponse.next({ request: { headers: requestHeaders } })
 
   // Si todavía no se configuró Supabase (.env.local), no intentamos validar
   // sesión: dejamos pasar para que la app levante igual en desarrollo.
@@ -28,7 +33,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           )
-          response = NextResponse.next({ request })
+          response = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           )

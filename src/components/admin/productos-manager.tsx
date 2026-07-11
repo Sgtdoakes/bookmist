@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Loader2, Pencil, Trash2, ZoomIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { Producto, ProductoTipo } from '@/types/db'
 import { actualizarProducto, borrarProducto } from '@/app/admin/productos/actions'
 
@@ -72,6 +73,7 @@ function FilaProducto({
   const [stock, setStock] = useState(String(p.stock))
   const [guardando, setGuardando] = useState(false)
   const [trabajando, setTrabajando] = useState(false)
+  const [zoom, setZoom] = useState(false)
 
   const cambiado = precio !== String(p.precio) || stock !== String(p.stock)
 
@@ -113,11 +115,32 @@ function FilaProducto({
   return (
     <TableRow>
       <TableCell>
-        <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted/30">
+        <button
+          type="button"
+          onClick={() => p.imagen_principal && setZoom(true)}
+          disabled={!p.imagen_principal}
+          className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted/30 disabled:cursor-default"
+          aria-label={p.imagen_principal ? `Ver imagen de ${p.nombre} en grande` : undefined}
+        >
           {p.imagen_principal && (
-            <Image src={p.imagen_principal} alt="" fill sizes="40px" className="object-cover" />
+            <>
+              <Image src={p.imagen_principal} alt="" fill sizes="56px" className="object-cover" />
+              <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/30 group-hover:opacity-100">
+                <ZoomIn className="h-4 w-4 text-white" />
+              </span>
+            </>
           )}
-        </div>
+        </button>
+        {p.imagen_principal && (
+          <Dialog open={zoom} onOpenChange={setZoom}>
+            <DialogContent className="sm:max-w-lg" showCloseButton>
+              <DialogTitle>{p.nombre}</DialogTitle>
+              <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-muted/30">
+                <Image src={p.imagen_principal} alt={p.nombre} fill sizes="512px" className="object-contain" />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </TableCell>
       <TableCell>
         <p className="font-medium">{p.nombre}</p>
