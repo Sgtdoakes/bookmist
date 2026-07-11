@@ -14,7 +14,10 @@ async function getProductoAdmin(id: string): Promise<ProductoConItems | null> {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*, producto_items(*, item:productos!producto_items_item_id_fkey(*))')
+      // Doble hint de FK: ver getProductoConItems() en src/lib/productos.ts
+      .select(
+        '*, producto_items!producto_items_producto_id_fkey(*, item:productos!producto_items_item_id_fkey(*))',
+      )
       .eq('id', id)
       .maybeSingle()
     if (error) throw error

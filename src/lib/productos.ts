@@ -74,7 +74,11 @@ export async function getProductoConItems(slug: string): Promise<ProductoConItem
     const supabase = createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*, producto_items(*, item:productos!producto_items_item_id_fkey(*))')
+      // Doble hint de FK: producto_items tiene DOS foreign keys hacia productos
+      // (producto_id e item_id), así que ambos embeds necesitan desambiguarse.
+      .select(
+        '*, producto_items!producto_items_producto_id_fkey(*, item:productos!producto_items_item_id_fkey(*))',
+      )
       .eq('slug', slug)
       .eq('activo', true)
       .order('orden', { referencedTable: 'producto_items', ascending: true })
