@@ -293,7 +293,14 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      // Marca un pedido como pagado y descuenta el stock en una sola
+      // transacción (migración 0022). Idempotente ante reintentos de MP.
+      confirmar_pago_pedido: {
+        Args: { p_order_id: string; p_payment_id: string }
+        Returns: boolean
+      }
+    }
     Enums: {
       producto_tipo: ProductoTipo
       metodo_pago: MetodoPago

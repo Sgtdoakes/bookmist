@@ -38,11 +38,19 @@ export async function cambiarEstadoPedido(id: string, estado: EstadoPedido): Pro
   if (error) return { ok: false, error: 'No se pudo actualizar el pedido.' }
 
   // Al confirmar el pago se descuenta el stock de verdad; si un pedido ya
-  // pagado se cancela, se repone (ver src/lib/pedidos.ts).
+  // pagado se cancela, se repone (ver src/lib/pedidos.ts). Si el ajuste
+  // falla, el estado ya cambió: se avisa para corregir el stock a mano en
+  // vez de fallar en silencio (lección del pedido BM-0003).
   if (estado === 'pagado') {
-    await ajustarStockPedido(supabase, id, -1)
+    const stockOk = await ajustarStockPedido(supabase, id, -1)
+    if (!stockOk) {
+      return { ok: false, error: 'El pedido quedó pagado, pero no se pudo descontar el stock — revisalo a mano.' }
+    }
   } else if (estado === 'cancelado' && actual.estado === 'pagado') {
-    await ajustarStockPedido(supabase, id, 1)
+    const stockOk = await ajustarStockPedido(supabase, id, 1)
+    if (!stockOk) {
+      return { ok: false, error: 'El pedido quedó cancelado, pero no se pudo reponer el stock — revisalo a mano.' }
+    }
   }
 
   revalidarPublico()
