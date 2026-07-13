@@ -519,6 +519,25 @@ function ContenidoProductos({
         </Campo>
       )}
 
+      <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
+        <Campo label="Texto del botón (vacío = sin botón)">
+          <Input
+            value={String(config.ctaTexto ?? '')}
+            onChange={(e) => onChange({ ctaTexto: e.target.value }, false)}
+            placeholder="Ver más"
+            className="mt-1"
+          />
+        </Campo>
+        <Campo label="Link del botón">
+          <Input
+            value={String(config.ctaHref ?? '')}
+            onChange={(e) => onChange({ ctaHref: e.target.value }, false)}
+            placeholder="/productos"
+            className="mt-1"
+          />
+        </Campo>
+      </div>
+
       {fuente === 'manual' && (
         <div className="space-y-2 border-t pt-3">
           <p className="text-xs font-medium text-muted-foreground">

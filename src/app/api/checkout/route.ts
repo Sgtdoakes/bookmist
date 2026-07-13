@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { checkoutSchema } from '@/lib/validations'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getMarcaConfig } from '@/lib/configuracion'
+import { getDescuentoTransferenciaPct, getMarcaConfig } from '@/lib/configuracion'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 import { notificarPedidoNuevo } from '@/lib/email'
+import { avisarWhatsAppDani } from '@/lib/notificaciones'
 import { getReservasActivas } from '@/lib/reservas'
 import { mpConfigured, crearPreferencia } from '@/lib/mercadopago'
+import { andreaniConfigured, cotizarEnvioDomicilio } from '@/lib/andreani'
 import type { OrderItemInsert } from '@/types/db'
 
 type LineaValidada = {
@@ -15,6 +17,10 @@ type LineaValidada = {
     precio: number
     stock: number
     activo: boolean
+    peso_gramos: number
+    alto_cm: number
+    ancho_cm: number
+    largo_cm: number
   }
   cantidad: number
 }
@@ -60,11 +66,12 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient()
 
-  // 1) Traer los productos reales (precio/stock autoritativos, no los del cliente).
+  // 1) Traer los productos reales (precio/stock autoritativos, no los del
+  // cliente; peso/medidas para la cotización de Andreani).
   const ids = data.items.map((i) => i.producto_id)
   const { data: productos, error: productosErr } = await supabase
     .from('productos')
-    .select('id,nombre,precio,stock,activo')
+    .select('id,nombre,precio,stock,activo,peso_gramos,alto_cm,ancho_cm,largo_cm')
     .in('id', ids)
   if (productosErr) {
     return NextResponse.json({ ok: false, error: 'No pudimos validar el carrito.' }, { status: 500 })
@@ -94,22 +101,53 @@ export async function POST(request: Request) {
 
   const subtotal = itemsValidados.reduce((acc, x) => acc + x.producto.precio * x.cantidad, 0)
 
-  // 2) Costo de envío según la zona elegida (Fase 4a: manual; la API real de
-  // Andreani es Fase 4b, cuando exista el contrato).
-  const { data: zona } = await supabase
-    .from('zonas_envio')
-    .select('nombre,costo')
-    .eq('id', data.zona_id)
-    .eq('activo', true)
-    .maybeSingle()
-  if (!zona) {
-    return NextResponse.json(
-      { ok: false, error: 'La zona de envío elegida ya no está disponible.' },
-      { status: 400 },
+  // 2) Costo de envío. Camino principal: cotización en vivo de Andreani por
+  // CP (Fase 6d) — se RE-cotiza acá con los productos reales, nunca se
+  // confía en el precio que haya visto el navegador. Respaldo: zona manual.
+  let costoEnvio: number
+  let zonaNombre: string
+  if (data.cp_envio && andreaniConfigured()) {
+    const cotizado = await cotizarEnvioDomicilio(
+      data.cp_envio,
+      itemsValidados.map((x) => ({
+        cantidad: x.cantidad,
+        precio: x.producto.precio,
+        peso_gramos: x.producto.peso_gramos,
+        alto_cm: x.producto.alto_cm,
+        ancho_cm: x.producto.ancho_cm,
+        largo_cm: x.producto.largo_cm,
+      })),
     )
+    if (cotizado == null) {
+      return NextResponse.json(
+        { ok: false, error: 'No pudimos cotizar el envío a ese código postal. Probá de nuevo.' },
+        { status: 502 },
+      )
+    }
+    costoEnvio = cotizado
+    zonaNombre = `Andreani a domicilio (CP ${data.cp_envio})`
+  } else {
+    const { data: zona } = await supabase
+      .from('zonas_envio')
+      .select('nombre,costo')
+      .eq('id', data.zona_id ?? '')
+      .eq('activo', true)
+      .maybeSingle()
+    if (!zona) {
+      return NextResponse.json(
+        { ok: false, error: 'La zona de envío elegida ya no está disponible.' },
+        { status: 400 },
+      )
+    }
+    costoEnvio = Number(zona.costo)
+    zonaNombre = zona.nombre
   }
-  const costoEnvio = Number(zona.costo)
-  const total = subtotal + costoEnvio
+
+  // 2b) Descuento por transferencia (la promesa de la barra de beneficios):
+  // se aplica sobre el subtotal de productos — el envío se cobra completo.
+  const pctDescuento = data.metodo_pago === 'transferencia' ? await getDescuentoTransferenciaPct() : 0
+  const descuento = Math.round(subtotal * (pctDescuento / 100))
+  const total = subtotal - descuento + costoEnvio
 
   // 3) Crear el pedido (service role: ignora RLS).
   const { data: order, error: orderErr } = await supabase
@@ -119,10 +157,11 @@ export async function POST(request: Request) {
       cliente_email: data.cliente_email,
       cliente_telefono: data.cliente_telefono,
       direccion_envio: data.direccion_envio,
-      zona_envio: zona.nombre,
+      zona_envio: zonaNombre,
       costo_envio: costoEnvio,
       metodo_pago: data.metodo_pago,
       estado: 'pendiente',
+      descuento,
       total,
       notas: data.notas ?? null,
     })
@@ -179,7 +218,8 @@ export async function POST(request: Request) {
     await supabase.from('orders').update({ mp_preference_id: pref.id }).eq('id', order.id)
   }
 
-  // 6) Link de WhatsApp + email a Daniela (no frena el pedido si falla).
+  // 6) Avisos a Daniela: email + WhatsApp personal (best-effort, un aviso
+  // caído nunca frena el pedido).
   const datosMsg: DatosPedidoMensaje = {
     numeroPedido: order.numero_pedido,
     clienteNombre: data.cliente_nombre,
@@ -190,15 +230,17 @@ export async function POST(request: Request) {
       precio_unitario: x.producto.precio,
     })),
     direccionEnvio: data.direccion_envio,
-    zonaEnvio: zona.nombre,
+    zonaEnvio: zonaNombre,
     costoEnvio,
     metodoPago: data.metodo_pago,
+    descuento,
     total,
     notas: data.notas ?? null,
   }
   const marca = await getMarcaConfig()
   const waUrl = marca.whatsapp ? whatsappLink(marca.whatsapp, construirMensajePedido(datosMsg)) : null
   await notificarPedidoNuevo(datosMsg, waUrl ?? '(WhatsApp no configurado)')
+  await avisarWhatsAppDani(`🛍️ ${construirMensajePedido(datosMsg)}`)
 
   return NextResponse.json({
     ok: true,

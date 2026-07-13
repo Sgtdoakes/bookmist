@@ -22,6 +22,12 @@ export type Database = {
           stock: number
           imagen_principal: string | null
           imagenes_galeria: string[]
+          // Para la cotización de Andreani (migración 0023) — cada bulto
+          // necesita gramos y dimensiones, si no la API no cotiza.
+          peso_gramos: number
+          alto_cm: number
+          ancho_cm: number
+          largo_cm: number
           activo: boolean
           orden: number
           created_at: string
@@ -38,6 +44,10 @@ export type Database = {
           stock?: number
           imagen_principal?: string | null
           imagenes_galeria?: string[]
+          peso_gramos?: number
+          alto_cm?: number
+          ancho_cm?: number
+          largo_cm?: number
           activo?: boolean
           orden?: number
           created_at?: string
@@ -134,6 +144,8 @@ export type Database = {
           costo_envio: number | null
           metodo_pago: MetodoPago
           estado: EstadoPedido
+          // Monto descontado por pagar con transferencia (migración 0023).
+          descuento: number
           total: number
           notas: string | null
           leido: boolean
@@ -152,6 +164,7 @@ export type Database = {
           costo_envio?: number | null
           metodo_pago: MetodoPago
           estado?: EstadoPedido
+          descuento?: number
           total?: number
           notas?: string | null
           leido?: boolean

@@ -17,11 +17,11 @@ async function clienteAutenticado() {
   return user ? supabase : null
 }
 
-function revalidarPublico(slug?: string) {
-  revalidatePath('/')
-  revalidatePath('/productos')
-  if (slug) revalidatePath(`/productos/${slug}`)
-  revalidatePath('/admin/productos')
+// Un producto editado aparece en la home, el catálogo, su ficha, los
+// "relacionados" de otras fichas y los bloques de cualquier página —
+// revalidar todo el sitio es lo único siempre correcto a esta escala.
+function revalidarPublico() {
+  revalidatePath('/', 'layout')
 }
 
 export async function actualizarProducto(id: string, patch: ProductoUpdate): Promise<Ok | Err> {
@@ -41,7 +41,7 @@ export async function actualizarProducto(id: string, patch: ProductoUpdate): Pro
     return { ok: false, error: 'No se pudo guardar el cambio.' }
   }
 
-  revalidarPublico(patch.slug)
+  revalidarPublico()
   return { ok: true }
 }
 
@@ -59,7 +59,7 @@ export async function crearProducto(input: ProductoInsert): Promise<OkId | Err> 
     return { ok: false, error: 'No se pudo crear el producto.' }
   }
 
-  revalidarPublico(input.slug)
+  revalidarPublico()
   return { ok: true, id: data.id }
 }
 

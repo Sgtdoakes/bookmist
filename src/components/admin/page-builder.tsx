@@ -116,6 +116,8 @@ function SeccionView({ s }: { s: SeccionPreview }) {
           eyebrow={s.config.eyebrow}
           titulo={s.config.titulo}
           productos={s.productosResueltos ?? []}
+          ctaTexto={s.config.ctaTexto}
+          ctaHref={s.config.ctaHref}
           estilo={s.config.estilo}
         />
       )

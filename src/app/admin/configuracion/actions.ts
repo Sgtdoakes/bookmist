@@ -15,10 +15,12 @@ async function clienteAutenticado() {
   return user ? supabase : null
 }
 
+// La marca (header/footer/colores/nav) se ve en TODAS las páginas — un
+// revalidate por ruta puntual deja el resto del sitio mostrando lo viejo
+// hasta que venza su ISR (bug real reportado por Dani). 'layout' sobre la
+// raíz invalida el cache de todas las rutas de una.
 function revalidarPublico() {
-  revalidatePath('/')
-  revalidatePath('/productos')
-  revalidatePath('/admin/configuracion')
+  revalidatePath('/', 'layout')
 }
 
 export async function guardarMarcaConfig(marca: MarcaConfig): Promise<Ok | Err> {

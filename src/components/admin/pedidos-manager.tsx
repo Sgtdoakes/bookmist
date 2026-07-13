@@ -147,6 +147,12 @@ function TarjetaPedido({
               </li>
             ))}
           </ul>
+          {p.descuento > 0 && (
+            <div className="mt-1 flex justify-between text-muted-foreground">
+              <span>Descuento transferencia</span>
+              <span>-{formatARS(p.descuento)}</span>
+            </div>
+          )}
           {p.costo_envio != null && p.costo_envio > 0 && (
             <div className="mt-1 flex justify-between text-muted-foreground">
               <span>Envío</span>

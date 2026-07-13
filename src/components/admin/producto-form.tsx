@@ -44,6 +44,10 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
   const [descripcion, setDescripcion] = useState(producto?.descripcion ?? '')
   const [precio, setPrecio] = useState(String(producto?.precio ?? 0))
   const [stock, setStock] = useState(String(producto?.stock ?? 0))
+  const [pesoGramos, setPesoGramos] = useState(String(producto?.peso_gramos ?? 300))
+  const [altoCm, setAltoCm] = useState(String(producto?.alto_cm ?? 5))
+  const [anchoCm, setAnchoCm] = useState(String(producto?.ancho_cm ?? 20))
+  const [largoCm, setLargoCm] = useState(String(producto?.largo_cm ?? 30))
   const [activo, setActivo] = useState(producto?.activo ?? true)
   const [categorias, setCategorias] = useState<Categoria[]>(categoriasDisponibles)
   const [categoriaIds, setCategoriaIds] = useState<string[]>(
@@ -119,6 +123,10 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       descripcion: descripcion.trim() || null,
       precio: Number(precio),
       stock: Number(stock),
+      peso_gramos: Math.max(1, Number(pesoGramos) || 300),
+      alto_cm: Math.max(1, Number(altoCm) || 5),
+      ancho_cm: Math.max(1, Number(anchoCm) || 20),
+      largo_cm: Math.max(1, Number(largoCm) || 30),
       activo,
     }
 
@@ -317,6 +325,71 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
             onChange={(e) => setStock(e.target.value)}
             className="mt-1"
           />
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-1 block">Paquete (para cotizar el envío)</Label>
+        <p className="text-sm text-muted-foreground">
+          Peso y medidas del producto ya embalado — Andreani cotiza el envío con estos datos.
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div>
+            <Label htmlFor="peso_gramos" className="text-xs">
+              Peso (gramos)
+            </Label>
+            <Input
+              id="peso_gramos"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={pesoGramos}
+              onChange={(e) => setPesoGramos(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="alto_cm" className="text-xs">
+              Alto (cm)
+            </Label>
+            <Input
+              id="alto_cm"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={altoCm}
+              onChange={(e) => setAltoCm(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ancho_cm" className="text-xs">
+              Ancho (cm)
+            </Label>
+            <Input
+              id="ancho_cm"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={anchoCm}
+              onChange={(e) => setAnchoCm(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="largo_cm" className="text-xs">
+              Largo (cm)
+            </Label>
+            <Input
+              id="largo_cm"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={largoCm}
+              onChange={(e) => setLargoCm(e.target.value)}
+              className="mt-1"
+            />
+          </div>
         </div>
       </div>
 

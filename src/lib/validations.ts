@@ -2,9 +2,11 @@ import { z } from 'zod'
 
 // --- Checkout (sitio público) -------------------------------------------
 // Bookmist envía a todo el país (sin retiro en persona), así que la
-// dirección siempre es obligatoria — a diferencia de Martín Libros no hay
-// que ramificar el esquema por método de entrega. El costo de envío se
-// resuelve por zona (Fase 4a, manual — la API real de Andreani es Fase 4b).
+// dirección siempre es obligatoria. El costo de envío se resuelve de una de
+// dos formas: cotización en vivo de Andreani por código postal (cp_envio,
+// Fase 6d — el server SIEMPRE re-cotiza, nunca confía en el precio del
+// navegador) o, si Andreani no está configurado/disponible, la zona manual
+// (zona_id, el sistema original de la Fase 4a que queda como respaldo).
 export const checkoutItemSchema = z.object({
   producto_id: z.uuid(),
   cantidad: z.number().int().positive(),
@@ -15,19 +17,32 @@ const checkoutBase = z.object({
   cliente_email: z.email('Ingresá un email válido'),
   cliente_telefono: z.string().trim().min(6, 'Ingresá un teléfono de contacto'),
   direccion_envio: z.string().trim().min(5, 'Ingresá la dirección de envío').max(300),
-  zona_id: z.uuid('Elegí una zona de envío'),
+  zona_id: z.uuid('Elegí una zona de envío').nullish(),
+  cp_envio: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/, 'Ingresá un código postal de 4 dígitos')
+    .nullish(),
   metodo_pago: z.enum(['transferencia', 'deposito', 'efectivo', 'mercadopago']),
   notas: z.string().trim().max(500).nullish(),
 })
 
-// Esquema del formulario (lo usa react-hook-form en el cliente).
-export const checkoutFormSchema = checkoutBase
+const requiereEnvio = {
+  message: 'Falta definir el envío (código postal o zona).',
+  path: ['cp_envio'] as (string | number)[],
+}
+
+// Esquema del formulario (lo usa react-hook-form en el cliente). El form
+// completa cp_envio O zona_id según el modo (Andreani vs. zonas manuales).
+export const checkoutFormSchema = checkoutBase.refine((d) => !!d.zona_id || !!d.cp_envio, requiereEnvio)
 export type CheckoutFormInput = z.infer<typeof checkoutFormSchema>
 
 // Esquema completo del pedido (lo valida la API, incluye los items).
-export const checkoutSchema = checkoutBase.extend({
-  items: z.array(checkoutItemSchema).min(1, 'El carrito está vacío'),
-})
+export const checkoutSchema = checkoutBase
+  .extend({
+    items: z.array(checkoutItemSchema).min(1, 'El carrito está vacío'),
+  })
+  .refine((d) => !!d.zona_id || !!d.cp_envio, requiereEnvio)
 export type CheckoutInput = z.infer<typeof checkoutSchema>
 
 // --- Biblioteca de libros y accesorios (admin) ---------------------------

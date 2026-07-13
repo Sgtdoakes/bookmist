@@ -26,10 +26,12 @@ async function clienteAutenticado() {
   return user ? supabase : null
 }
 
+// Los bloques viven en cualquier página (home, catálogo, ficha e
+// institucionales /[slug]) — revalidar rutas puntuales dejaba a las
+// institucionales mostrando bloques viejos hasta vencer su ISR. 'layout'
+// sobre la raíz invalida todas las rutas de una.
 function revalidarPublico() {
-  revalidatePath('/')
-  revalidatePath('/productos')
-  revalidatePath('/admin/pagina')
+  revalidatePath('/', 'layout')
 }
 
 function esSeccionTipoConocido(tipo: string): tipo is SeccionTipo {

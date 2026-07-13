@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { OutlineButton } from '@/components/public/buttons'
 import { ProductCard } from '@/components/public/product-card'
 import type { Producto } from '@/types/db'
@@ -10,10 +11,14 @@ export function BestSellersScroller({
   eyebrow,
   titulo,
   productos,
+  ctaTexto,
+  ctaHref,
 }: {
   eyebrow: string
   titulo: string
   productos: Producto[]
+  ctaTexto?: string
+  ctaHref?: string
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
 
@@ -48,6 +53,17 @@ export function BestSellersScroller({
           </div>
         ))}
       </div>
+
+      {ctaTexto && ctaHref && (
+        <div className="mt-6 flex justify-center">
+          <Link
+            href={ctaHref}
+            className="inline-flex items-center gap-2 rounded-full border border-primary px-6 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+          >
+            {ctaTexto} <ArrowRight size={16} />
+          </Link>
+        </div>
+      )}
     </>
   )
 }

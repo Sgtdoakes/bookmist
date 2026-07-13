@@ -1,6 +1,8 @@
 import { obtenerPago } from '@/lib/mercadopago'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verificarAutoMantenimiento } from '@/lib/mantenimiento'
+import { avisarWhatsAppDani } from '@/lib/notificaciones'
+import { formatARS } from '@/lib/format'
 
 // Webhook de Mercado Pago. MP avisa cuando cambia un pago.
 // Nunca confiamos en el body del aviso: volvemos a pedirle a Mercado Pago el
@@ -55,6 +57,22 @@ export async function POST(request: Request) {
             await verificarAutoMantenimiento(supabase)
           } catch (e) {
             console.error('[mp-webhook] verificarAutoMantenimiento falló', e)
+          }
+          // Aviso a Dani de plata acreditada (best-effort: si falla, el
+          // pago ya quedó registrado y MP no tiene por qué reintentar).
+          try {
+            const { data: pedido } = await supabase
+              .from('orders')
+              .select('numero_pedido, total, cliente_nombre')
+              .eq('id', pago.external_reference)
+              .maybeSingle()
+            if (pedido) {
+              await avisarWhatsAppDani(
+                `💰 Pago acreditado por Mercado Pago\nPedido ${pedido.numero_pedido} — ${pedido.cliente_nombre}\nTotal: ${formatARS(pedido.total)}`,
+              )
+            }
+          } catch (e) {
+            console.error('[mp-webhook] aviso de pago falló', e)
           }
         }
       }

@@ -83,6 +83,9 @@ export type ProductosConfig = {
   categoria: string
   productos: string[]
   limite: number
+  // Botón al pie del carrusel (ej. "Ver más" → /productos). Vacío = sin botón.
+  ctaTexto: string
+  ctaHref: string
   estilo: EstiloBloque
 }
 
@@ -182,6 +185,9 @@ function defaults(): SeccionConfigMap {
       categoria: '',
       productos: [],
       limite: 12,
+      // Pedido de Dani: que "Más vendidos" lleve directo al catálogo.
+      ctaTexto: 'Ver más',
+      ctaHref: '/productos',
       estilo: {},
     },
     sobre_mi: {
@@ -235,6 +241,8 @@ function defaults(): SeccionConfigMap {
       categoria: '',
       productos: [],
       limite: 8,
+      ctaTexto: '',
+      ctaHref: '',
       estilo: {},
     },
     banner: {

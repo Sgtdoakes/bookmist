@@ -94,17 +94,23 @@ export async function getMarcaConfig(): Promise<MarcaConfig> {
     const { data, error } = await supabase.from('configuracion').select('clave, valor').in('clave', CLAVES_MARCA)
     if (error) throw error
     const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
+    // `??` vs `||`: los campos opcionales (taglines, redes, copyright) usan
+    // `??` — si la clave existe con valor vacío es porque Dani lo VACIÓ a
+    // propósito desde el admin, y el sitio debe mostrarlo vacío, no volver
+    // al default (bug real: "guardo y no cambia nada"). El default solo
+    // aplica si la clave nunca se guardó. Nombre y email usan `||` porque
+    // vacíos no tienen sentido (siempre caen al default).
     return {
       nombre: map.get('marca_nombre')?.trim() || base.nombre,
       logoUrl: map.get('marca_logo_url')?.trim() || null,
-      taglineHeader: map.get('marca_tagline_header')?.trim() || base.taglineHeader,
-      taglineFooter: map.get('marca_tagline_footer')?.trim() || base.taglineFooter,
-      copyright: map.get('marca_copyright')?.trim() || base.copyright,
+      taglineHeader: map.get('marca_tagline_header')?.trim() ?? base.taglineHeader,
+      taglineFooter: map.get('marca_tagline_footer')?.trim() ?? base.taglineFooter,
+      copyright: map.get('marca_copyright')?.trim() ?? base.copyright,
       email: map.get('marca_email')?.trim() || base.email,
       whatsapp: map.get('marca_whatsapp')?.trim() ?? base.whatsapp,
-      instagram: map.get('marca_instagram_url')?.trim() || base.instagram,
-      instagramHandle: map.get('marca_instagram_handle')?.trim() || base.instagramHandle,
-      tiktok: map.get('marca_tiktok_url')?.trim() || base.tiktok,
+      instagram: map.get('marca_instagram_url')?.trim() ?? base.instagram,
+      instagramHandle: map.get('marca_instagram_handle')?.trim() ?? base.instagramHandle,
+      tiktok: map.get('marca_tiktok_url')?.trim() ?? base.tiktok,
       colorPrimario: map.get('marca_color_primario')?.trim() || null,
       colorSecundario: map.get('marca_color_secundario')?.trim() || null,
       colorAcento: map.get('marca_color_acento')?.trim() || null,
@@ -168,6 +174,30 @@ export async function getCuentasPago(): Promise<CuentaPago[]> {
 // no bloquea que se muestre.
 export function cuentaValida(c: CuentaPago): boolean {
   return !!c.cbu || !!c.alias
+}
+
+// Porcentaje de descuento por pagar con transferencia (la promesa "10% OFF
+// transferencia" de la barra de beneficios). Editable vía la clave
+// `descuento_transferencia_pct` en la tabla configuracion; default 10.
+const CLAVE_DESCUENTO_TRANSFERENCIA = 'descuento_transferencia_pct'
+const DESCUENTO_TRANSFERENCIA_DEFAULT = 10
+
+export async function getDescuentoTransferenciaPct(): Promise<number> {
+  if (!configured()) return DESCUENTO_TRANSFERENCIA_DEFAULT
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', CLAVE_DESCUENTO_TRANSFERENCIA)
+      .maybeSingle()
+    if (error) throw error
+    if (!data?.valor) return DESCUENTO_TRANSFERENCIA_DEFAULT
+    const pct = Number(data.valor)
+    return Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : DESCUENTO_TRANSFERENCIA_DEFAULT
+  } catch {
+    return DESCUENTO_TRANSFERENCIA_DEFAULT
+  }
 }
 
 export type NavLinkPublico = { label: string; href: string }

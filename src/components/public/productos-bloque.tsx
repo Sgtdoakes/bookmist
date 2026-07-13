@@ -35,11 +35,15 @@ export function ProductosBloqueView({
   eyebrow,
   titulo,
   productos,
+  ctaTexto,
+  ctaHref,
   estilo,
 }: {
   eyebrow: string
   titulo: string
   productos: Producto[]
+  ctaTexto?: string
+  ctaHref?: string
   estilo: EstiloBloque
 }) {
   if (productos.length === 0) return null
@@ -53,7 +57,13 @@ export function ProductosBloqueView({
     <section className="w-full">
       <div className={`mx-auto max-w-7xl px-6 md:px-10 ${tamano.padding}`}>
         <div className={`${fondoClase} ${radioClase} ${conFondo ? 'p-6 md:p-10' : ''}`}>
-          <BestSellersScroller eyebrow={eyebrow} titulo={titulo} productos={productos} />
+          <BestSellersScroller
+            eyebrow={eyebrow}
+            titulo={titulo}
+            productos={productos}
+            ctaTexto={ctaTexto}
+            ctaHref={ctaHref}
+          />
         </div>
       </div>
     </section>
@@ -63,7 +73,26 @@ export function ProductosBloqueView({
 // Carrusel de productos con fuente configurable — la misma UI de "Más
 // vendidos" (BestSellersScroller), pero reutilizable con cualquier criterio
 // de selección y estilo propio, en vez de estar atado a "destacados".
-export async function ProductosBloque({ eyebrow, titulo, fuente, categoria, productos, limite, estilo }: ProductosConfig) {
+export async function ProductosBloque({
+  eyebrow,
+  titulo,
+  fuente,
+  categoria,
+  productos,
+  limite,
+  ctaTexto,
+  ctaHref,
+  estilo,
+}: ProductosConfig) {
   const items = await resolverProductosBloque({ fuente, categoria, productos, limite })
-  return <ProductosBloqueView eyebrow={eyebrow} titulo={titulo} productos={items} estilo={estilo} />
+  return (
+    <ProductosBloqueView
+      eyebrow={eyebrow}
+      titulo={titulo}
+      productos={items}
+      ctaTexto={ctaTexto}
+      ctaHref={ctaHref}
+      estilo={estilo}
+    />
+  )
 }
