@@ -1,5 +1,6 @@
+import { headers } from 'next/headers'
 import { BookOpen } from 'lucide-react'
-import { getModoMantenimiento } from '@/lib/mantenimiento'
+import { entornoDeHost, getModoMantenimiento } from '@/lib/mantenimiento'
 import { getMarcaConfig } from '@/lib/configuracion'
 import { SocialIcons } from '@/components/public/social-icons'
 import { Blob } from '@/components/public/decorative'
@@ -7,7 +8,11 @@ import { Blob } from '@/components/public/decorative'
 export const metadata = { title: 'Volvemos pronto' }
 
 export default async function MantenimientoPage() {
-  const [{ mensaje }, marca] = await Promise.all([getModoMantenimiento(), getMarcaConfig()])
+  const host = (await headers()).get('host') ?? ''
+  const [{ mensaje }, marca] = await Promise.all([
+    getModoMantenimiento(entornoDeHost(host)),
+    getMarcaConfig(),
+  ])
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 py-16 text-center text-foreground">

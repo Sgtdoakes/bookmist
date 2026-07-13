@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { activarManual, desactivarManual } from '@/app/admin/mantenimiento/actions'
+import type { Entorno } from '@/lib/mantenimiento'
 
 type Estado = {
   activo: boolean
@@ -14,14 +15,25 @@ type Estado = {
   conStock: number
 }
 
-export function MantenimientoManager({ estadoInicial }: { estadoInicial: Estado }) {
+// Un manager por ambiente (producción / pruebas) — cada uno con su propio
+// toggle, mensaje y estado, sin compartir nada entre sí salvo las stats de
+// stock (que son del catálogo real, no del ambiente).
+export function MantenimientoManager({
+  entorno,
+  estadoInicial,
+  mostrarStock = true,
+}: {
+  entorno: Entorno
+  estadoInicial: Estado
+  mostrarStock?: boolean
+}) {
   const [estado, setEstado] = useState(estadoInicial)
   const [mensaje, setMensaje] = useState(estadoInicial.mensaje)
   const [trabajando, setTrabajando] = useState(false)
 
   async function activar() {
     setTrabajando(true)
-    const r = await activarManual(mensaje)
+    const r = await activarManual(entorno, mensaje)
     setTrabajando(false)
     if (!r.ok) return toast.error(r.error)
     setEstado((prev) => ({ ...prev, activo: true, motivo: 'manual' }))
@@ -30,7 +42,7 @@ export function MantenimientoManager({ estadoInicial }: { estadoInicial: Estado 
 
   async function desactivar() {
     setTrabajando(true)
-    const r = await desactivarManual()
+    const r = await desactivarManual(entorno)
     setTrabajando(false)
     if (!r.ok) return toast.error(r.error)
     setEstado((prev) => ({ ...prev, activo: false, motivo: null }))
@@ -40,11 +52,13 @@ export function MantenimientoManager({ estadoInicial }: { estadoInicial: Estado 
   return (
     <div className="space-y-6">
       <div className="rounded-lg border p-4">
-        <p className="text-sm text-muted-foreground">
-          {estado.totalActivos === 0
-            ? 'Todavía no hay cajas/kits visibles cargados.'
-            : `${estado.conStock} de ${estado.totalActivos} cajas/kits visibles tienen stock.`}
-        </p>
+        {mostrarStock && (
+          <p className="text-sm text-muted-foreground">
+            {estado.totalActivos === 0
+              ? 'Todavía no hay cajas/kits visibles cargados.'
+              : `${estado.conStock} de ${estado.totalActivos} cajas/kits visibles tienen stock.`}
+          </p>
+        )}
         <p className="mt-2 flex items-center gap-2 font-medium">
           Estado actual:{' '}
           {estado.activo ? (

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/db'
-import { getModoMantenimiento } from '@/lib/mantenimiento'
+import { entornoDeHost, getModoMantenimiento } from '@/lib/mantenimiento'
 
 // Refresca la sesión de Supabase en cada request y protege las rutas /admin.
 export async function updateSession(request: NextRequest) {
@@ -69,11 +69,13 @@ export async function updateSession(request: NextRequest) {
   // Modo "reponiendo stock": tapa el sitio público para todos menos el admin
   // logueado. /admin, /api y la propia página de mantenimiento nunca se
   // gatean (el webhook de Mercado Pago tiene que poder llegar siempre, y el
-  // admin necesita poder entrar a desactivarlo).
+  // admin necesita poder entrar a desactivarlo). El estado es independiente
+  // por hostname: bookmist.vercel.app (y otras preview URLs) no comparten
+  // toggle con el dominio real de producción.
   const esApi = path.startsWith('/api')
   const esMantenimiento = path === '/mantenimiento'
   if (!esAdmin && !esApi && !esMantenimiento && !user) {
-    const { activo } = await getModoMantenimiento()
+    const { activo } = await getModoMantenimiento(entornoDeHost(request.nextUrl.hostname))
     if (activo) {
       const url = request.nextUrl.clone()
       url.pathname = '/mantenimiento'

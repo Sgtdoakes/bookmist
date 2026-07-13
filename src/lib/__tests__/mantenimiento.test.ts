@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { decidirTransicionMantenimiento } from '@/lib/mantenimiento'
+import { decidirTransicionMantenimiento, entornoDeHost } from '@/lib/mantenimiento'
+
+describe('entornoDeHost', () => {
+  it('clasifica bookmist.vercel.app como "pruebas"', () => {
+    expect(entornoDeHost('bookmist.vercel.app')).toBe('pruebas')
+  })
+
+  it('clasifica cualquier URL de preview de Vercel como "pruebas"', () => {
+    expect(entornoDeHost('bookmist-git-fase6k-usuario.vercel.app')).toBe('pruebas')
+  })
+
+  it('clasifica el dominio propio como "producción"', () => {
+    expect(entornoDeHost('bookmist.com.ar')).toBe('produccion')
+    expect(entornoDeHost('www.bookmist.com.ar')).toBe('produccion')
+  })
+
+  it('clasifica localhost como "producción" (desarrollo local)', () => {
+    expect(entornoDeHost('localhost:3000')).toBe('produccion')
+  })
+})
 
 describe('decidirTransicionMantenimiento', () => {
   it('activa automáticamente cuando no hay stock en ningún producto activo', () => {
