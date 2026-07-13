@@ -30,6 +30,9 @@ async function login(): Promise<string | null> {
         Authorization: process.env.ANDREANI_CREDENTIAL_ID as string,
         'Content-Type': 'application/json',
       },
+      // Sin body, el endpoint devuelve 404 en vez de autenticar (probado en
+      // vivo) — hace falta mandar aunque sea un objeto vacío.
+      body: '{}',
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
     })
