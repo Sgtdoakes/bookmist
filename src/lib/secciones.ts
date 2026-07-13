@@ -40,7 +40,20 @@ export type HeroConfig = {
 }
 export type BeneficioItem = { emoji: string; texto: string }
 export type BeneficiosConfig = { items: BeneficioItem[]; estilo: EstiloBloque }
-export type CategoriaItem = { id: string; titulo: string; subtitulo: string; imagen: string | null }
+// categoriaSlug: categoría real del catálogo elegida en el dropdown del admin
+// — el link generado apunta a su sección en /productos (#slug), no a un
+// listado filtrado, para que la card lleve "a donde están los marcapáginas"
+// dentro del catálogo navegable, no a una grilla aislada.
+// urlManual: se usa solo si no hay categoriaSlug (permite linkear a
+// cualquier otro lado, ej. una página institucional).
+export type CategoriaItem = {
+  id: string
+  titulo: string
+  subtitulo: string
+  imagen: string | null
+  categoriaSlug: string | null
+  urlManual: string | null
+}
 export type CategoriasConfig = {
   eyebrow: string
   titulo: string
@@ -172,9 +185,30 @@ function defaults(): SeccionConfigMap {
       // (bloques vs. baseline en PageBuilder) generarían ids distintos y el
       // lienzo se vería "sin guardar" apenas se carga, sin que nadie tocó nada.
       categorias: [
-        { id: 'cat-kits', titulo: 'Kits literarios', subtitulo: 'Libro + objetos elegidos para vivir la historia', imagen: null },
-        { id: 'cat-cajas', titulo: 'Cajas literarias', subtitulo: 'Papelería y detalles para tu rincón de lectura', imagen: null },
-        { id: 'cat-marcapaginas', titulo: 'Marcapáginas', subtitulo: 'Pequeños detalles hechos a mano', imagen: null },
+        {
+          id: 'cat-kits',
+          titulo: 'Kits literarios',
+          subtitulo: 'Libro + objetos elegidos para vivir la historia',
+          imagen: null,
+          categoriaSlug: null,
+          urlManual: null,
+        },
+        {
+          id: 'cat-cajas',
+          titulo: 'Cajas literarias',
+          subtitulo: 'Papelería y detalles para tu rincón de lectura',
+          imagen: null,
+          categoriaSlug: null,
+          urlManual: null,
+        },
+        {
+          id: 'cat-marcapaginas',
+          titulo: 'Marcapáginas',
+          subtitulo: 'Pequeños detalles hechos a mano',
+          imagen: null,
+          categoriaSlug: null,
+          urlManual: null,
+        },
       ],
       estilo: {},
     },

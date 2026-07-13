@@ -190,9 +190,28 @@ function Contenido({
       )
 
     case 'categorias': {
-      const categorias = (config.categorias as { id: string; titulo: string; subtitulo: string; imagen: string | null }[]) ?? []
-      const set = (i: number, patch: Partial<{ titulo: string; subtitulo: string; imagen: string | null }>) =>
+      type CatItem = {
+        id: string
+        titulo: string
+        subtitulo: string
+        imagen: string | null
+        categoriaSlug: string | null
+        urlManual: string | null
+      }
+      const categorias = (config.categorias as CatItem[]) ?? []
+      const set = (i: number, patch: Partial<CatItem>) =>
         onChange({ categorias: categorias.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) }, false)
+      const agregar = () =>
+        onChange(
+          {
+            categorias: [
+              ...categorias,
+              { id: crypto.randomUUID(), titulo: '', subtitulo: '', imagen: null, categoriaSlug: null, urlManual: null },
+            ],
+          },
+          false,
+        )
+      const quitar = (i: number) => onChange({ categorias: categorias.filter((_, idx) => idx !== i) }, false)
       return (
         <>
           <Campo label="Texto pequeño (encima del título)">
@@ -204,6 +223,12 @@ function Contenido({
           <div className="space-y-4 border-t pt-3">
             {categorias.map((cat, i) => (
               <div key={cat.id} className="space-y-2 rounded-lg border p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-muted-foreground">Card {i + 1}</Label>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => quitar(i)} aria-label="Quitar esta card">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
                 <ImageUploader
                   carpeta="secciones"
                   entidadId={`${id}-cat-${cat.id}`}
@@ -217,8 +242,35 @@ function Contenido({
                   onChange={(e) => set(i, { subtitulo: e.target.value })}
                   aria-label="Subtítulo de la categoría"
                 />
+                <Campo label="Al hacer click, llevar a…">
+                  <select
+                    value={cat.categoriaSlug ?? ''}
+                    onChange={(e) => set(i, { categoriaSlug: e.target.value || null })}
+                    className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">— Elegí una categoría del catálogo —</option>
+                    {categoriasDisponibles.map((c) => (
+                      <option key={c.id} value={c.slug}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </Campo>
+                {!cat.categoriaSlug && (
+                  <Campo label="…o pegá una URL manual (se usa si no elegiste categoría)">
+                    <Input
+                      value={cat.urlManual ?? ''}
+                      onChange={(e) => set(i, { urlManual: e.target.value || null })}
+                      placeholder="/productos o https://…"
+                      className="mt-1"
+                    />
+                  </Campo>
+                )}
               </div>
             ))}
+            <Button type="button" size="sm" variant="outline" onClick={agregar}>
+              <Plus className="h-4 w-4" /> Agregar categoría
+            </Button>
           </div>
         </>
       )
