@@ -63,39 +63,34 @@ export function SiteFooter({ marca, navLinks }: { marca: MarcaConfig; navLinks: 
               <Mail size={15} className="text-muted" />
               {marca.email}
             </a>
-          </div>
 
-          <div className="col-span-2 flex items-end justify-between gap-5 md:col-span-1 md:flex-col md:items-start">
-            <h3 className="hidden text-xs font-bold uppercase tracking-[0.16em] text-foreground md:mb-5 md:block">
-              Seguinos
-            </h3>
+            <h3 className="mt-10 mb-5 text-xs font-bold uppercase tracking-[0.16em] text-foreground">Seguinos</h3>
             <SocialIcons instagram={marca.instagram} tiktok={marca.tiktok} />
           </div>
-        </div>
 
-        {/* Método de pago / Método de envío */}
-        <div className="grid grid-cols-1 gap-x-10 gap-y-8 border-t border-foreground/12 py-10 md:grid-cols-2">
-          <div>
-            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-              <CreditCard size={14} className="text-muted" />
-              Método de pago
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {marca.metodosPago.map((m) => (
-                <Badge key={m}>{m}</Badge>
-              ))}
+          <div className="col-span-2 flex flex-col gap-8 md:col-span-1">
+            <div>
+              <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                <CreditCard size={14} className="text-muted" />
+                Método de pago
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {marca.metodosPago.map((m) => (
+                  <Badge key={m}>{m}</Badge>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-              <Package size={14} className="text-muted" />
-              Método de envío
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {marca.metodosEnvio.map((m) => (
-                <Badge key={m}>{m}</Badge>
-              ))}
+            <div>
+              <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                <Package size={14} className="text-muted" />
+                Método de envío
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {marca.metodosEnvio.map((m) => (
+                  <Badge key={m}>{m}</Badge>
+                ))}
+              </div>
             </div>
           </div>
         </div>
