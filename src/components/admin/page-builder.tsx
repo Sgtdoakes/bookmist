@@ -47,7 +47,7 @@ import { BenefitsBar } from '@/components/public/benefits-bar'
 import { CategoryGrid } from '@/components/public/category-grid'
 import { AboutMe } from '@/components/public/about-me'
 import { Reviews } from '@/components/public/reviews'
-import { InstagramFeed } from '@/components/public/instagram-feed'
+import { InstagramFeedView } from '@/components/public/instagram-feed-view'
 import { TextoBloque } from '@/components/public/texto-bloque'
 import { ProductosBloqueView } from '@/components/public/productos-bloque'
 import { BannerBloque } from '@/components/public/banner-bloque'
@@ -106,7 +106,7 @@ function SeccionView({ s }: { s: SeccionPreview }) {
     case 'resenas':
       return <Reviews {...s.config} />
     case 'instagram':
-      return <InstagramFeed {...s.config} />
+      return <InstagramFeedView titulo={s.config.titulo} posts={s.instagramResuelto ?? []} estilo={s.config.estilo} />
     case 'texto':
       return <TextoBloque {...s.config} />
     case 'mas_vendidos':

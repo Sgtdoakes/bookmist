@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/public'
 import { storeConfig } from '@/lib/store-config'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { Categoria, PaginaSeccionRow, Producto, ProductoConCategorias } from '@/types/db'
+import type { PostInstagram } from '@/lib/instagram'
 
 // Secciones editables de las páginas (Fase 5b, extendido en 6c). Los 7 tipos
 // originales son la "página furniture" fija del diseño de Dani (uno por
@@ -76,8 +77,9 @@ export type SobreMiConfig = {
 }
 export type ResenaItem = { nombre: string; texto: string }
 export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem[]; estilo: EstiloBloque }
-export type PostInstagram = { id: string; imagen: string | null }
-export type InstagramConfig = { titulo: string; posts: PostInstagram[]; estilo: EstiloBloque }
+// Sin "posts" en el config: desde la Fase 6k los posts son reales, se traen
+// en vivo de Instagram (ver src/lib/instagram.ts) — no hay carga manual.
+export type InstagramConfig = { titulo: string; estilo: EstiloBloque }
 
 export type TextoConfig = {
   eyebrow: string
@@ -257,7 +259,6 @@ function defaults(): SeccionConfigMap {
     },
     instagram: {
       titulo: `Seguinos en ${storeConfig.instagramHandle}`,
-      posts: Array.from({ length: 5 }, (_, i) => ({ id: `post-${i + 1}`, imagen: null })),
       estilo: {},
     },
     texto: {
@@ -395,6 +396,7 @@ export type SeccionAdmin = {
 export type SeccionPreview = SeccionResuelta & {
   productosResueltos?: Producto[]
   catalogoResuelto?: { productos: ProductoConCategorias[]; categorias: Categoria[] }
+  instagramResuelto?: PostInstagram[]
 }
 
 // Todas las secciones (incl. inactivas) para el builder del admin. A

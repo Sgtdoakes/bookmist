@@ -19,7 +19,7 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''};
   style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://*.supabase.co;
+  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net;
   font-src 'self';
   connect-src 'self' https://*.supabase.co;
   object-src 'none';
@@ -45,6 +45,10 @@ const nextConfig: NextConfig = {
     unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
+      // Fotos reales de Instagram (Fase 6k) — el CDN de Meta rota de
+      // subdominio (scontent-xxx), de ahí el wildcard.
+      { protocol: 'https', hostname: '*.cdninstagram.com' },
+      { protocol: 'https', hostname: '*.fbcdn.net' },
       // TODO: agregar el hostname del bucket público de Cloudflare R2 cuando
       // se cree (ver README, sección de assets).
     ],
