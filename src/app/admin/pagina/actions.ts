@@ -77,7 +77,7 @@ export async function previewSecciones(
       const catalogoResuelto = await resolverCatalogoBloque()
       resultados.push({ ...resuelta, catalogoResuelto })
     } else if (resuelta.tipo === 'instagram') {
-      const instagramResuelto = await resolverInstagramFeed()
+      const instagramResuelto = await resolverInstagramFeed(resuelta.config.posts)
       resultados.push({ ...resuelta, instagramResuelto })
     } else {
       resultados.push(resuelta)

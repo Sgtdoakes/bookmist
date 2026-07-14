@@ -276,14 +276,42 @@ function Contenido({
       )
     }
 
-    case 'instagram':
-      // Sin editor de fotos: los posts se traen solos de Instagram (ver
-      // src/lib/instagram.ts) — acá solo se edita el título.
+    case 'instagram': {
+      const posts = (config.posts as { id: string; imagen: string | null }[]) ?? []
+      const agregar = () => onChange({ posts: [...posts, { id: crypto.randomUUID(), imagen: null }] }, false)
+      const quitar = (i: number) => onChange({ posts: posts.filter((_, idx) => idx !== i) }, false)
       return (
-        <Campo label="Título">
-          <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
-        </Campo>
+        <>
+          <Campo label="Título">
+            <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
+          </Campo>
+          <div className="space-y-3 border-t pt-3">
+            <Label className="text-xs font-medium text-muted-foreground">
+              Fotos manuales (respaldo — se dejan de mostrar solas apenas Instagram esté conectado de verdad)
+            </Label>
+            {posts.map((post, i) => (
+              <div key={post.id} className="flex items-center gap-2">
+                <div className="flex-1">
+                  <ImageUploader
+                    carpeta="secciones"
+                    entidadId={`${id}-ig-${post.id}`}
+                    portada={post.imagen}
+                    onPortadaChange={(url) => onChange({ posts: posts.map((p, idx) => (idx === i ? { ...p, imagen: url } : p)) }, false)}
+                    soloPortada
+                  />
+                </div>
+                <Button type="button" size="icon" variant="ghost" onClick={() => quitar(i)} aria-label="Quitar foto">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" size="sm" variant="outline" onClick={agregar}>
+              <Plus className="h-4 w-4" /> Agregar foto
+            </Button>
+          </div>
+        </>
       )
+    }
 
     case 'sobre_mi':
       return (

@@ -77,9 +77,12 @@ export type SobreMiConfig = {
 }
 export type ResenaItem = { nombre: string; texto: string }
 export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem[]; estilo: EstiloBloque }
-// Sin "posts" en el config: desde la Fase 6k los posts son reales, se traen
-// en vivo de Instagram (ver src/lib/instagram.ts) — no hay carga manual.
-export type InstagramConfig = { titulo: string; estilo: EstiloBloque }
+// "posts": respaldo manual, solo se usa mientras Instagram no esté conectado
+// de verdad (ver resolverInstagramFeed en instagram-feed.tsx) — apenas haya
+// token real cargado, estas fotos dejan de mostrarse solas, sin que haga
+// falta tocar nada acá.
+export type PostInstagramManual = { id: string; imagen: string | null }
+export type InstagramConfig = { titulo: string; posts: PostInstagramManual[]; estilo: EstiloBloque }
 
 export type TextoConfig = {
   eyebrow: string
@@ -259,6 +262,7 @@ function defaults(): SeccionConfigMap {
     },
     instagram: {
       titulo: `Seguinos en ${storeConfig.instagramHandle}`,
+      posts: [],
       estilo: {},
     },
     texto: {
