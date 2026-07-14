@@ -695,6 +695,7 @@ function BloqueCanvas({
     let vacio = false
     if (seccion.tipo === 'productos' || seccion.tipo === 'mas_vendidos') vacio = (seccion.productosResueltos ?? []).length === 0
     else if (seccion.tipo === 'catalogo') vacio = (seccion.catalogoResuelto?.productos ?? []).length === 0
+    else if (seccion.tipo === 'instagram') vacio = (seccion.instagramResuelto ?? []).length === 0
     else if (seccion.tipo === 'libre') vacio = seccion.config.elementos.length === 0
     else if (seccion.tipo === 'banner') vacio = !seccion.config.titulo && !seccion.config.imagen
     else if (seccion.tipo === 'texto') vacio = !seccion.config.titulo && !seccion.config.texto
