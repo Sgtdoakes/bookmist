@@ -277,36 +277,47 @@ function Contenido({
     }
 
     case 'instagram': {
-      const posts = (config.posts as { id: string; imagen: string | null }[]) ?? []
-      const agregar = () => onChange({ posts: [...posts, { id: crypto.randomUUID(), imagen: null }] }, false)
+      type PostManual = { id: string; imagen: string | null; permalink: string }
+      const posts = (config.posts as PostManual[]) ?? []
+      const set = (i: number, patch: Partial<PostManual>) =>
+        onChange({ posts: posts.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) }, false)
+      const agregar = () =>
+        onChange({ posts: [...posts, { id: crypto.randomUUID(), imagen: null, permalink: '' }] }, false)
       const quitar = (i: number) => onChange({ posts: posts.filter((_, idx) => idx !== i) }, false)
       return (
         <>
           <Campo label="Título">
             <Input value={texto('titulo')} onChange={(e) => onChange({ titulo: e.target.value }, false)} className="mt-1" />
           </Campo>
-          <div className="space-y-3 border-t pt-3">
+          <div className="space-y-4 border-t pt-3">
             <Label className="text-xs font-medium text-muted-foreground">
-              Fotos manuales (respaldo — se dejan de mostrar solas apenas Instagram esté conectado de verdad)
+              Posteos manuales (respaldo — se dejan de mostrar solos apenas Instagram esté conectado de verdad)
             </Label>
             {posts.map((post, i) => (
-              <div key={post.id} className="flex items-center gap-2">
-                <div className="flex-1">
-                  <ImageUploader
-                    carpeta="secciones"
-                    entidadId={`${id}-ig-${post.id}`}
-                    portada={post.imagen}
-                    onPortadaChange={(url) => onChange({ posts: posts.map((p, idx) => (idx === i ? { ...p, imagen: url } : p)) }, false)}
-                    soloPortada
-                  />
+              <div key={post.id} className="space-y-2 rounded-lg border p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-muted-foreground">Posteo {i + 1}</Label>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => quitar(i)} aria-label="Quitar posteo">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
-                <Button type="button" size="icon" variant="ghost" onClick={() => quitar(i)} aria-label="Quitar foto">
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <ImageUploader
+                  carpeta="secciones"
+                  entidadId={`${id}-ig-${post.id}`}
+                  portada={post.imagen}
+                  onPortadaChange={(url) => set(i, { imagen: url })}
+                  soloPortada
+                />
+                <Input
+                  value={post.permalink}
+                  onChange={(e) => set(i, { permalink: e.target.value })}
+                  placeholder="https://www.instagram.com/p/..."
+                  aria-label="Link al posteo real"
+                />
               </div>
             ))}
             <Button type="button" size="sm" variant="outline" onClick={agregar}>
-              <Plus className="h-4 w-4" /> Agregar foto
+              <Plus className="h-4 w-4" /> Agregar posteo
             </Button>
           </div>
         </>

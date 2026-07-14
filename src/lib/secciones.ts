@@ -80,8 +80,10 @@ export type ResenasConfig = { eyebrow: string; titulo: string; items: ResenaItem
 // "posts": respaldo manual, solo se usa mientras Instagram no esté conectado
 // de verdad (ver resolverInstagramFeed en instagram-feed.tsx) — apenas haya
 // token real cargado, estas fotos dejan de mostrarse solas, sin que haga
-// falta tocar nada acá.
-export type PostInstagramManual = { id: string; imagen: string | null }
+// falta tocar nada acá. "permalink" es el link real al posteo (no se puede
+// traer la foto sola pegando el link: Instagram no expone el contenido a
+// pedidos sin sesión, solo el cascarón vacío de la app — probado en vivo).
+export type PostInstagramManual = { id: string; imagen: string | null; permalink: string }
 export type InstagramConfig = { titulo: string; posts: PostInstagramManual[]; estilo: EstiloBloque }
 
 export type TextoConfig = {

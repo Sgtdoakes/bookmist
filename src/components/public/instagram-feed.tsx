@@ -2,14 +2,15 @@ import { getPostsInstagram, type PostInstagram } from '@/lib/instagram'
 import { InstagramFeedView } from '@/components/public/instagram-feed-view'
 import type { InstagramConfig, PostInstagramManual } from '@/lib/secciones'
 
-// Instagram apunta al perfil, no a un post puntual — las fotos manuales no
-// tienen un permalink real propio.
+// Respaldo si todavía no se cargó el link real de un post puntual (o son
+// filas viejas de antes de que existiera el campo) — mejor llevar al
+// perfil que a un link roto.
 const PERFIL_INSTAGRAM = 'https://www.instagram.com/bookmist.literaria/'
 
 function aPostsManual(posts: PostInstagramManual[]): PostInstagram[] {
   return posts
     .filter((p): p is PostInstagramManual & { imagen: string } => !!p.imagen)
-    .map((p) => ({ id: p.id, imagen: p.imagen, permalink: PERFIL_INSTAGRAM }))
+    .map((p) => ({ id: p.id, imagen: p.imagen, permalink: p.permalink?.trim() || PERFIL_INSTAGRAM }))
 }
 
 // Resuelve los posts a mostrar — separado del render para poder llamarlo
