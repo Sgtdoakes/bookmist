@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ZonasManager } from '@/components/admin/zonas-manager'
+import { EnvioConfigForm } from '@/components/admin/envio-config-form'
+import { getEnvioConfig } from '@/lib/configuracion'
 import type { ZonaEnvio } from '@/types/db'
 
-export const metadata = { title: 'Zonas de envío' }
+export const metadata = { title: 'Envíos' }
 
 async function getZonasAdmin(): Promise<ZonaEnvio[]> {
   try {
@@ -18,7 +20,7 @@ async function getZonasAdmin(): Promise<ZonaEnvio[]> {
 }
 
 export default async function AdminZonasPage() {
-  const zonas = await getZonasAdmin()
+  const [zonas, envioConfig] = await Promise.all([getZonasAdmin(), getEnvioConfig()])
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -30,13 +32,21 @@ export default async function AdminZonasPage() {
         Volver al panel
       </Link>
 
-      <h1 className="text-2xl font-bold">Zonas de envío</h1>
+      <h1 className="text-2xl font-bold">Envíos</h1>
       <p className="mt-1 text-muted-foreground">
-        Costo manual por zona (Fase 4a). La integración real con Andreani llega cuando haya
-        contrato comercial.
+        Envío gratis por monto, retiro en persona, y las zonas manuales que se usan de respaldo si
+        la cotización de Andreani no está disponible.
       </p>
 
       <div className="mt-6">
+        <EnvioConfigForm inicial={envioConfig} />
+      </div>
+
+      <h2 className="mt-8 text-lg font-semibold">Zonas de envío (respaldo)</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Solo aparecen en el checkout si Andreani no puede cotizar.
+      </p>
+      <div className="mt-4">
         <ZonasManager zonasIniciales={zonas} />
       </div>
     </div>

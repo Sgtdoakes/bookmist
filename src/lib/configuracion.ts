@@ -19,6 +19,9 @@ export type MarcaConfig = {
   nombre: string
   // null = usa el ícono decorativo fijo (BookDoodle) en vez de una imagen real.
   logoUrl: string | null
+  // Versión para la pestaña del navegador (recorte apretado con contorno).
+  // null = cae a logoUrl.
+  faviconUrl: string | null
   taglineHeader: string
   taglineFooter: string
   copyright: string
@@ -38,6 +41,7 @@ export type MarcaConfig = {
 const CLAVES_MARCA = [
   'marca_nombre',
   'marca_logo_url',
+  'marca_favicon_url',
   'marca_tagline_header',
   'marca_tagline_footer',
   'marca_copyright',
@@ -60,6 +64,7 @@ function defaults(): MarcaConfig {
   return {
     nombre: storeConfig.nombre,
     logoUrl: null,
+    faviconUrl: null,
     taglineHeader: 'Editorial',
     taglineFooter: 'Historias que se sienten en las manos',
     copyright: 'Hecho con calma y buena tinta.',
@@ -103,6 +108,7 @@ export async function getMarcaConfig(): Promise<MarcaConfig> {
     return {
       nombre: map.get('marca_nombre')?.trim() || base.nombre,
       logoUrl: map.get('marca_logo_url')?.trim() || null,
+      faviconUrl: map.get('marca_favicon_url')?.trim() || null,
       taglineHeader: map.get('marca_tagline_header')?.trim() ?? base.taglineHeader,
       taglineFooter: map.get('marca_tagline_footer')?.trim() ?? base.taglineFooter,
       copyright: map.get('marca_copyright')?.trim() ?? base.copyright,
@@ -198,6 +204,45 @@ export async function getDescuentoTransferenciaPct(): Promise<number> {
   } catch {
     return DESCUENTO_TRANSFERENCIA_DEFAULT
   }
+}
+
+// Configuración de envíos (Fase 6k): umbral de envío gratis y punto de
+// retiro. Mismo patrón KV con defaults seguros — sin umbral cargado no hay
+// envío gratis, sin retiro activo no aparece la opción.
+export type EnvioConfig = {
+  // 0 = envío gratis desactivado.
+  envioGratisUmbral: number
+  retiroActivo: boolean
+  retiroEtiqueta: string
+}
+
+const CLAVES_ENVIO = ['envio_gratis_umbral', 'retiro_activo', 'retiro_etiqueta'] as const
+const RETIRO_ETIQUETA_DEFAULT = 'Retiro gratis por Martín Libros (Av. La Plata al 3576, Santos Lugares)'
+
+export async function getEnvioConfig(): Promise<EnvioConfig> {
+  const base: EnvioConfig = { envioGratisUmbral: 0, retiroActivo: false, retiroEtiqueta: RETIRO_ETIQUETA_DEFAULT }
+  if (!configured()) return base
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.from('configuracion').select('clave, valor').in('clave', CLAVES_ENVIO)
+    if (error) throw error
+    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
+    const umbral = Number(map.get('envio_gratis_umbral'))
+    return {
+      envioGratisUmbral: Number.isFinite(umbral) && umbral > 0 ? Math.round(umbral) : 0,
+      retiroActivo: map.get('retiro_activo') === 'true',
+      retiroEtiqueta: map.get('retiro_etiqueta')?.trim() || base.retiroEtiqueta,
+    }
+  } catch {
+    return base
+  }
+}
+
+// Regla de envío gratis, pura para poder testearla: el costo pasa a 0 cuando
+// el subtotal de productos (sin descuentos) alcanza el umbral. Umbral 0 o
+// negativo = regla apagada.
+export function aplicarEnvioGratis(subtotal: number, umbral: number, costo: number): number {
+  return umbral > 0 && subtotal >= umbral ? 0 : costo
 }
 
 export type NavLinkPublico = { label: string; href: string }

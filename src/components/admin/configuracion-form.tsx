@@ -45,6 +45,7 @@ function aLista(valor: string): string[] {
 
 export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig }) {
   const [logoUrl, setLogoUrl] = useState<string | null>(marcaInicial.logoUrl)
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(marcaInicial.faviconUrl)
   const {
     register,
     control,
@@ -59,6 +60,7 @@ export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig 
     const marca: MarcaConfig = {
       nombre: datos.nombre,
       logoUrl,
+      faviconUrl,
       taglineHeader: datos.taglineHeader,
       taglineFooter: datos.taglineFooter,
       copyright: datos.copyright,
@@ -90,6 +92,19 @@ export function ConfiguracionForm({ marcaInicial }: { marcaInicial: MarcaConfig 
             entidadId="marca-logo"
             portada={logoUrl}
             onPortadaChange={setLogoUrl}
+            soloPortada
+          />
+        </div>
+        <div>
+          <Label>Ícono de la pestaña del navegador (favicon)</Label>
+          <p className="mb-1 text-xs text-muted-foreground">
+            Versión chiquita del logo para la pestaña. Sin nada cargado, se usa el logo de arriba.
+          </p>
+          <ImageUploader
+            carpeta="secciones"
+            entidadId="marca-favicon"
+            portada={faviconUrl}
+            onPortadaChange={setFaviconUrl}
             soloPortada
           />
         </div>

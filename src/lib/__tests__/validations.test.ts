@@ -58,4 +58,37 @@ describe('checkoutSchema', () => {
     const r = checkoutSchema.safeParse({ ...PEDIDO_VALIDO, metodo_pago: 'mercadopago' })
     expect(r.success).toBe(true)
   })
+
+  it('con retiro no exige dirección ni CP/zona', () => {
+    const r = checkoutSchema.safeParse({
+      ...PEDIDO_VALIDO,
+      modo_envio: 'retiro',
+      direccion_envio: '',
+      zona_id: null,
+      cp_envio: null,
+    })
+    expect(r.success).toBe(true)
+  })
+
+  it('con domicilio la dirección sigue siendo obligatoria', () => {
+    const r = checkoutSchema.safeParse({
+      ...PEDIDO_VALIDO,
+      modo_envio: 'domicilio',
+      direccion_envio: '',
+    })
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.includes('direccion_envio'))).toBe(true)
+    }
+  })
+
+  it('sin modo_envio sigue validando como domicilio (clientes con el JS viejo)', () => {
+    // El campo queda ausente y la API lo trata como domicilio (todo lo que
+    // no es 'retiro' va por el camino de domicilio) — acá verificamos que
+    // las reglas de domicilio (dirección obligatoria) siguen aplicando.
+    const r = checkoutSchema.safeParse(PEDIDO_VALIDO)
+    expect(r.success).toBe(true)
+    const sinDireccion = checkoutSchema.safeParse({ ...PEDIDO_VALIDO, direccion_envio: '' })
+    expect(sinDireccion.success).toBe(false)
+  })
 })

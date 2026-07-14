@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { checkoutSchema } from '@/lib/validations'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getDescuentoTransferenciaPct, getMarcaConfig } from '@/lib/configuracion'
+import { aplicarEnvioGratis, getDescuentoTransferenciaPct, getEnvioConfig, getMarcaConfig } from '@/lib/configuracion'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 import { notificarPedidoNuevo } from '@/lib/email'
 import { avisarWhatsAppDani } from '@/lib/notificaciones'
@@ -101,12 +101,25 @@ export async function POST(request: Request) {
 
   const subtotal = itemsValidados.reduce((acc, x) => acc + x.producto.precio * x.cantidad, 0)
 
-  // 2) Costo de envío. Camino principal: cotización en vivo de Andreani por
-  // CP (Fase 6d) — se RE-cotiza acá con los productos reales, nunca se
+  // 2) Costo de envío (Fase 6k: retiro en persona y envío gratis por
+  // umbral). Camino principal con domicilio: cotización en vivo de Andreani
+  // por CP (Fase 6d) — se RE-cotiza acá con los productos reales, nunca se
   // confía en el precio que haya visto el navegador. Respaldo: zona manual.
+  const envioCfg = await getEnvioConfig()
   let costoEnvio: number
   let zonaNombre: string
-  if (data.cp_envio && andreaniConfigured()) {
+  let direccionEnvio = data.direccion_envio
+  if (data.modo_envio === 'retiro') {
+    if (!envioCfg.retiroActivo) {
+      return NextResponse.json(
+        { ok: false, error: 'El retiro en persona no está disponible en este momento.' },
+        { status: 400 },
+      )
+    }
+    costoEnvio = 0
+    zonaNombre = envioCfg.retiroEtiqueta
+    direccionEnvio = envioCfg.retiroEtiqueta
+  } else if (data.cp_envio && andreaniConfigured()) {
     const cotizado = await cotizarEnvioDomicilio(
       data.cp_envio,
       itemsValidados.map((x) => ({
@@ -143,6 +156,14 @@ export async function POST(request: Request) {
     zonaNombre = zona.nombre
   }
 
+  // Envío gratis por umbral (solo domicilio — el retiro ya es $0). Se anota
+  // en el nombre para que Dani vea en el panel que el $0 fue a propósito.
+  if (data.modo_envio !== 'retiro') {
+    const conGratis = aplicarEnvioGratis(subtotal, envioCfg.envioGratisUmbral, costoEnvio)
+    if (conGratis === 0 && costoEnvio > 0) zonaNombre += ' — envío gratis'
+    costoEnvio = conGratis
+  }
+
   // 2b) Descuento por transferencia (la promesa de la barra de beneficios):
   // se aplica sobre el subtotal de productos — el envío se cobra completo.
   const pctDescuento = data.metodo_pago === 'transferencia' ? await getDescuentoTransferenciaPct() : 0
@@ -156,7 +177,7 @@ export async function POST(request: Request) {
       cliente_nombre: data.cliente_nombre,
       cliente_email: data.cliente_email,
       cliente_telefono: data.cliente_telefono,
-      direccion_envio: data.direccion_envio,
+      direccion_envio: direccionEnvio,
       zona_envio: zonaNombre,
       costo_envio: costoEnvio,
       metodo_pago: data.metodo_pago,
@@ -229,7 +250,7 @@ export async function POST(request: Request) {
       cantidad: x.cantidad,
       precio_unitario: x.producto.precio,
     })),
-    direccionEnvio: data.direccion_envio,
+    direccionEnvio,
     zonaEnvio: zonaNombre,
     costoEnvio,
     metodoPago: data.metodo_pago,

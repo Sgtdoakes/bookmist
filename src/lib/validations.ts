@@ -1,12 +1,13 @@
 import { z } from 'zod'
 
 // --- Checkout (sitio público) -------------------------------------------
-// Bookmist envía a todo el país (sin retiro en persona), así que la
-// dirección siempre es obligatoria. El costo de envío se resuelve de una de
-// dos formas: cotización en vivo de Andreani por código postal (cp_envio,
-// Fase 6d — el server SIEMPRE re-cotiza, nunca confía en el precio del
-// navegador) o, si Andreani no está configurado/disponible, la zona manual
-// (zona_id, el sistema original de la Fase 4a que queda como respaldo).
+// Dos modos de entrega (Fase 6k): envío a domicilio o retiro en persona
+// (punto de retiro configurable en /admin/zonas). Con domicilio, el costo se
+// resuelve de una de dos formas: cotización en vivo de Andreani por código
+// postal (cp_envio, Fase 6d — el server SIEMPRE re-cotiza, nunca confía en
+// el precio del navegador) o, si Andreani no está configurado/disponible,
+// la zona manual (zona_id, el sistema original de la Fase 4a que queda como
+// respaldo). Con retiro no hay dirección ni costo: el server pone ambos.
 export const checkoutItemSchema = z.object({
   producto_id: z.uuid(),
   cantidad: z.number().int().positive(),
@@ -16,7 +17,12 @@ const checkoutBase = z.object({
   cliente_nombre: z.string().trim().min(2, 'Ingresá tu nombre'),
   cliente_email: z.email('Ingresá un email válido'),
   cliente_telefono: z.string().trim().min(6, 'Ingresá un teléfono de contacto'),
-  direccion_envio: z.string().trim().min(5, 'Ingresá la dirección de envío').max(300),
+  // nullish (no .default): mantiene idénticos los tipos de entrada y salida,
+  // que es lo que espera react-hook-form; ausente = domicilio (clientes con
+  // el JS viejo en caché no mandan este campo).
+  modo_envio: z.enum(['domicilio', 'retiro']).nullish(),
+  // Obligatoria solo con envío a domicilio — ver el refine de abajo.
+  direccion_envio: z.string().trim().max(300),
   zona_id: z.uuid('Elegí una zona de envío').nullish(),
   cp_envio: z
     .string()
@@ -27,14 +33,22 @@ const checkoutBase = z.object({
   notas: z.string().trim().max(500).nullish(),
 })
 
-const requiereEnvio = {
-  message: 'Falta definir el envío (código postal o zona).',
-  path: ['cp_envio'] as (string | number)[],
+// Con retiro no se valida nada del envío; con domicilio hacen falta la
+// dirección y (CP o zona).
+type DatosDeEnvio = {
+  modo_envio?: 'domicilio' | 'retiro' | null
+  direccion_envio: string
+  zona_id?: string | null
+  cp_envio?: string | null
 }
+const direccionValida = (d: DatosDeEnvio) => d.modo_envio === 'retiro' || d.direccion_envio.length >= 5
+const envioDefinido = (d: DatosDeEnvio) => d.modo_envio === 'retiro' || !!d.zona_id || !!d.cp_envio
+const MSG_DIRECCION = { message: 'Ingresá la dirección de envío', path: ['direccion_envio'] as (string | number)[] }
+const MSG_ENVIO = { message: 'Falta definir el envío (código postal o zona).', path: ['cp_envio'] as (string | number)[] }
 
 // Esquema del formulario (lo usa react-hook-form en el cliente). El form
 // completa cp_envio O zona_id según el modo (Andreani vs. zonas manuales).
-export const checkoutFormSchema = checkoutBase.refine((d) => !!d.zona_id || !!d.cp_envio, requiereEnvio)
+export const checkoutFormSchema = checkoutBase.refine(direccionValida, MSG_DIRECCION).refine(envioDefinido, MSG_ENVIO)
 export type CheckoutFormInput = z.infer<typeof checkoutFormSchema>
 
 // Esquema completo del pedido (lo valida la API, incluye los items).
@@ -42,7 +56,8 @@ export const checkoutSchema = checkoutBase
   .extend({
     items: z.array(checkoutItemSchema).min(1, 'El carrito está vacío'),
   })
-  .refine((d) => !!d.zona_id || !!d.cp_envio, requiereEnvio)
+  .refine(direccionValida, MSG_DIRECCION)
+  .refine(envioDefinido, MSG_ENVIO)
 export type CheckoutInput = z.infer<typeof checkoutSchema>
 
 // --- Biblioteca de libros y accesorios (admin) ---------------------------

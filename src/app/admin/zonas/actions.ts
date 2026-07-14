@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { guardarValoresConfiguracion } from '@/lib/configuracion'
 import type { ZonaEnvio } from '@/types/db'
 
 type Ok = { ok: true }
@@ -58,6 +59,36 @@ export async function actualizarZona(
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'Ya existe una zona con ese nombre.' }
     return { ok: false, error: 'No se pudo guardar el cambio.' }
+  }
+
+  revalidar()
+  return { ok: true }
+}
+
+// Configuración general de envíos (Fase 6k): umbral de envío gratis y punto
+// de retiro. Vive en la tabla `configuracion` (KV), no en zonas_envio.
+export async function guardarEnvioConfig(cfg: {
+  envioGratisUmbral: number
+  retiroActivo: boolean
+  retiroEtiqueta: string
+}): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  if (!Number.isFinite(cfg.envioGratisUmbral) || cfg.envioGratisUmbral < 0) {
+    return { ok: false, error: 'Ingresá un monto válido (0 = sin envío gratis).' }
+  }
+  if (cfg.retiroActivo && !cfg.retiroEtiqueta.trim()) {
+    return { ok: false, error: 'Escribí cómo se muestra el punto de retiro.' }
+  }
+
+  try {
+    await guardarValoresConfiguracion(supabase, {
+      envio_gratis_umbral: String(Math.round(cfg.envioGratisUmbral)),
+      retiro_activo: cfg.retiroActivo ? 'true' : 'false',
+      retiro_etiqueta: cfg.retiroEtiqueta.trim(),
+    })
+  } catch {
+    return { ok: false, error: 'No se pudo guardar la configuración.' }
   }
 
   revalidar()

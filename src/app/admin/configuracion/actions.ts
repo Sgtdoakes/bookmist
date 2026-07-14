@@ -31,6 +31,7 @@ export async function guardarMarcaConfig(marca: MarcaConfig): Promise<Ok | Err> 
     await guardarValoresConfiguracion(supabase, {
       marca_nombre: marca.nombre,
       marca_logo_url: marca.logoUrl ?? '',
+      marca_favicon_url: marca.faviconUrl ?? '',
       marca_tagline_header: marca.taglineHeader,
       marca_tagline_footer: marca.taglineFooter,
       marca_copyright: marca.copyright,

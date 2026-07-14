@@ -3,7 +3,7 @@ import { CheckoutForm } from '@/components/public/checkout-form'
 import { getZonasEnvioActivas } from '@/lib/zonas'
 import { mpConfigured } from '@/lib/mercadopago'
 import { andreaniConfigured } from '@/lib/andreani'
-import { getCuentasPago, cuentaValida, getDescuentoTransferenciaPct } from '@/lib/configuracion'
+import { getCuentasPago, cuentaValida, getDescuentoTransferenciaPct, getEnvioConfig } from '@/lib/configuracion'
 
 // ISR: sin esto, la lista de zonas de envío queda estática desde el build y
 // una zona nueva/editada en Supabase no aparecería hasta el próximo deploy.
@@ -14,10 +14,11 @@ export const metadata: Metadata = {
 }
 
 export default async function CheckoutPage() {
-  const [zonas, cuentasPago, descuentoPct] = await Promise.all([
+  const [zonas, cuentasPago, descuentoPct, envio] = await Promise.all([
     getZonasEnvioActivas(),
     getCuentasPago(),
     getDescuentoTransferenciaPct(),
+    getEnvioConfig(),
   ])
   const cuentasValidas = cuentasPago.filter(cuentaValida)
 
@@ -32,6 +33,9 @@ export default async function CheckoutPage() {
           envioCotizado={andreaniConfigured()}
           descuentoTransferenciaPct={descuentoPct}
           cuentasPago={cuentasValidas}
+          envioGratisUmbral={envio.envioGratisUmbral}
+          retiroActivo={envio.retiroActivo}
+          retiroEtiqueta={envio.retiroEtiqueta}
         />
       </div>
     </div>

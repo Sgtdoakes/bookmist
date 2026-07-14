@@ -11,9 +11,12 @@ export const revalidate = 3600
 export default async function Icon() {
   const marca = await getMarcaConfig()
 
-  if (marca.logoUrl) {
+  // Preferimos la versión favicon (B recortada con contorno, legible a 16px);
+  // si no está cargada, cae al logo completo.
+  const url = marca.faviconUrl ?? marca.logoUrl
+  if (url) {
     try {
-      const res = await fetch(marca.logoUrl, { next: { revalidate: 3600 } })
+      const res = await fetch(url, { next: { revalidate: 3600 } })
       if (res.ok) {
         return new Response(await res.arrayBuffer(), {
           headers: {

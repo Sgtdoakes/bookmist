@@ -49,6 +49,9 @@ export function CheckoutForm({
   envioCotizado,
   descuentoTransferenciaPct,
   cuentasPago,
+  envioGratisUmbral,
+  retiroActivo,
+  retiroEtiqueta,
 }: {
   zonas: ZonaEnvio[]
   mpEnabled: boolean
@@ -57,6 +60,11 @@ export function CheckoutForm({
   envioCotizado: boolean
   descuentoTransferenciaPct: number
   cuentasPago: CuentaPago[]
+  // 0 = sin envío gratis. Con umbral, el envío a domicilio pasa a $0 cuando
+  // el subtotal lo alcanza (el server aplica la misma regla al confirmar).
+  envioGratisUmbral: number
+  retiroActivo: boolean
+  retiroEtiqueta: string
 }) {
   const router = useRouter()
   const { items, ready, totalPrecio, clear } = useCart()
@@ -74,6 +82,7 @@ export function CheckoutForm({
       cliente_nombre: '',
       cliente_email: '',
       cliente_telefono: '',
+      modo_envio: 'domicilio',
       direccion_envio: '',
       zona_id: null,
       cp_envio: null,
@@ -84,7 +93,8 @@ export function CheckoutForm({
 
   // watch() no se puede memoizar con React Compiler (esperado en react-hook-form).
   // eslint-disable-next-line react-hooks/incompatible-library
-  const { metodo_pago: metodoPago, zona_id: zonaId, cp_envio: cpEnvio } = watch()
+  const { metodo_pago: metodoPago, zona_id: zonaId, cp_envio: cpEnvio, modo_envio: modoEnvio } = watch()
+  const esRetiro = retiroActivo && modoEnvio === 'retiro'
 
   // Cotización en vivo: cuando el CP tiene 4 dígitos, se cotiza con debounce
   // (y se re-cotiza si cambia el carrito). El precio mostrado es informativo:
@@ -124,13 +134,15 @@ export function CheckoutForm({
   }, [cpEnvio, itemsKey, envioCotizado, items.length])
 
   const zonaElegida = zonas.find((z) => z.id === zonaId)
-  const costoEnvio = envioCotizado
+  const envioGratis = envioGratisUmbral > 0 && totalPrecio >= envioGratisUmbral
+  const costoDomicilio = envioCotizado
     ? cotizacion.estado === 'ok'
       ? cotizacion.costo
       : null
     : zonaElegida
       ? Number(zonaElegida.costo)
       : null
+  const costoEnvio = esRetiro || envioGratis ? 0 : costoDomicilio
   const descuento =
     metodoPago === 'transferencia' && descuentoTransferenciaPct > 0
       ? Math.round(totalPrecio * (descuentoTransferenciaPct / 100))
@@ -150,8 +162,9 @@ export function CheckoutForm({
 
   async function onSubmit(values: CheckoutFormInput) {
     // Con envío cotizado, no se confirma hasta tener una cotización válida
-    // del CP actual (el server igual re-cotiza — esto es solo UX).
-    if (envioCotizado && cotizacion.estado !== 'ok') {
+    // del CP actual (el server igual re-cotiza — esto es solo UX). Con
+    // retiro no hay nada que cotizar.
+    if (values.modo_envio !== 'retiro' && envioCotizado && cotizacion.estado !== 'ok') {
       toast.error('Ingresá tu código postal para cotizar el envío.')
       return
     }
@@ -226,7 +239,41 @@ export function CheckoutForm({
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">Envío</h2>
 
-          {envioCotizado ? (
+          {retiroActivo && (
+            <div className="space-y-2 pb-2">
+              {(['domicilio', 'retiro'] as const).map((m) => (
+                <label
+                  key={m}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    modoEnvio === m
+                      ? 'border-primary bg-primary/10'
+                      : 'border-foreground/16 hover:bg-foreground/5'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value={m}
+                    {...register('modo_envio')}
+                    className="mt-1 size-4 accent-[var(--primary)]"
+                  />
+                  <span className="font-medium text-foreground">
+                    {m === 'domicilio' ? 'Envío a domicilio' : retiroEtiqueta}
+                    {m === 'retiro' && (
+                      <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
+                        Gratis
+                      </span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {esRetiro ? (
+            <p className="text-sm text-foreground/70">
+              Te avisamos por WhatsApp o email apenas tu pedido esté listo para retirar.
+            </p>
+          ) : envioCotizado ? (
             <div>
               <Label htmlFor="cp_envio">Código postal</Label>
               <Input
@@ -243,7 +290,8 @@ export function CheckoutForm({
               )}
               {cotizacion.estado === 'ok' && (
                 <p className="mt-1 text-sm text-foreground">
-                  Envío a domicilio por Andreani: <strong>{formatARS(cotizacion.costo)}</strong>
+                  Envío a domicilio por Andreani:{' '}
+                  <strong>{envioGratis ? 'Gratis' : formatARS(cotizacion.costo)}</strong>
                 </p>
               )}
               {cotizacion.estado === 'error' && (
@@ -274,17 +322,21 @@ export function CheckoutForm({
             </>
           )}
 
-          <div className="pt-2">
-            <Label htmlFor="direccion_envio">Dirección completa</Label>
-            <Textarea
-              id="direccion_envio"
-              {...register('direccion_envio')}
-              placeholder="Calle, número, localidad, provincia…"
-              className="mt-1"
-            />
-            <FieldError msg={errors.direccion_envio?.message} />
-          </div>
-          <p className="text-xs text-foreground/60">Enviamos a todo el país con Andreani.</p>
+          {!esRetiro && (
+            <>
+              <div className="pt-2">
+                <Label htmlFor="direccion_envio">Dirección completa</Label>
+                <Textarea
+                  id="direccion_envio"
+                  {...register('direccion_envio')}
+                  placeholder="Calle, número, localidad, provincia…"
+                  className="mt-1"
+                />
+                <FieldError msg={errors.direccion_envio?.message} />
+              </div>
+              <p className="text-xs text-foreground/60">Enviamos a todo el país con Andreani.</p>
+            </>
+          )}
         </section>
 
         <section className="space-y-3">
@@ -362,13 +414,22 @@ export function CheckoutForm({
             <div className="flex justify-between">
               <span className="text-foreground/70">Envío</span>
               <span className="text-foreground">
-                {costoEnvio != null
-                  ? formatARS(costoEnvio)
-                  : envioCotizado
-                    ? 'ingresá tu CP'
-                    : 'elegí tu zona'}
+                {esRetiro
+                  ? 'Gratis (retiro)'
+                  : envioGratis || costoEnvio === 0
+                    ? 'Gratis'
+                    : costoEnvio != null
+                      ? formatARS(costoEnvio)
+                      : envioCotizado
+                        ? 'ingresá tu CP'
+                        : 'elegí tu zona'}
               </span>
             </div>
+            {!esRetiro && envioGratisUmbral > 0 && !envioGratis && (
+              <p className="text-xs text-foreground/60">
+                Sumá {formatARS(envioGratisUmbral - totalPrecio)} más y el envío es gratis.
+              </p>
+            )}
           </div>
           <div className="my-3 h-px bg-foreground/12" />
           <div className="flex justify-between text-lg font-bold text-foreground">
