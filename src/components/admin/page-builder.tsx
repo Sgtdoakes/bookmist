@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -17,6 +17,7 @@ import {
   ImageIcon,
   LayoutGrid,
   LayoutTemplate,
+  Loader2,
   Minus,
   Monitor,
   Search as SearchIcon,
@@ -164,6 +165,12 @@ export function PageBuilder({
   navLinks: NavLinkPublico[]
 }) {
   const router = useRouter()
+  // Cambiar de pestaña navega a la MISMA ruta con otro ?pagina= — Next no
+  // dispara loading.tsx en ese caso (el segmento no cambia), así que sin
+  // esto la pestaña vieja queda congelada sin ningún indicio de carga
+  // mientras el servidor arma la página nueva. isPending cubre ese hueco
+  // con un overlay local.
+  const [cambiandoPagina, startCambioPagina] = useTransition()
   const [bloques, setBloques] = useState<Bloque[]>(() => aBloques(inicial))
   const [preview, setPreview] = useState<Record<string, SeccionPreview>>(() => indexarPreview(previewInicial))
   const [baseline, setBaseline] = useState<string>(() => JSON.stringify(aBloques(inicial)))
@@ -445,7 +452,15 @@ export function PageBuilder({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {cambiandoPagina && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+          <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground shadow">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Cargando página…
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 border-b bg-background px-4 py-2.5">
         <Link
           href="/admin"
@@ -466,7 +481,7 @@ export function PageBuilder({
               onClick={() => {
                 if (p.slug === pagina) return
                 if (dirty && !window.confirm('Tenés cambios sin guardar. ¿Cambiar de página igual?')) return
-                router.push(`/admin/pagina?pagina=${p.slug}`)
+                startCambioPagina(() => router.push(`/admin/pagina?pagina=${p.slug}`))
               }}
               className={`rounded-full px-3 py-1 text-sm font-medium transition ${
                 p.slug === pagina ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
