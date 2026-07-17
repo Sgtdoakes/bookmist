@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { PrimaryButton } from '@/components/public/buttons'
+import { MediaVisual } from '@/components/public/media-visual'
 import { resolverAlineacion, resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
 import type { ElementoLibre, LibreConfig } from '@/lib/secciones'
 
@@ -49,7 +49,7 @@ function ElementoView({
     case 'imagen':
       return elemento.url ? (
         <div className="relative h-64 w-full max-w-2xl overflow-hidden rounded-2xl">
-          <Image src={elemento.url} alt="" fill sizes="(max-width: 768px) 100vw, 700px" className="object-cover" />
+          <MediaVisual url={elemento.url} alt="" sizes="(max-width: 768px) 100vw, 700px" />
         </div>
       ) : null
     case 'boton':

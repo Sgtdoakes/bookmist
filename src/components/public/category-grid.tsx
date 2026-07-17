@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import { MediaVisual } from '@/components/public/media-visual'
 import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { CategoriaItem, CategoriasConfig } from '@/lib/secciones'
 
@@ -47,7 +47,7 @@ function CategoryCard({ cat }: { cat: CategoriaItem }) {
     <>
       <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
         {cat.imagen ? (
-          <Image src={cat.imagen} alt={cat.titulo} fill sizes="(max-width: 768px) 33vw, 400px" className="object-cover" />
+          <MediaVisual url={cat.imagen} alt={cat.titulo} sizes="(max-width: 768px) 33vw, 400px" />
         ) : (
           <ImgPlaceholder label={cat.titulo} dark iconSize={16} className="h-full w-full" />
         )}

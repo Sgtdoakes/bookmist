@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { PrimaryButton } from '@/components/public/buttons'
+import { MediaVisual } from '@/components/public/media-visual'
 import { resolverAlineacion, resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
 import type { BannerConfig } from '@/lib/secciones'
 
@@ -18,7 +18,7 @@ export function BannerBloque({ eyebrow, titulo, texto, imagen, ctaTexto, ctaHref
         <div className={`relative overflow-hidden ${radioClase} ${imagen ? '' : fondoClase}`}>
           {imagen && (
             <>
-              <Image src={imagen} alt="" fill sizes="100vw" className="object-cover" />
+              <MediaVisual url={imagen} alt="" sizes="100vw" />
               <div className="absolute inset-0 bg-black/45" />
             </>
           )}

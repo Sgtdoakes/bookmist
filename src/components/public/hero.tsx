@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { Blob } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import { MediaVisual } from '@/components/public/media-visual'
 import { PrimaryButton } from '@/components/public/buttons'
 import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { HeroConfig } from '@/lib/secciones'
@@ -43,7 +43,7 @@ export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, imagen, estilo }: H
         <div className="relative">
           {imagen ? (
             <div className="relative h-72 w-full overflow-hidden rounded-3xl shadow-2xl md:h-96">
-              <Image src={imagen} alt={titulo} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" priority />
+              <MediaVisual url={imagen} alt={titulo} sizes="(max-width: 768px) 100vw, 50vw" priority />
             </div>
           ) : (
             <>

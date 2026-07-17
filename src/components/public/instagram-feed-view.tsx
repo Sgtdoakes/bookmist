@@ -1,5 +1,5 @@
-import Image from 'next/image'
 import { InstagramIcon } from '@/components/public/decorative'
+import { MediaVisual } from '@/components/public/media-visual'
 import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { InstagramConfig } from '@/lib/secciones'
 import type { PostInstagram } from '@/lib/instagram'
@@ -43,7 +43,7 @@ export function InstagramFeedView({
               rel="noopener noreferrer"
               className="relative aspect-square block overflow-hidden rounded-xl transition-[transform,opacity] duration-400 hover:scale-[1.03]"
             >
-              <Image src={post.imagen} alt="Post de Instagram" fill sizes="(max-width: 768px) 33vw, 200px" className="object-cover" />
+              <MediaVisual url={post.imagen} alt="Post de Instagram" sizes="(max-width: 768px) 33vw, 200px" />
             </a>
           ))}
         </div>

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import { MediaVisual } from '@/components/public/media-visual'
 
 // Imagen principal + galería con miniaturas clicleables — antes las fotos
 // secundarias se mostraban en una grilla fija sin forma de verlas más
@@ -26,14 +26,7 @@ export function ProductGallery({
   return (
     <div>
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl shadow-xl">
-        <Image
-          src={activa}
-          alt={nombre}
-          fill
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-cover"
-          priority
-        />
+        <MediaVisual url={activa} alt={nombre} sizes="(max-width: 768px) 100vw, 50vw" priority />
       </div>
       {todas.length > 1 && (
         <div className="mt-4 grid grid-cols-4 gap-3">
@@ -48,7 +41,7 @@ export function ProductGallery({
                 url === activa ? 'ring-2 ring-primary' : 'ring-1 ring-transparent hover:ring-border'
               }`}
             >
-              <Image src={url} alt="" fill sizes="120px" className="object-cover" />
+              <MediaVisual url={url} alt="" sizes="120px" />
             </button>
           ))}
         </div>

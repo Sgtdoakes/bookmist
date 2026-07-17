@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { AddToCart } from '@/components/public/add-to-cart'
+import { MediaVisual } from '@/components/public/media-visual'
 import { formatARS } from '@/lib/format'
 import type { Producto } from '@/types/db'
 
@@ -10,13 +10,7 @@ export function ProductCard({ producto }: { producto: Producto }) {
     <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl bg-card shadow-md">
       <Link href={`/productos/${producto.slug}`} className="relative block aspect-[3/4] w-full shrink-0">
         {producto.imagen_principal ? (
-          <Image
-            src={producto.imagen_principal}
-            alt={producto.nombre}
-            fill
-            sizes="(max-width: 768px) 100vw, 33vw"
-            className="object-cover"
-          />
+          <MediaVisual url={producto.imagen_principal} alt={producto.nombre} sizes="(max-width: 768px) 100vw, 33vw" />
         ) : (
           <ImgPlaceholder label="Imagen producto" className="aspect-[3/4] w-full" />
         )}

@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import { Blob, FeatherDoodle } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import { MediaVisual } from '@/components/public/media-visual'
 import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
 import type { SobreMiConfig } from '@/lib/secciones'
 
@@ -17,7 +17,7 @@ export function AboutMe({ eyebrow, titulo, texto, texto2, firma, imagen, estilo 
         <div className="relative">
           {imagen ? (
             <div className="relative h-80 w-full overflow-hidden rounded-3xl shadow-xl md:h-96">
-              <Image src={imagen} alt={titulo} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+              <MediaVisual url={imagen} alt={titulo} sizes="(max-width: 768px) 100vw, 50vw" />
             </div>
           ) : (
             <ImgPlaceholder label="Foto de perfil / taller" className="h-80 w-full rounded-3xl shadow-xl md:h-96" />

@@ -184,6 +184,7 @@ function Contenido({
                 portada={(config.imagen as string | null) ?? null}
                 onPortadaChange={(url) => onChange({ imagen: url }, false)}
                 soloPortada
+                permitirVideo
               />
             </div>
           </Campo>
@@ -236,6 +237,7 @@ function Contenido({
                   portada={cat.imagen}
                   onPortadaChange={(url) => set(i, { imagen: url })}
                   soloPortada
+                  permitirVideo
                 />
                 <Input value={cat.titulo} onChange={(e) => set(i, { titulo: e.target.value })} aria-label="Título de la categoría" />
                 <Input
@@ -308,6 +310,7 @@ function Contenido({
                   portada={post.imagen}
                   onPortadaChange={(url) => set(i, { imagen: url })}
                   soloPortada
+                  permitirVideo
                 />
                 <Input
                   value={post.permalink}
@@ -351,6 +354,7 @@ function Contenido({
                 portada={(config.imagen as string | null) ?? null}
                 onPortadaChange={(url) => onChange({ imagen: url }, false)}
                 soloPortada
+                permitirVideo
               />
             </div>
           </Campo>
@@ -475,6 +479,7 @@ function Contenido({
                 portada={(config.imagen as string | null) ?? null}
                 onPortadaChange={(url) => onChange({ imagen: url }, false)}
                 soloPortada
+                permitirVideo
               />
             </div>
           </Campo>
@@ -690,6 +695,7 @@ function ContenidoLibre({ id, config, onChange }: { id: string; config: Record<s
               portada={el.url}
               onPortadaChange={(url) => set(el.id, { url })}
               soloPortada
+              permitirVideo
             />
           )}
           {el.tipo === 'boton' && (

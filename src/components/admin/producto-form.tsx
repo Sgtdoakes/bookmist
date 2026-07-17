@@ -189,6 +189,7 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
             galeria={imagenesGaleria}
             onPortadaChange={onPortadaChange}
             onGaleriaChange={onGaleriaChange}
+            permitirVideo
           />
         </div>
       )}
