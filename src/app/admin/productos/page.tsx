@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductosManager } from '@/components/admin/productos-manager'
+import { CategoriasManager } from '@/components/admin/categorias-manager'
+import { getCategoriasAdmin } from '@/app/admin/productos/actions'
 import type { ProductoConCategorias } from '@/types/db'
 
 export const metadata = { title: 'Catálogo de productos' }
@@ -22,7 +24,7 @@ async function getProductosAdmin(): Promise<ProductoConCategorias[]> {
 }
 
 export default async function AdminProductosPage() {
-  const productos = await getProductosAdmin()
+  const [productos, categorias] = await Promise.all([getProductosAdmin(), getCategoriasAdmin()])
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -48,6 +50,10 @@ export default async function AdminProductosPage() {
         >
           Nuevo producto
         </Link>
+      </div>
+
+      <div className="mt-6">
+        <CategoriasManager categoriasIniciales={categorias} />
       </div>
 
       <div className="mt-6">

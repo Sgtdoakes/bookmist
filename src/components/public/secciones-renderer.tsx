@@ -68,6 +68,8 @@ function RenderSeccion({ seccion: s }: { seccion: SeccionResuelta }) {
       return <LibreBloque {...s.config} />
     case 'catalogo':
       return <CatalogoBloque {...s.config} />
+    case 'divisor':
+      return <Divider />
     default:
       return null
   }

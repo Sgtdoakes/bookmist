@@ -25,11 +25,12 @@ export type SeccionTipo =
   | 'banner'
   | 'libre'
   | 'catalogo'
+  | 'divisor'
 
 // Tipos "furniture" fijos (uno por página, definidos por el diseño original
 // de Dani) vs. bloques libres (repetibles, con estilo editable) — el
 // builder del admin solo ofrece agregar estos últimos.
-export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre', 'catalogo']
+export const TIPOS_BLOQUE_LIBRE: SeccionTipo[] = ['texto', 'productos', 'banner', 'libre', 'catalogo', 'divisor']
 
 export type HeroConfig = {
   eyebrow: string
@@ -119,6 +120,11 @@ export type CatalogoConfig = {
   estilo: EstiloBloque
 }
 
+// Separador decorativo (la línea con la hojita, ya usada en la home antes de
+// "Categorías"/"Reseñas") como bloque insertable en cualquier página — sin
+// contenido propio, solo marca un corte visual entre dos bloques.
+export type DivisorConfig = { estilo: EstiloBloque }
+
 export type BannerConfig = {
   eyebrow: string
   titulo: string
@@ -154,6 +160,7 @@ export type SeccionConfigMap = {
   banner: BannerConfig
   libre: LibreConfig
   catalogo: CatalogoConfig
+  divisor: DivisorConfig
 }
 
 // Union discriminada: en un switch/if sobre `tipo`, TypeScript angosta
@@ -302,6 +309,9 @@ function defaults(): SeccionConfigMap {
     catalogo: {
       eyebrow: 'Nuestro catálogo',
       titulo: 'Todos los productos',
+      estilo: {},
+    },
+    divisor: {
       estilo: {},
     },
   }

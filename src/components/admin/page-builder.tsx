@@ -17,6 +17,7 @@ import {
   ImageIcon,
   LayoutGrid,
   LayoutTemplate,
+  Minus,
   Monitor,
   Search as SearchIcon,
   Plus,
@@ -51,6 +52,7 @@ import { InstagramFeedView } from '@/components/public/instagram-feed-view'
 import { TextoBloque } from '@/components/public/texto-bloque'
 import { ProductosBloqueView } from '@/components/public/productos-bloque'
 import { BannerBloque } from '@/components/public/banner-bloque'
+import { Divider } from '@/components/public/decorative'
 import { LibreBloque } from '@/components/public/libre-bloque'
 import { CatalogoInteractivo } from '@/components/public/catalogo-interactivo'
 import { BuilderInspector, TIPO_LABEL } from '@/components/admin/builder-inspector'
@@ -90,6 +92,7 @@ const RAIL_ITEMS: { tipo: SeccionTipo; icon: React.ElementType; label: string }[
   { tipo: 'banner', icon: ImageIcon, label: 'Banner' },
   { tipo: 'libre', icon: LayoutGrid, label: 'Libre' },
   { tipo: 'catalogo', icon: SearchIcon, label: 'Catálogo' },
+  { tipo: 'divisor', icon: Minus, label: 'Divisor' },
 ]
 
 // Render de una sección con los MISMOS componentes que el sitio público.
@@ -135,6 +138,8 @@ function SeccionView({ s }: { s: SeccionPreview }) {
           estilo={s.config.estilo}
         />
       )
+    case 'divisor':
+      return <Divider />
   }
 }
 
@@ -557,7 +562,9 @@ export function PageBuilder({
             }`}
           >
             <CartProvider>
-              {previewLimpio && <SiteHeader marca={marca} navLinks={navLinks} />}
+              {previewLimpio && (
+                <SiteHeader marca={marca} navLinks={navLinks} categorias={categoriasDisponibles} />
+              )}
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <div className="space-y-10 px-4 py-10">
                   {bloques.length === 0 && (

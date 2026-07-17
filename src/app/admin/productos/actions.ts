@@ -125,6 +125,41 @@ export async function crearCategoria(nombre: string): Promise<{ ok: true; catego
   return { ok: true, categoria: data }
 }
 
+// Solo el nombre visible cambia — el slug queda fijo de por vida: ya lo usan
+// los anchors del catálogo (/productos#slug) y los links guardados en cards
+// de categoría de otras páginas (ej. la home). Regenerarlo rompería esos
+// links existentes sin que nada avise.
+export async function renombrarCategoria(id: string, nombre: string): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  const limpio = nombre.trim()
+  if (!limpio) return { ok: false, error: 'El nombre no puede quedar vacío.' }
+
+  const { error } = await supabase.from('categorias').update({ nombre: limpio }).eq('id', id)
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: 'Ya existe una categoría con ese nombre.' }
+    return { ok: false, error: 'No se pudo renombrar la categoría.' }
+  }
+
+  revalidarPublico()
+  return { ok: true }
+}
+
+// Reemplaza el orden de todas las categorías de una — se manda la lista
+// completa ya en el orden final (mismo patrón que nav_links).
+export async function reordenarCategorias(ids: string[]): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const resultados = await Promise.all(
+    ids.map((id, orden) => supabase.from('categorias').update({ orden }).eq('id', id)),
+  )
+  if (resultados.some((r) => r.error)) return { ok: false, error: 'No se pudo guardar el orden.' }
+
+  revalidarPublico()
+  return { ok: true }
+}
+
 // Reemplaza el set completo de categorías de un producto (mismo patrón
 // delete+insert que guardarContenidoProducto — son listas de un puñado).
 export async function guardarCategoriasProducto(

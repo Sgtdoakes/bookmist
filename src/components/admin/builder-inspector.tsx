@@ -26,6 +26,7 @@ export const TIPO_LABEL: Record<SeccionTipo, string> = {
   banner: 'Banner',
   libre: 'Libre',
   catalogo: 'Catálogo con filtros',
+  divisor: 'Divisor',
 }
 
 // Todos los tipos tienen estilo editable (fondo/tamaño/radio) — los 7
@@ -515,6 +516,13 @@ function Contenido({
 
     case 'libre':
       return <ContenidoLibre id={id} config={config} onChange={onChange} />
+
+    case 'divisor':
+      return (
+        <p className="text-xs text-muted-foreground">
+          Este bloque no tiene contenido — solo agrega la línea separadora entre los bloques de arriba y de abajo.
+        </p>
+      )
   }
 }
 
