@@ -122,6 +122,7 @@ function SeccionView({ s }: { s: SeccionPreview }) {
           ctaTexto={s.config.ctaTexto}
           ctaHref={s.config.ctaHref}
           estilo={s.config.estilo}
+          anclaId={s.config.anclaId}
         />
       )
     case 'banner':

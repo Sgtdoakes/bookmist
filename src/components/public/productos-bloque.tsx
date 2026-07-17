@@ -38,6 +38,7 @@ export function ProductosBloqueView({
   ctaTexto,
   ctaHref,
   estilo,
+  anclaId,
 }: {
   eyebrow: string
   titulo: string
@@ -45,6 +46,7 @@ export function ProductosBloqueView({
   ctaTexto?: string
   ctaHref?: string
   estilo: EstiloBloque
+  anclaId?: string
 }) {
   if (productos.length === 0) return null
 
@@ -54,7 +56,7 @@ export function ProductosBloqueView({
   const conFondo = !!estilo?.fondo && estilo.fondo !== 'transparente'
 
   return (
-    <section className="w-full">
+    <section className="w-full" id={anclaId || undefined}>
       <div className={`mx-auto max-w-7xl px-6 md:px-10 ${tamano.padding}`}>
         <div className={`${fondoClase} ${radioClase} ${conFondo ? 'p-6 md:p-10' : ''}`}>
           <BestSellersScroller
@@ -83,6 +85,7 @@ export async function ProductosBloque({
   ctaTexto,
   ctaHref,
   estilo,
+  anclaId,
 }: ProductosConfig) {
   const items = await resolverProductosBloque({ fuente, categoria, productos, limite })
   return (
@@ -93,6 +96,7 @@ export async function ProductosBloque({
       ctaTexto={ctaTexto}
       ctaHref={ctaHref}
       estilo={estilo}
+      anclaId={anclaId}
     />
   )
 }

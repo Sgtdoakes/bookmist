@@ -108,6 +108,11 @@ export type ProductosConfig = {
   ctaTexto: string
   ctaHref: string
   estilo: EstiloBloque
+  // Ancla opcional (id de sección) para linkear directo con /pagina#slug —
+  // no tiene UI propia en el inspector, se carga al crear el bloque (Fase
+  // 8c: un bloque "Productos" por categoría real, con el mismo slug que ya
+  // usan el dropdown del header y las cards de categoría de la home).
+  anclaId: string
 }
 
 // Catálogo interactivo (/productos): buscador + orden + rango de precios +
@@ -237,6 +242,7 @@ function defaults(): SeccionConfigMap {
       ctaTexto: 'Ver más',
       ctaHref: '/productos',
       estilo: {},
+      anclaId: '',
     },
     sobre_mi: {
       eyebrow: 'Sobre mí',
@@ -292,6 +298,7 @@ function defaults(): SeccionConfigMap {
       ctaTexto: '',
       ctaHref: '',
       estilo: {},
+      anclaId: '',
     },
     banner: {
       eyebrow: '',

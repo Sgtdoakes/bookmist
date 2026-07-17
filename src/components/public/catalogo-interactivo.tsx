@@ -8,14 +8,16 @@ import { formatARS } from '@/lib/format'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { Categoria, ProductoConCategorias } from '@/types/db'
 
-// Catálogo interactivo de /productos: buscador, orden, rango de precios y
-// navegación por categoría. Todo client-side sobre el catálogo completo (el
-// catálogo de Bookmist es de decenas de SKUs — filtrar en memoria es
-// instantáneo y la página sigue siendo estática/ISR).
+// Buscador de /productos: buscador, orden, rango de precios y chips de
+// categoría. Todo client-side sobre el catálogo completo (el catálogo de
+// Bookmist es de decenas de SKUs — filtrar en memoria es instantáneo y la
+// página sigue siendo estática/ISR).
 //
-// Dos vistas: sin filtros activos muestra secciones por categoría (los
-// "bloques" con los nombres de las categorías que pidió Dani); con
-// cualquier filtro/orden activo pasa a una grilla unificada de resultados.
+// Fase 8c: dejó de mostrar TODO el catálogo agrupado por categoría sin
+// filtros activos (eso ahora lo arman bloques "Productos" manuales, uno por
+// categoría, debajo de este en la página) — este bloque es puramente un
+// buscador: sin filtro activo no muestra ninguna grilla, para no duplicar
+// los productos que ya se muestran en esos bloques de abajo.
 
 type Orden = 'recientes' | 'precio_desc' | 'precio_asc' | 'alfabetico' | ''
 
@@ -237,9 +239,8 @@ export function CatalogoInteractivo({
             )}
           </div>
 
-          {hayFiltros ? (
-            // Vista filtrada: una sola grilla de resultados
-            filtrados.length === 0 ? (
+          {hayFiltros &&
+            (filtrados.length === 0 ? (
               <p className="py-16 text-center text-muted">
                 No encontramos productos con esos filtros. Probá con otra búsqueda.
               </p>
@@ -250,20 +251,7 @@ export function CatalogoInteractivo({
                 </p>
                 <Grilla productos={filtrados} />
               </>
-            )
-          ) : (
-            // Vista por defecto: una sección por categoría
-            <div className="space-y-14">
-              {secciones.map((s) => (
-                <div key={s.categoria?.id ?? 'otros'} id={s.categoria?.slug ?? 'otros'}>
-                  <h3 className="mb-5 font-heading text-2xl font-semibold text-foreground">
-                    {s.categoria?.nombre ?? 'Otros'}
-                  </h3>
-                  <Grilla productos={s.productos} />
-                </div>
-              ))}
-            </div>
-          )}
+            ))}
         </div>
       </div>
     </section>
