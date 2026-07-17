@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next'
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bookmist.ar'
+import { SITE_URL } from '@/lib/constants'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -12,6 +11,6 @@ export default function robots(): MetadataRoute.Robots {
       // deben rastrearse.
       disallow: ['/admin', '/carrito', '/checkout', '/pedido', '/mantenimiento'],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }

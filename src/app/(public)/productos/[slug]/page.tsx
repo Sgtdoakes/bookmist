@@ -8,6 +8,7 @@ import { AddToCart } from '@/components/public/add-to-cart'
 import { ProductCard } from '@/components/public/product-card'
 import { SeccionesDePagina } from '@/components/public/secciones-renderer'
 import { formatARS } from '@/lib/format'
+import { productJsonLd } from '@/lib/structured-data'
 
 // ISR: sin esto, la ficha de producto queda estática desde el build.
 export const revalidate = 300
@@ -18,9 +19,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const producto = await getProductoConItems(slug)
   if (!producto) return {}
+  const description = producto.descripcion ?? `${producto.nombre} — envíos a todo el país desde Argentina.`
   return {
     title: producto.nombre,
-    description: producto.descripcion ?? undefined,
+    description,
+    alternates: { canonical: `/productos/${producto.slug}` },
+    openGraph: {
+      title: producto.nombre,
+      description,
+      ...(producto.imagen_principal && { images: [{ url: producto.imagen_principal }] }),
+    },
   }
 }
 
@@ -41,6 +49,10 @@ export default async function ProductoDetallePage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(producto)) }}
+      />
       <div className="grid gap-10 md:grid-cols-2">
         <ProductGallery
           imagenPrincipal={producto.imagen_principal}

@@ -11,6 +11,26 @@ function configured() {
   return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY
 }
 
+// Lectura pública de las páginas institucionales activas (sitemap). Excluye
+// sistema=true (home/productos/producto_detalle): son los "pagina" internos
+// del motor de bloques, no rutas reales bajo /[slug] — ya están cubiertas
+// aparte en el sitemap (home y /productos).
+export async function getPaginasActivas(): Promise<PaginaRow[]> {
+  if (!configured()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('paginas')
+      .select('*')
+      .eq('activo', true)
+      .eq('sistema', false)
+    if (error) throw error
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
 // Lectura pública (ruta dinámica /[slug]) — null si no existe, está
 // inactiva, o Supabase no está configurado.
 export async function getPaginaPorSlug(slug: string): Promise<PaginaRow | null> {

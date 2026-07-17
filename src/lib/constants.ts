@@ -1,5 +1,10 @@
 import type { EstadoPedido, MetodoPago } from '@/types/db'
 
+// Dominio real de producción (bookmist.com.ar) — usado como fallback para
+// canonical/OG/sitemap/robots cuando NEXT_PUBLIC_SITE_URL no está seteada
+// (ej. builds locales o un deploy que todavía no cargó la env var en Vercel).
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bookmist.com.ar'
+
 // "Contacto"/"Preguntas frecuentes"/"Política de devolución" todavía no
 // existen como páginas propias — apuntan a "#" en vez de a una ruta rota,
 // igual que el wireframe original de Dani. "Productos" ya tiene página real

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Playfair_Display, Caveat, Nunito } from 'next/font/google'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { getMarcaConfig } from '@/lib/configuracion'
 import { organizationJsonLd } from '@/lib/structured-data'
+import { SITE_URL } from '@/lib/constants'
 import './globals.css'
 
 // Fuentes de marca (Manual de Marca Bookmist), cargadas con next/font en vez
@@ -25,28 +27,41 @@ const nunito = Nunito({
   display: 'swap',
 })
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bookmist.ar'
 const description =
-  'Cajas y kits literarios curados: libros elegidos + accesorios pensados para vivir cada historia. Envíos a todo el país.'
+  'Cajas y kits literarios curados: libros elegidos + accesorios pensados para vivir cada historia. Envíos a todo el país desde Argentina.'
 
 export async function generateMetadata(): Promise<Metadata> {
   const marca = await getMarcaConfig()
+  const googleVerification = process.env.GOOGLE_SITE_VERIFICATION
   return {
-    metadataBase: new URL(siteUrl),
+    metadataBase: new URL(SITE_URL),
     title: {
       default: `${marca.nombre} — Cajas y kits literarios`,
       template: `%s · ${marca.nombre}`,
     },
     description,
-    keywords: ['Bookmist', 'cajas literarias', 'kits literarios', 'suscripción de libros Argentina', 'book box'],
+    keywords: [
+      'Bookmist',
+      'cajas literarias',
+      'kits literarios',
+      'suscripción de libros Argentina',
+      'cajas literarias Argentina',
+      'regalos literarios Argentina',
+      'book box',
+    ],
     alternates: { canonical: '/' },
+    // Sin esto Google no confirma la propiedad en Search Console. Queda
+    // vacío (Next omite el campo) hasta que el usuario cree la propiedad y
+    // pegue el código en GOOGLE_SITE_VERIFICATION (Vercel env var).
+    ...(googleVerification && { verification: { google: googleVerification } }),
     openGraph: {
       type: 'website',
       locale: 'es_AR',
-      url: siteUrl,
+      url: SITE_URL,
       siteName: marca.nombre,
       title: `${marca.nombre} — Cajas y kits literarios`,
       description,
+      ...(marca.logoUrl && { images: [{ url: marca.logoUrl }] }),
     },
     twitter: {
       card: 'summary',
@@ -77,6 +92,10 @@ export default async function RootLayout({
   const marca = await getMarcaConfig()
   const jsonLd = { ...organizationJsonLd(marca), description }
   const colores = estilosDeColor(marca)
+  // Analytics apagado hasta que el usuario cree la propiedad GA4 y cargue el
+  // Measurement ID en Vercel — mismo patrón "degrada sin credenciales" que
+  // Andreani/Mercado Pago/Instagram en este proyecto.
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
   return (
     <html
@@ -91,6 +110,7 @@ export default async function RootLayout({
         />
         {children}
       </body>
+      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   )
 }
