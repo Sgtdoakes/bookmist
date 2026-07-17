@@ -15,13 +15,21 @@ const isDev = process.env.NODE_ENV === 'development'
 // checkout envía sus datos vía fetch a /api/checkout (Route Handler, siempre
 // dinámico por naturaleza), no vía navegación de página, así que no fuerza
 // rendering dinámico en el resto del sitio.
+// Revisitado en la Fase 7 (SEO/Analytics): Google Analytics (@next/third-parties)
+// SÍ es un script de terceros real — bug encontrado en producción el
+// 2026-07-17, CSP nunca se actualizó al agregar el componente, así que
+// gtag.js se cargaba en el HTML pero el navegador lo bloqueaba en silencio
+// (0 datos en Analytics, sin ningún error visible salvo en la consola).
+// Dominios de Google recomendados por su propia documentación de CSP para
+// gtag.js. media-src es nuevo (Fase 8b): video de Cloudinary en <video>.
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''};
+  script-src 'self' 'unsafe-inline' https://*.googletagmanager.com${isDev ? " 'unsafe-eval'" : ''};
   style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net;
+  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com;
+  media-src 'self' https://res.cloudinary.com;
   font-src 'self';
-  connect-src 'self' https://*.supabase.co;
+  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
