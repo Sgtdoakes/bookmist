@@ -57,33 +57,42 @@ export async function getSeccionesAdmin(pagina = 'home'): Promise<SeccionAdmin[]
 // devuelven tal cual. Lo llama el lienzo del admin al agregar un bloque o
 // al cambiar algo que afecta QUÉ se muestra (fuente/categoría/selección
 // manual), con debounce del lado del cliente.
+// En paralelo (Promise.all), no en secuencia: cada resolver ya abre su
+// propio cliente de Supabase (no comparten nada mutable), así que
+// esperarlos uno por uno solo suma latencia de red sin necesidad — con
+// varios bloques "productos" en una misma página (Fase 8c: un bloque por
+// categoría) la versión secuencial volvía perceptiblemente lenta la carga
+// del lienzo.
 export async function previewSecciones(
   items: { id: string; tipo: string; config: Record<string, unknown> }[],
 ): Promise<SeccionPreview[]> {
   const supabase = await clienteAutenticado()
   if (!supabase) return []
 
-  const resultados: SeccionPreview[] = []
-  for (const item of items) {
-    if (!esSeccionTipoConocido(item.tipo)) continue
-    // resolverSeccion() pone id=tipo (pensado solo como key para .map() en
-    // el sitio público) — acá hace falta el id REAL de la fila para poder
-    // indexar el preview por id en el lienzo del admin.
-    const resuelta = { ...resolverSeccion(item.tipo, item.config), id: item.id }
-    if (resuelta.tipo === 'productos' || resuelta.tipo === 'mas_vendidos') {
-      const productosResueltos = await resolverProductosBloque(resuelta.config)
-      resultados.push({ ...resuelta, productosResueltos })
-    } else if (resuelta.tipo === 'catalogo') {
-      const catalogoResuelto = await resolverCatalogoBloque()
-      resultados.push({ ...resuelta, catalogoResuelto })
-    } else if (resuelta.tipo === 'instagram') {
-      const instagramResuelto = await resolverInstagramFeed(resuelta.config.posts)
-      resultados.push({ ...resuelta, instagramResuelto })
-    } else {
-      resultados.push(resuelta)
-    }
-  }
-  return resultados
+  const resueltos = await Promise.all(
+    items
+      .filter((item) => esSeccionTipoConocido(item.tipo))
+      .map(async (item) => {
+        // resolverSeccion() pone id=tipo (pensado solo como key para .map()
+        // en el sitio público) — acá hace falta el id REAL de la fila para
+        // poder indexar el preview por id en el lienzo del admin.
+        const resuelta = { ...resolverSeccion(item.tipo as SeccionTipo, item.config), id: item.id }
+        if (resuelta.tipo === 'productos' || resuelta.tipo === 'mas_vendidos') {
+          const productosResueltos = await resolverProductosBloque(resuelta.config)
+          return { ...resuelta, productosResueltos }
+        }
+        if (resuelta.tipo === 'catalogo') {
+          const catalogoResuelto = await resolverCatalogoBloque()
+          return { ...resuelta, catalogoResuelto }
+        }
+        if (resuelta.tipo === 'instagram') {
+          const instagramResuelto = await resolverInstagramFeed(resuelta.config.posts)
+          return { ...resuelta, instagramResuelto }
+        }
+        return resuelta
+      }),
+  )
+  return resueltos
 }
 
 export type LayoutItem = {
