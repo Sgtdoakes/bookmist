@@ -14,9 +14,10 @@ async function enviarEmail(opts: {
   html: string
   text: string
   to?: string
+  from?: string
 }): Promise<EnvioResultado> {
   const to = opts.to || process.env.OWNER_EMAIL
-  const from = process.env.EMAIL_FROM
+  const from = opts.from || process.env.EMAIL_FROM
   if (!to || !from) return { sent: false, reason: 'email no configurado' }
 
   const provider = (process.env.EMAIL_PROVIDER ?? 'resend').toLowerCase()
@@ -92,7 +93,7 @@ export async function notificarPedidoNuevo(
 
   const text = `${construirMensajePedido(datos)}\n\nWhatsApp: ${whatsappUrl}`
 
-  return enviarEmail({ subject, html, text })
+  return enviarEmail({ subject, html, text, from: process.env.EMAIL_FROM_PEDIDOS || process.env.EMAIL_FROM })
 }
 
 // Cupón de bienvenida (Fase 8e): se manda apenas alguien completa el popup
@@ -125,5 +126,11 @@ export async function enviarCuponBienvenida(opts: {
 
   const text = `¡Hola${opts.nombre ? ` ${opts.nombre}` : ''}!\n\nGracias por sumarte a ${nombreTienda}. Tu cupón: ${opts.codigo}\nIngresalo en el checkout para llevarte ${opts.pct}% OFF.`
 
-  return enviarEmail({ subject, html, text, to: opts.destinatario })
+  return enviarEmail({
+    subject,
+    html,
+    text,
+    to: opts.destinatario,
+    from: process.env.EMAIL_FROM_PROMOCIONES || process.env.EMAIL_FROM,
+  })
 }
