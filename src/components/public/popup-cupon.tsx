@@ -75,7 +75,7 @@ export function PopupCupon({ pct }: { pct: number }) {
         {enviado ? (
           <div className="py-4 text-center">
             <DialogTitle className="font-heading text-xl">
-              {yaSuscripto ? 'Ya estabas suscripta 👋' : '¡Listo! 🎉'}
+              {yaSuscripto ? 'Ya estás en la lista 👋' : '¡Listo! 🎉'}
             </DialogTitle>
             <DialogDescription className="mt-2 text-base text-popover-foreground/75">
               {yaSuscripto
