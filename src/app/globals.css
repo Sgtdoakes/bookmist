@@ -153,3 +153,27 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Dos bloques de página consecutivos, ninguno con fondo propio elegido a
+   mano (data-fondo="false"): sin esto, el padding-bottom del de arriba y el
+   padding-top del de abajo se suman y dejan un vacío enorme entre ellos —
+   ambos se ven pintados con el mismo violeta base, así que el ojo lo lee
+   como un espacio muerto, no como dos secciones separadas.
+   Se anula el padding-top propio del bloque de abajo —vía las variables
+   --bloque-pt/--bloque-pt-md que pone cada bloque (ver paddingTopVars() en
+   estilo-secciones.ts), que reflejan su padding real así el tamaño elegido
+   sea el que sea— para que el único espacio que quede sea el padding-bottom
+   del de arriba. Actúa sobre la adyacencia real del DOM (`section +
+   section`) filtrada por el atributo `data-fondo` (solo lo ponen los
+   bloques de página, nunca contenido no relacionado como el checkout), así
+   que funciona sin importar qué bloques estén ocultos, se agreguen, se
+   reordenen, ni en qué página o contenedor vivan (home, catálogo, ficha de
+   producto) — nunca hay que volver a tocar esto a mano. */
+section[data-fondo='false'] + section[data-fondo='false'] {
+  margin-top: calc(-1 * var(--bloque-pt, 4rem));
+}
+@media (min-width: 768px) {
+  section[data-fondo='false'] + section[data-fondo='false'] {
+    margin-top: calc(-1 * var(--bloque-pt-md, 6rem));
+  }
+}

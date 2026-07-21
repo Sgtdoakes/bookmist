@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { guardarValoresConfiguracion, type MarcaConfig, type CuentaPago } from '@/lib/configuracion'
+import {
+  guardarValoresConfiguracion,
+  type MarcaConfig,
+  type CuentaPago,
+  type CuponBienvenidaConfig,
+} from '@/lib/configuracion'
 
 type Ok = { ok: true }
 type Err = { ok: false; error: string }
@@ -66,6 +71,30 @@ export async function guardarCuentasPago(cuentas: CuentaPago[]): Promise<Ok | Er
 
   revalidarPublico()
   revalidatePath('/checkout')
+  return { ok: true }
+}
+
+export async function guardarCuponBienvenida(cfg: CuponBienvenidaConfig): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const codigo = cfg.codigo.trim().toUpperCase()
+  if (cfg.activo && !codigo) return { ok: false, error: 'Escribí un código para el cupón.' }
+  if (!Number.isFinite(cfg.pct) || cfg.pct <= 0 || cfg.pct > 100) {
+    return { ok: false, error: 'Ingresá un porcentaje entre 1 y 100.' }
+  }
+
+  try {
+    await guardarValoresConfiguracion(supabase, {
+      cupon_bienvenida_activo: cfg.activo ? 'true' : 'false',
+      cupon_bienvenida_codigo: codigo,
+      cupon_bienvenida_pct: String(cfg.pct),
+    })
+  } catch {
+    return { ok: false, error: 'No se pudo guardar el cupón.' }
+  }
+
+  revalidarPublico()
   return { ok: true }
 }
 

@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { checkoutSchema } from '@/lib/validations'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { aplicarEnvioGratis, getDescuentoTransferenciaPct, getEnvioConfig, getMarcaConfig } from '@/lib/configuracion'
+import {
+  aplicarEnvioGratis,
+  getCuponBienvenida,
+  getDescuentoTransferenciaPct,
+  getEnvioConfig,
+  getMarcaConfig,
+} from '@/lib/configuracion'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 import { notificarPedidoNuevo } from '@/lib/email'
 import { avisarWhatsAppDani } from '@/lib/notificaciones'
@@ -166,8 +172,23 @@ export async function POST(request: Request) {
 
   // 2b) Descuento por transferencia (la promesa de la barra de beneficios):
   // se aplica sobre el subtotal de productos — el envío se cobra completo.
-  const pctDescuento = data.metodo_pago === 'transferencia' ? await getDescuentoTransferenciaPct() : 0
-  const descuento = Math.round(subtotal * (pctDescuento / 100))
+  const pctDescuentoTransferencia = data.metodo_pago === 'transferencia' ? await getDescuentoTransferenciaPct() : 0
+
+  // 2c) Cupón de bienvenida (Fase 8e) — el código lo manda el navegador,
+  // pero el % de descuento SIEMPRE se recalcula acá contra la config real
+  // (nunca se confía en un monto que venga del cliente). Se combina con el
+  // descuento por transferencia (ambos se suman sobre el subtotal).
+  let cuponCodigoAplicado: string | null = null
+  let pctDescuentoCupon = 0
+  if (data.cupon?.trim()) {
+    const cupon = await getCuponBienvenida()
+    if (cupon.activo && cupon.codigo === data.cupon.trim().toUpperCase()) {
+      cuponCodigoAplicado = cupon.codigo
+      pctDescuentoCupon = cupon.pct
+    }
+  }
+
+  const descuento = Math.round(subtotal * ((pctDescuentoTransferencia + pctDescuentoCupon) / 100))
   const total = subtotal - descuento + costoEnvio
 
   // 3) Crear el pedido (service role: ignora RLS).
@@ -183,6 +204,7 @@ export async function POST(request: Request) {
       metodo_pago: data.metodo_pago,
       estado: 'pendiente',
       descuento,
+      cupon_codigo: cuponCodigoAplicado,
       total,
       notas: data.notas ?? null,
     })
@@ -255,6 +277,7 @@ export async function POST(request: Request) {
     costoEnvio,
     metodoPago: data.metodo_pago,
     descuento,
+    cuponCodigo: cuponCodigoAplicado,
     total,
     notas: data.notas ?? null,
   }
@@ -269,5 +292,9 @@ export async function POST(request: Request) {
     whatsapp_url: waUrl,
     total,
     mp_init_point: mpInitPoint,
+    // Para que el checkout avise si el código que tipeó no era válido — la
+    // validación real (arriba) es la única fuente de verdad, esto es solo
+    // feedback de UI post-submit.
+    cupon_aplicado: cuponCodigoAplicado !== null,
   })
 }

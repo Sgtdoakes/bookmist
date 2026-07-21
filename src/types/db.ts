@@ -144,8 +144,12 @@ export type Database = {
           costo_envio: number | null
           metodo_pago: MetodoPago
           estado: EstadoPedido
-          // Monto descontado por pagar con transferencia (migración 0023).
+          // Monto descontado por pagar con transferencia + cupón de
+          // bienvenida si corresponde, combinados (migración 0023, 0026).
           descuento: number
+          // Código de cupón usado, si usó uno (migración 0026) — solo a fines
+          // de que Dani lo vea en el pedido, el monto ya está en `descuento`.
+          cupon_codigo: string | null
           total: number
           notas: string | null
           leido: boolean
@@ -165,6 +169,7 @@ export type Database = {
           metodo_pago: MetodoPago
           estado?: EstadoPedido
           descuento?: number
+          cupon_codigo?: string | null
           total?: number
           notas?: string | null
           leido?: boolean
@@ -304,6 +309,26 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['pagina_secciones']['Insert']>
         Relationships: []
       }
+      suscriptores_newsletter: {
+        Row: {
+          id: string
+          email: string
+          nombre: string
+          cumpleanos: string | null
+          provincia: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          nombre: string
+          cumpleanos?: string | null
+          provincia?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['suscriptores_newsletter']['Insert']>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -354,3 +379,5 @@ export type OrderConItems = Order & { order_items: OrderItem[] }
 export type PaginaSeccionRow = Database['public']['Tables']['pagina_secciones']['Row']
 export type NavLink = Database['public']['Tables']['nav_links']['Row']
 export type PaginaRow = Database['public']['Tables']['paginas']['Row']
+export type SuscriptorNewsletter = Database['public']['Tables']['suscriptores_newsletter']['Row']
+export type SuscriptorNewsletterInsert = Database['public']['Tables']['suscriptores_newsletter']['Insert']

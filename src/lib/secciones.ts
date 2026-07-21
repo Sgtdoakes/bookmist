@@ -37,7 +37,11 @@ export type HeroConfig = {
   titulo: string
   subtitulo: string
   ctaTexto: string
-  imagen: string | null
+  // Carrusel de fondo (Fase 8d): 0 = placeholder, 1 = imagen fija, 2+ = rota
+  // automáticamente entre todas. Un solo texto/CTA para todo el carrusel —
+  // no hay un título por slide, a propósito, para que Dani solo tenga que
+  // subir fotos y listo (ver Hero en components/public/hero.tsx).
+  imagenes: string[]
   estilo: EstiloBloque
 }
 export type BeneficioItem = { emoji: string; texto: string }
@@ -101,6 +105,11 @@ export type ProductosConfig = {
   eyebrow: string
   titulo: string
   fuente: ProductosFuente
+  // Slug de la categoría (no el nombre): el nombre se puede renombrar desde
+  // el admin en cualquier momento (ver renombrarCategoria) y el slug queda
+  // fijo de por vida — si esto guardara el nombre, renombrar una categoría
+  // rompería en silencio cualquier bloque "Productos" que apunte a ella (0
+  // resultados = la sección entera desaparece de la página, sin aviso).
   categoria: string
   productos: string[]
   limite: number
@@ -184,7 +193,7 @@ function defaults(): SeccionConfigMap {
       titulo: 'Palabras que se sienten en las manos',
       subtitulo: 'Kits literarios pensados para pausar el ruido y perderte, otra vez, en una buena historia.',
       ctaTexto: 'Descubrir los kits',
-      imagen: null,
+      imagenes: [],
       estilo: {},
     },
     beneficios: {

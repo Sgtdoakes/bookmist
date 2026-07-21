@@ -43,6 +43,12 @@ type EstadoCotizacion =
   | { estado: 'ok'; cp: string; costo: number }
   | { estado: 'error'; mensaje: string }
 
+type EstadoCupon =
+  | { estado: 'sin_verificar' }
+  | { estado: 'verificando' }
+  | { estado: 'valido'; pct: number }
+  | { estado: 'invalido'; mensaje: string }
+
 export function CheckoutForm({
   zonas,
   mpEnabled,
@@ -70,6 +76,7 @@ export function CheckoutForm({
   const { items, ready, totalPrecio, clear } = useCart()
   const [enviando, setEnviando] = useState(false)
   const [cotizacion, setCotizacion] = useState<EstadoCotizacion>({ estado: 'sin_cotizar' })
+  const [cupon, setCupon] = useState<EstadoCupon>({ estado: 'sin_verificar' })
 
   const {
     register,
@@ -87,14 +94,45 @@ export function CheckoutForm({
       zona_id: null,
       cp_envio: null,
       metodo_pago: mpEnabled ? 'mercadopago' : 'transferencia',
+      cupon: '',
       notas: '',
     },
   })
 
   // watch() no se puede memoizar con React Compiler (esperado en react-hook-form).
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const { metodo_pago: metodoPago, zona_id: zonaId, cp_envio: cpEnvio, modo_envio: modoEnvio } = watch()
+  const {
+    metodo_pago: metodoPago,
+    zona_id: zonaId,
+    cp_envio: cpEnvio,
+    modo_envio: modoEnvio,
+    cupon: cuponTexto,
+    // eslint-disable-next-line react-hooks/incompatible-library
+  } = watch()
   const esRetiro = retiroActivo && modoEnvio === 'retiro'
+
+  // Si edita el código después de verificarlo, el resultado anterior queda
+  // obsoleto — vuelve a "sin verificar" hasta que apriete "Aplicar" de nuevo.
+  useEffect(() => {
+    setCupon((c) => (c.estado === 'sin_verificar' ? c : { estado: 'sin_verificar' }))
+  }, [cuponTexto])
+
+  async function verificarCupon() {
+    const codigo = (cuponTexto ?? '').trim()
+    if (!codigo) return
+    setCupon({ estado: 'verificando' })
+    try {
+      const res = await fetch('/api/cupon/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo }),
+      })
+      const json = await res.json()
+      if (res.ok && json.ok) setCupon({ estado: 'valido', pct: json.pct })
+      else setCupon({ estado: 'invalido', mensaje: json.error ?? 'Ese cupón no es válido.' })
+    } catch {
+      setCupon({ estado: 'invalido', mensaje: 'Problema de conexión al verificar el cupón.' })
+    }
+  }
 
   // Cotización en vivo: cuando el CP tiene 4 dígitos, se cotiza con debounce
   // (y se re-cotiza si cambia el carrito). El precio mostrado es informativo:
@@ -143,10 +181,9 @@ export function CheckoutForm({
       ? Number(zonaElegida.costo)
       : null
   const costoEnvio = esRetiro || envioGratis ? 0 : costoDomicilio
-  const descuento =
-    metodoPago === 'transferencia' && descuentoTransferenciaPct > 0
-      ? Math.round(totalPrecio * (descuentoTransferenciaPct / 100))
-      : 0
+  const pctTransferencia = metodoPago === 'transferencia' ? descuentoTransferenciaPct : 0
+  const pctCupon = cupon.estado === 'valido' ? cupon.pct : 0
+  const descuento = Math.round(totalPrecio * ((pctTransferencia + pctCupon) / 100))
   const total = totalPrecio - descuento + (costoEnvio ?? 0)
 
   if (ready && items.length === 0) {
@@ -183,6 +220,9 @@ export function CheckoutForm({
       if (!res.ok || !json.ok) {
         toast.error(json.error ?? 'No pudimos procesar el pedido.')
         return
+      }
+      if (values.cupon?.trim() && !json.cupon_aplicado) {
+        toast.error('El cupón ingresado no era válido — el pedido se creó igual, sin ese descuento.')
       }
       try {
         sessionStorage.setItem(
@@ -400,6 +440,38 @@ export function CheckoutForm({
             ))}
           </ul>
           <div className="my-3 h-px bg-foreground/12" />
+
+          <div className="space-y-1">
+            <Label htmlFor="cupon">¿Tenés un cupón?</Label>
+            <div className="flex gap-2">
+              <Input
+                id="cupon"
+                {...register('cupon')}
+                placeholder="Código"
+                className="uppercase"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    verificarCupon()
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={verificarCupon}
+                disabled={!cuponTexto?.trim() || cupon.estado === 'verificando'}
+                className="shrink-0 rounded-lg border border-foreground/20 px-3 text-sm font-medium text-foreground hover:bg-foreground/5 disabled:opacity-50"
+              >
+                {cupon.estado === 'verificando' ? 'Verificando…' : 'Aplicar'}
+              </button>
+            </div>
+            {cupon.estado === 'valido' && (
+              <p className="text-sm text-primary">¡Cupón aplicado! {cupon.pct}% OFF.</p>
+            )}
+            {cupon.estado === 'invalido' && <p className="text-sm text-red-300">{cupon.mensaje}</p>}
+          </div>
+
+          <div className="my-3 h-px bg-foreground/12" />
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-foreground/70">Subtotal</span>
@@ -407,7 +479,14 @@ export function CheckoutForm({
             </div>
             {descuento > 0 && (
               <div className="flex justify-between">
-                <span className="text-foreground/70">Descuento transferencia ({descuentoTransferenciaPct}%)</span>
+                <span className="text-foreground/70">
+                  Descuento
+                  {pctTransferencia > 0 && pctCupon > 0
+                    ? ` (transferencia + cupón, ${pctTransferencia + pctCupon}%)`
+                    : pctCupon > 0
+                      ? ` (cupón, ${pctCupon}%)`
+                      : ` (transferencia, ${pctTransferencia}%)`}
+                </span>
                 <span className="text-foreground">-{formatARS(descuento)}</span>
               </div>
             )}

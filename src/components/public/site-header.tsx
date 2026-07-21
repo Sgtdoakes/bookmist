@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ChevronDown, Menu, X } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, Menu, X } from 'lucide-react'
 import type { MarcaConfig, NavLinkPublico } from '@/lib/configuracion'
 import { BookDoodle } from '@/components/public/decorative'
 import { CartButton } from '@/components/public/cart-button'
@@ -20,10 +20,12 @@ export function SiteHeader({
   marca,
   navLinks,
   categorias,
+  isAdmin = false,
 }: {
   marca: MarcaConfig
   navLinks: NavLinkPublico[]
   categorias: Categoria[]
+  isAdmin?: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [categoriasMovilAbiertas, setCategoriasMovilAbiertas] = useState(false)
@@ -88,6 +90,16 @@ export function SiteHeader({
         </nav>
 
         <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Ir al panel de administración"
+              title="Panel"
+              className="hidden rounded-full p-2 text-foreground/70 transition-colors hover:bg-accent hover:text-foreground sm:inline-flex"
+            >
+              <LayoutDashboard size={20} />
+            </Link>
+          )}
           <CartButton />
           <button
             className="rounded-full p-2 text-foreground lg:hidden"
@@ -150,6 +162,16 @@ export function SiteHeader({
                 {link.label}
               </Link>
             ),
+          )}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="mt-1 flex items-center gap-1.5 border-t border-foreground/12 pt-3 text-sm font-semibold text-foreground"
+              onClick={() => setMenuOpen(false)}
+            >
+              <LayoutDashboard size={16} />
+              Panel
+            </Link>
           )}
         </div>
       )}

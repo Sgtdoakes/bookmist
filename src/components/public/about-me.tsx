@@ -1,7 +1,7 @@
 import { Blob, FeatherDoodle } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { MediaVisual } from '@/components/public/media-visual'
-import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverAlineacion, resolverFondo, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { SobreMiConfig } from '@/lib/secciones'
 
 export function AboutMe({ eyebrow, titulo, texto, texto2, firma, imagen, estilo }: SobreMiConfig) {
@@ -11,7 +11,11 @@ export function AboutMe({ eyebrow, titulo, texto, texto2, firma, imagen, estilo 
   const textoAlineado = estilo?.alineacion ? `flex flex-col ${alineacion.items} ${alineacion.texto}` : ''
 
   return (
-    <section className={`relative w-full overflow-hidden ${fondoClase} ${padding}`}>
+    <section
+      data-fondo={tieneFondo(estilo)}
+      style={paddingTopVars(estilo)}
+      className={`relative w-full overflow-hidden ${fondoClase} ${padding}`}
+    >
       <Blob className="absolute top-10 right-0 h-64 w-64 animate-[floaty_14s_ease-in-out_infinite_-4s] text-muted opacity-10" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 md:grid-cols-2 md:px-10">
         <div className="relative">

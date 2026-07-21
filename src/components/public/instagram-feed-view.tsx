@@ -1,6 +1,6 @@
 import { InstagramIcon } from '@/components/public/decorative'
 import { MediaVisual } from '@/components/public/media-visual'
-import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverAlineacion, resolverFondo, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { InstagramConfig } from '@/lib/secciones'
 import type { PostInstagram } from '@/lib/instagram'
 
@@ -27,7 +27,11 @@ export function InstagramFeedView({
   const alineacionItems = estilo?.alineacion ? resolverAlineacion(estilo).items : 'justify-center'
 
   return (
-    <section className={`w-full border-t border-foreground/10 ${fondoClase} ${padding}`}>
+    <section
+      data-fondo={tieneFondo(estilo)}
+      style={paddingTopVars(estilo)}
+      className={`w-full border-t border-foreground/10 ${fondoClase} ${padding}`}
+    >
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <div className={`mb-10 flex items-center gap-2.5 ${alineacionItems}`}>
           <InstagramIcon className="h-[22px] w-[22px] text-muted" />

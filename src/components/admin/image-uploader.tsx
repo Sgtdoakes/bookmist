@@ -27,10 +27,15 @@ type Props = {
   onPortadaChange: (url: string | null) => void
   onGaleriaChange?: (urls: string[]) => void
   soloPortada?: boolean
-  // Habilita el modo "Video" en la portada (pegar un link de Cloudinary en
-  // vez de subir un archivo — Bookmist no aloja video propio, ver
-  // src/lib/media.ts). Solo tiene sentido donde la portada se muestra de
-  // fondo/hero; se deja apagado en logo/favicon.
+  // Oculta la portada y muestra solo la galería — para bloques donde no hay
+  // "una foto principal + extras" sino una sola lista de N fotos que son el
+  // contenido en sí (ej. el carrusel del hero, ver builder-inspector.tsx).
+  soloGaleria?: boolean
+  // Habilita pegar un link de video de Cloudinary en vez de subir un
+  // archivo (Bookmist no aloja video propio, ver src/lib/media.ts) — en la
+  // portada, y con `soloGaleria` también como ítem de la galería. Solo tiene
+  // sentido donde eso se muestra de fondo/hero; se deja apagado en
+  // logo/favicon.
   permitirVideo?: boolean
 }
 
@@ -38,7 +43,8 @@ type Props = {
 // video pegado) + N fotos de galería (agregar/quitar/reordenar arrastrando).
 // Sube directo a Supabase Storage vía subirImagen() y devuelve la URL al
 // padre — el padre decide cuándo persistir. `soloPortada` oculta la galería
-// para bloques que solo necesitan 1 imagen (ej. banner).
+// para bloques que solo necesitan 1 imagen (ej. banner); `soloGaleria` es lo
+// opuesto (ej. el carrusel del hero).
 export function ImageUploader({
   carpeta,
   entidadId,
@@ -47,6 +53,7 @@ export function ImageUploader({
   onPortadaChange,
   onGaleriaChange,
   soloPortada = false,
+  soloGaleria = false,
   permitirVideo = false,
 }: Props) {
   const portadaInputRef = useRef<HTMLInputElement>(null)
@@ -55,6 +62,7 @@ export function ImageUploader({
   const [subiendoGaleria, setSubiendoGaleria] = useState(false)
   const [modo, setModo] = useState<'foto' | 'video'>(esVideoUrl(portada) ? 'video' : 'foto')
   const [videoInput, setVideoInput] = useState(esVideoUrl(portada) ? (portada ?? '') : '')
+  const [videoGaleriaInput, setVideoGaleriaInput] = useState('')
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -83,6 +91,13 @@ export function ImageUploader({
     onPortadaChange(url)
   }
 
+  function agregarVideoGaleria() {
+    const url = videoGaleriaInput.trim()
+    if (!url) return
+    onGaleriaChange?.([...galeria, url])
+    setVideoGaleriaInput('')
+  }
+
   async function onGaleriaFile(e: React.ChangeEvent<HTMLInputElement>) {
     const archivo = e.target.files?.[0]
     e.target.value = ''
@@ -104,7 +119,7 @@ export function ImageUploader({
 
   return (
     <div className="space-y-4">
-      {permitirVideo && (
+      {!soloGaleria && permitirVideo && (
         <div className="flex gap-1 text-xs font-medium">
           <button
             type="button"
@@ -123,68 +138,69 @@ export function ImageUploader({
         </div>
       )}
 
-      {modo === 'video' && permitirVideo ? (
-        <div className="space-y-2">
-          {portada && esVideoUrl(portada) && (
-            <video
-              src={portada}
-              muted
-              loop
-              autoPlay
-              playsInline
-              className="h-24 w-40 rounded-lg border object-cover"
-            />
-          )}
-          <div className="flex gap-2">
-            <Input
-              value={videoInput}
-              onChange={(e) => setVideoInput(e.target.value)}
-              placeholder="https://res.cloudinary.com/…/video/upload/…"
-              className="h-9"
-            />
-            <Button type="button" size="sm" variant="outline" onClick={usarVideo}>
-              Usar
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Subí el video a tu cuenta de Cloudinary y pegá acá el link directo del archivo (no el de la página).
-          </p>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => portadaInputRef.current?.click()}
-            className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed bg-muted/30"
-          >
-            {subiendoPortada ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : portada && !esVideoUrl(portada) ? (
-              <Image src={portada} alt="Portada" fill sizes="80px" className="object-cover" />
-            ) : portada ? (
-              <Video className="h-5 w-5 text-muted-foreground" />
-            ) : (
-              <ImagePlus className="h-5 w-5 text-muted-foreground" />
+      {!soloGaleria &&
+        (modo === 'video' && permitirVideo ? (
+          <div className="space-y-2">
+            {portada && esVideoUrl(portada) && (
+              <video
+                src={portada}
+                muted
+                loop
+                autoPlay
+                playsInline
+                className="h-24 w-40 rounded-lg border object-cover"
+              />
             )}
-          </button>
-          <input ref={portadaInputRef} type="file" accept="image/*" className="hidden" onChange={onPortadaFile} />
-          <div className="text-sm">
-            <p className="font-medium">Portada</p>
-            <div className="mt-1 flex gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => portadaInputRef.current?.click()}>
-                {portada ? 'Cambiar' : 'Subir'}
+            <div className="flex gap-2">
+              <Input
+                value={videoInput}
+                onChange={(e) => setVideoInput(e.target.value)}
+                placeholder="https://res.cloudinary.com/…/video/upload/…"
+                className="h-9"
+              />
+              <Button type="button" size="sm" variant="outline" onClick={usarVideo}>
+                Usar
               </Button>
-              {portada && (
-                <Button type="button" size="sm" variant="ghost" onClick={() => onPortadaChange(null)}>
-                  Quitar
-                </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Subí el video a tu cuenta de Cloudinary y pegá acá el link directo del archivo (no el de la página).
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => portadaInputRef.current?.click()}
+              className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed bg-muted/30"
+            >
+              {subiendoPortada ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : portada && !esVideoUrl(portada) ? (
+                <Image src={portada} alt="Portada" fill sizes="80px" className="object-cover" />
+              ) : portada ? (
+                <Video className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ImagePlus className="h-5 w-5 text-muted-foreground" />
               )}
+            </button>
+            <input ref={portadaInputRef} type="file" accept="image/*" className="hidden" onChange={onPortadaFile} />
+            <div className="text-sm">
+              <p className="font-medium">Portada</p>
+              <div className="mt-1 flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => portadaInputRef.current?.click()}>
+                  {portada ? 'Cambiar' : 'Subir'}
+                </Button>
+                {portada && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => onPortadaChange(null)}>
+                    Quitar
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        ))}
 
-      {!soloPortada && (
+      {(!soloPortada || soloGaleria) && (
       <div>
         <p className="text-sm font-medium">Galería</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -210,6 +226,19 @@ export function ImageUploader({
           </SortableContext>
         </DndContext>
         <input ref={galeriaInputRef} type="file" accept="image/*" className="hidden" onChange={onGaleriaFile} />
+        {permitirVideo && (
+          <div className="mt-2 flex gap-2">
+            <Input
+              value={videoGaleriaInput}
+              onChange={(e) => setVideoGaleriaInput(e.target.value)}
+              placeholder="…o pegá un link de video de Cloudinary"
+              className="h-9 text-xs"
+            />
+            <Button type="button" size="sm" variant="outline" onClick={agregarVideoGaleria}>
+              Agregar
+            </Button>
+          </div>
+        )}
       </div>
       )}
     </div>

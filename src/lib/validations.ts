@@ -30,6 +30,9 @@ const checkoutBase = z.object({
     .regex(/^\d{4}$/, 'Ingresá un código postal de 4 dígitos')
     .nullish(),
   metodo_pago: z.enum(['transferencia', 'deposito', 'efectivo', 'mercadopago']),
+  // Cupón de bienvenida (Fase 8e), opcional — el server valida el código
+  // contra la config real, nunca confía en un descuento que mande el cliente.
+  cupon: z.string().trim().max(40).nullish(),
   notas: z.string().trim().max(500).nullish(),
 })
 
@@ -59,6 +62,22 @@ export const checkoutSchema = checkoutBase
   .refine(direccionValida, MSG_DIRECCION)
   .refine(envioDefinido, MSG_ENVIO)
 export type CheckoutInput = z.infer<typeof checkoutSchema>
+
+// --- Suscripción al newsletter (popup de cupón, Fase 8e) -----------------
+// email y nombre son obligatorios (hace falta el email para mandar el
+// cupón, y el nombre para personalizar el mail); cumpleaños y provincia son
+// solo para segmentar campañas más adelante, no bloquean la suscripción.
+export const suscripcionNewsletterSchema = z.object({
+  email: z.email('Ingresá un email válido'),
+  nombre: z.string().trim().min(1, 'Ingresá tu nombre').max(100),
+  cumpleanos: z
+    .string()
+    .trim()
+    .nullish()
+    .refine((v) => !v || /^\d{2}\/\d{2}$/.test(v), 'Usá el formato DD/MM'),
+  provincia: z.string().trim().max(100).nullish(),
+})
+export type SuscripcionNewsletterInput = z.infer<typeof suscripcionNewsletterSchema>
 
 // --- Biblioteca de libros y accesorios (admin) ---------------------------
 export const itemFormSchema = z.object({

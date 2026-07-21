@@ -245,6 +245,38 @@ export function aplicarEnvioGratis(subtotal: number, umbral: number, costo: numb
   return umbral > 0 && subtotal >= umbral ? 0 : costo
 }
 
+// Cupón de bienvenida por suscribirse al newsletter (Fase 8e): un único
+// código general para todos (no uno por persona) — se manda por mail apenas
+// alguien completa el popup, sin verificación de email. Editable desde
+// /admin/configuracion; `activo` empieza en false a propósito (que Dani lo
+// prenda cuando ya cargó código y porcentaje, no antes).
+export type CuponBienvenidaConfig = {
+  activo: boolean
+  codigo: string
+  pct: number
+}
+
+const CLAVES_CUPON = ['cupon_bienvenida_activo', 'cupon_bienvenida_codigo', 'cupon_bienvenida_pct'] as const
+const CUPON_BIENVENIDA_DEFAULT: CuponBienvenidaConfig = { activo: false, codigo: 'BIENVENIDA10', pct: 10 }
+
+export async function getCuponBienvenida(): Promise<CuponBienvenidaConfig> {
+  if (!configured()) return CUPON_BIENVENIDA_DEFAULT
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.from('configuracion').select('clave, valor').in('clave', CLAVES_CUPON)
+    if (error) throw error
+    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
+    const pct = Number(map.get('cupon_bienvenida_pct'))
+    return {
+      activo: map.get('cupon_bienvenida_activo') === 'true',
+      codigo: map.get('cupon_bienvenida_codigo')?.trim().toUpperCase() || CUPON_BIENVENIDA_DEFAULT.codigo,
+      pct: Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : CUPON_BIENVENIDA_DEFAULT.pct,
+    }
+  } catch {
+    return CUPON_BIENVENIDA_DEFAULT
+  }
+}
+
 export type NavLinkPublico = { label: string; href: string }
 
 const NAV_LINKS_POR_DEFECTO: NavLinkPublico[] = NAV_LINKS.map((l) => ({ label: l.label, href: l.href }))

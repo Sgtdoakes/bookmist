@@ -1,4 +1,4 @@
-import { resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverFondo, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { BeneficiosConfig } from '@/lib/secciones'
 
 export function BenefitsBar({ items, estilo }: BeneficiosConfig) {
@@ -6,7 +6,11 @@ export function BenefitsBar({ items, estilo }: BeneficiosConfig) {
   const padding = estilo?.tamano ? resolverTamano(estilo).padding : 'py-8 md:py-12'
 
   return (
-    <section className={`w-full ${fondoClase} ${padding}`}>
+    <section
+      data-fondo={tieneFondo(estilo)}
+      style={paddingTopVars(estilo, ['2rem', '3rem'])}
+      className={`w-full ${fondoClase} ${padding}`}
+    >
       <div className="mx-auto grid max-w-7xl grid-cols-3 px-4 md:px-10">
         {items.map((b, i) => (
           <div

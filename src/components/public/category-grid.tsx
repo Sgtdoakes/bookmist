@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { MediaVisual } from '@/components/public/media-visual'
-import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverAlineacion, resolverFondo, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { CategoriaItem, CategoriasConfig } from '@/lib/secciones'
 
 // Filas guardadas antes de que existiera destino de link no tienen
@@ -22,7 +22,11 @@ export function CategoryGrid({ eyebrow, titulo, categorias, estilo }: Categorias
   const headerAlineado = estilo?.alineacion ? resolverAlineacion(estilo).texto : 'text-center'
 
   return (
-    <section className={`w-full ${fondoClase} ${padding}`}>
+    <section
+      data-fondo={tieneFondo(estilo)}
+      style={paddingTopVars(estilo, ['3.5rem', '6rem'])}
+      className={`w-full ${fondoClase} ${padding}`}
+    >
       <div className="mx-auto max-w-7xl px-4 md:px-10">
         <div className={`mb-8 md:mb-12 ${headerAlineado}`}>
           <p className="font-script mb-1 text-xl text-muted md:text-2xl">{eyebrow}</p>

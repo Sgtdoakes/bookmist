@@ -1,7 +1,14 @@
 import Link from 'next/link'
 import { PrimaryButton } from '@/components/public/buttons'
 import { MediaVisual } from '@/components/public/media-visual'
-import { resolverAlineacion, resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
+import {
+  resolverAlineacion,
+  resolverFondo,
+  resolverRadio,
+  resolverTamano,
+  paddingTopVars,
+  tieneFondo,
+} from '@/lib/estilo-secciones'
 import type { BannerConfig } from '@/lib/secciones'
 
 // Banner libre (imagen de fondo opcional + overlay oscuro, o color de fondo
@@ -13,7 +20,7 @@ export function BannerBloque({ eyebrow, titulo, texto, imagen, ctaTexto, ctaHref
   const alineacion = resolverAlineacion(estilo)
 
   return (
-    <section className="w-full">
+    <section data-fondo={tieneFondo(estilo)} style={paddingTopVars(estilo)} className="w-full">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <div className={`relative overflow-hidden ${radioClase} ${imagen ? '' : fondoClase}`}>
           {imagen && (

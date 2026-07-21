@@ -1,5 +1,5 @@
 import { Quote, Star } from 'lucide-react'
-import { resolverAlineacion, resolverFondo, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverAlineacion, resolverFondo, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { ResenasConfig } from '@/lib/secciones'
 
 export function Reviews({ eyebrow, titulo, items, estilo }: ResenasConfig) {
@@ -8,7 +8,7 @@ export function Reviews({ eyebrow, titulo, items, estilo }: ResenasConfig) {
   const headerAlineado = estilo?.alineacion ? resolverAlineacion(estilo).texto : 'text-center'
 
   return (
-    <section className={`w-full ${fondoClase} ${padding}`}>
+    <section data-fondo={tieneFondo(estilo)} style={paddingTopVars(estilo)} className={`w-full ${fondoClase} ${padding}`}>
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <div className={`mb-12 ${headerAlineado}`}>
           <p className="font-script mb-1 text-2xl text-muted">{eyebrow}</p>

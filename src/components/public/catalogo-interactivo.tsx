@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { ProductCard } from '@/components/public/product-card'
-import { resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverFondo, resolverRadio, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import { formatARS } from '@/lib/format'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { Categoria, ProductoConCategorias } from '@/types/db'
@@ -146,7 +146,7 @@ export function CatalogoInteractivo({
   if (productos.length === 0) return null
 
   return (
-    <section className="w-full">
+    <section data-fondo={tieneFondo(estilo)} style={paddingTopVars(estilo)} className="w-full">
       <div className={`mx-auto max-w-7xl px-6 md:px-10 ${tamano.padding}`}>
         <div className={`${fondoClase} ${radioClase} ${conFondo ? 'p-6 md:p-10' : ''}`}>
           <div className="mb-8 text-center">

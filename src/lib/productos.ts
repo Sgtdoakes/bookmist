@@ -115,15 +115,15 @@ export async function getNovedades(limit = 12): Promise<Producto[]> {
 // Productos de una categoría puntual, por nombre (fuente "categoria" del
 // bloque de productos — los configs guardados referencian el nombre, que se
 // mantiene como identificador visible).
-export async function getProductosPorCategoria(categoria: string, limit = 12): Promise<Producto[]> {
-  if (!configured() || !categoria) return []
+export async function getProductosPorCategoria(categoriaSlug: string, limit = 12): Promise<Producto[]> {
+  if (!configured() || !categoriaSlug) return []
   try {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('productos')
-      .select('*, categorias!inner(nombre)')
+      .select('*, categorias!inner(slug)')
       .eq('activo', true)
-      .eq('categorias.nombre', categoria)
+      .eq('categorias.slug', categoriaSlug)
       .order('orden', { ascending: true })
       .limit(limit)
     if (error) throw error

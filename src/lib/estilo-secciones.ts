@@ -5,6 +5,8 @@
 // hay tema claro/oscuro que elegir, así que las opciones son variaciones de
 // contraste dentro de esa misma paleta, no colores arbitrarios.
 
+import type { CSSProperties } from 'react'
+
 export type ColorFondo = 'oscuro' | 'medio' | 'claro' | 'tarjeta' | 'transparente'
 export type Tamano = 'sm' | 'md' | 'lg'
 export type Radio = 'ninguno' | 'sm' | 'md' | 'lg'
@@ -68,6 +70,37 @@ export function resolverFondo(estilo?: EstiloBloque): string {
 
 export function resolverTamano(estilo?: EstiloBloque) {
   return TAMANO_CLASES[estilo?.tamano ?? 'md']
+}
+
+// Si un bloque no tiene un fondo elegido a mano, se pinta con el mismo
+// violeta base de toda la página (bg-background) — visualmente es
+// indistinguible de "sin fondo". Dos bloques consecutivos en ese estado
+// están para el ojo sobre el mismo lienzo continuo, así que sus paddings
+// verticales no deberían sumarse (ver reglas `data-fondo` en globals.css,
+// que colapsan ese doble espacio sin importar qué bloques estén ocultos).
+export function tieneFondo(estilo?: EstiloBloque): boolean {
+  return !!estilo?.fondo && estilo.fondo !== 'transparente'
+}
+
+// Padding-top real (mobile/desktop) de cada tamaño de la escala compartida.
+const TAMANO_PT_REM: Record<Tamano, [string, string]> = {
+  sm: ['2.5rem', '3.5rem'],
+  md: ['4rem', '6rem'],
+  lg: ['6rem', '8rem'],
+}
+
+// Variables CSS con el padding-top que el bloque va a aplicar de verdad —
+// las lee la regla de colapso `data-fondo="false"` en globals.css para
+// anular exactamente ese valor cuando el bloque de arriba tampoco tiene
+// fondo propio. `fallback` cubre a los bloques "furniture" que usan un
+// padding propio (no la escala sm/md/lg) mientras Dani no elija un tamaño a
+// mano — si lo elige, pasan a usar la escala compartida como cualquier otro.
+export function paddingTopVars(
+  estilo: EstiloBloque | undefined,
+  fallback: [string, string] = TAMANO_PT_REM.md,
+): CSSProperties {
+  const [pt, ptMd] = estilo?.tamano ? TAMANO_PT_REM[estilo.tamano] : fallback
+  return { '--bloque-pt': pt, '--bloque-pt-md': ptMd } as CSSProperties
 }
 
 export function resolverRadio(estilo?: EstiloBloque): string {

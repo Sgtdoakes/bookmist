@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import { PrimaryButton } from '@/components/public/buttons'
-import { resolverAlineacion, resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
+import {
+  resolverAlineacion,
+  resolverFondo,
+  resolverRadio,
+  resolverTamano,
+  paddingTopVars,
+  tieneFondo,
+} from '@/lib/estilo-secciones'
 import type { TextoConfig } from '@/lib/secciones'
 
 // Bloque editorial libre: título + texto + CTA opcional, con estilo
@@ -15,7 +22,7 @@ export function TextoBloque({ eyebrow, titulo, texto, ctaTexto, ctaHref, estilo 
   const conFondo = !!estilo?.fondo && estilo.fondo !== 'transparente'
 
   return (
-    <section className="w-full">
+    <section data-fondo={tieneFondo(estilo)} style={paddingTopVars(estilo)} className="w-full">
       <div className={`mx-auto max-w-4xl px-6 md:px-10 ${tamano.padding}`}>
         <div
           className={`flex flex-col ${alineacion.items} ${alineacion.texto} ${fondoClase} ${radioClase} ${

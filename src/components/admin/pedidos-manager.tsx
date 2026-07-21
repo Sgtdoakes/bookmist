@@ -149,7 +149,7 @@ function TarjetaPedido({
           </ul>
           {p.descuento > 0 && (
             <div className="mt-1 flex justify-between text-muted-foreground">
-              <span>Descuento transferencia</span>
+              <span>Descuento{p.cupon_codigo ? ` (cupón ${p.cupon_codigo})` : ' transferencia'}</span>
               <span>-{formatARS(p.descuento)}</span>
             </div>
           )}

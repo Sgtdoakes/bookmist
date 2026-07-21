@@ -1,6 +1,6 @@
 import { getDestacados, getNovedades, getProductosActivos, getProductosPorCategoria, getProductosPorIds } from '@/lib/productos'
 import { BestSellersScroller } from '@/components/public/best-sellers-scroller'
-import { resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
+import { resolverFondo, resolverRadio, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { Producto } from '@/types/db'
 import type { ProductosConfig, ProductosFuente } from '@/lib/secciones'
@@ -56,7 +56,12 @@ export function ProductosBloqueView({
   const conFondo = !!estilo?.fondo && estilo.fondo !== 'transparente'
 
   return (
-    <section className="w-full" id={anclaId || undefined}>
+    <section
+      data-fondo={tieneFondo(estilo)}
+      style={paddingTopVars(estilo)}
+      className="w-full"
+      id={anclaId || undefined}
+    >
       <div className={`mx-auto max-w-7xl px-6 md:px-10 ${tamano.padding}`}>
         <div className={`${fondoClase} ${radioClase} ${conFondo ? 'p-6 md:p-10' : ''}`}>
           <BestSellersScroller

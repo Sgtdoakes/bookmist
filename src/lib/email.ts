@@ -1,13 +1,21 @@
 import 'server-only'
+import { storeConfig } from '@/lib/store-config'
 import { formatARS } from '@/lib/format'
 import { construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 
 type EnvioResultado = { sent: boolean; reason?: string }
 
 // Envía un email genérico usando el proveedor configurado (Resend o SMTP).
-// Nunca lanza: si algo falla, devuelve { sent: false } para no frenar el pedido.
-async function enviarEmail(opts: { subject: string; html: string; text: string }): Promise<EnvioResultado> {
-  const to = process.env.OWNER_EMAIL
+// Nunca lanza: si algo falla, devuelve { sent: false } para no frenar el
+// pedido/la suscripción. `to` por defecto es Dani (OWNER_EMAIL, los avisos
+// de pedido nuevo); enviarCuponBienvenida() lo pisa con el email del cliente.
+async function enviarEmail(opts: {
+  subject: string
+  html: string
+  text: string
+  to?: string
+}): Promise<EnvioResultado> {
+  const to = opts.to || process.env.OWNER_EMAIL
   const from = process.env.EMAIL_FROM
   if (!to || !from) return { sent: false, reason: 'email no configurado' }
 
@@ -85,4 +93,37 @@ export async function notificarPedidoNuevo(
   const text = `${construirMensajePedido(datos)}\n\nWhatsApp: ${whatsappUrl}`
 
   return enviarEmail({ subject, html, text })
+}
+
+// Cupón de bienvenida (Fase 8e): se manda apenas alguien completa el popup
+// de suscripción — un único código general, sin verificación de email antes
+// (ver getCuponBienvenida en src/lib/configuracion.ts).
+export async function enviarCuponBienvenida(opts: {
+  destinatario: string
+  nombre: string
+  codigo: string
+  pct: number
+}): Promise<EnvioResultado> {
+  const nombreTienda = storeConfig.nombre
+  const subject = `¡Gracias por suscribirte a ${nombreTienda}! Acá tenés tu cupón`
+
+  const html = `
+  <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="margin:0 0 12px">¡Hola${opts.nombre ? ` ${escapeHtml(opts.nombre)}` : ''}!</h2>
+    <p style="margin:0 0 16px;color:#555">
+      Gracias por sumarte a ${escapeHtml(nombreTienda)}. Este es tu cupón para tu primera compra:
+    </p>
+    <p style="margin:0 0 16px;text-align:center">
+      <span style="display:inline-block;background:#3d3258;color:#ede8f5;font-size:20px;font-weight:bold;letter-spacing:2px;padding:12px 24px;border-radius:8px">
+        ${escapeHtml(opts.codigo)}
+      </span>
+    </p>
+    <p style="margin:0;color:#555">
+      Ingresalo en el checkout para llevarte ${opts.pct}% OFF. ¡Te esperamos!
+    </p>
+  </div>`
+
+  const text = `¡Hola${opts.nombre ? ` ${opts.nombre}` : ''}!\n\nGracias por sumarte a ${nombreTienda}. Tu cupón: ${opts.codigo}\nIngresalo en el checkout para llevarte ${opts.pct}% OFF.`
+
+  return enviarEmail({ subject, html, text, to: opts.destinatario })
 }

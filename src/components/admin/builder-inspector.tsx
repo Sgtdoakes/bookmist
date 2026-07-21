@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Plus, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -176,17 +177,21 @@ function Contenido({
           <Campo label="Texto del botón">
             <Input value={texto('ctaTexto')} onChange={(e) => onChange({ ctaTexto: e.target.value }, false)} className="mt-1" />
           </Campo>
-          <Campo label="Imagen">
-            <div className="mt-1">
-              <ImageUploader
-                carpeta="secciones"
-                entidadId={id}
-                portada={(config.imagen as string | null) ?? null}
-                onPortadaChange={(url) => onChange({ imagen: url }, false)}
-                soloPortada
-                permitirVideo
-              />
-            </div>
+          <Campo label="Fotos del carrusel">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Subí 3 o más para que se note el efecto carrusel — con 1 sola queda fija, y sin ninguna se ve el
+              cartel de &quot;sin imagen&quot;. Arrastrá para cambiar el orden.
+            </p>
+            <ImageUploader
+              carpeta="secciones"
+              entidadId={id}
+              portada={null}
+              onPortadaChange={() => {}}
+              galeria={(config.imagenes as string[]) ?? []}
+              onGaleriaChange={(urls) => onChange({ imagenes: urls }, false)}
+              soloGaleria
+              permitirVideo
+            />
           </Campo>
         </>
       )
@@ -435,7 +440,10 @@ function Contenido({
           </Campo>
           <p className="text-xs text-muted-foreground">
             El buscador, el orden, el rango de precios y las secciones por categoría son parte del
-            bloque — se arman solos con los productos y categorías del catálogo.
+            bloque — se arman solos con los productos y categorías del catálogo.{' '}
+            <Link href="/admin/productos" className="underline underline-offset-2 hover:text-foreground">
+              ¿Querés renombrar una categoría? Se hace desde Catálogo de productos.
+            </Link>
           </p>
         </>
       )
@@ -589,7 +597,7 @@ function ContenidoProductos({
           >
             <option value="">Elegí una categoría…</option>
             {categoriasDisponibles.map((c) => (
-              <option key={c.id} value={c.nombre}>
+              <option key={c.id} value={c.slug}>
                 {c.nombre}
               </option>
             ))}

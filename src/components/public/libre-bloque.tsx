@@ -1,7 +1,14 @@
 import Link from 'next/link'
 import { PrimaryButton } from '@/components/public/buttons'
 import { MediaVisual } from '@/components/public/media-visual'
-import { resolverAlineacion, resolverFondo, resolverRadio, resolverTamano } from '@/lib/estilo-secciones'
+import {
+  resolverAlineacion,
+  resolverFondo,
+  resolverRadio,
+  resolverTamano,
+  paddingTopVars,
+  tieneFondo,
+} from '@/lib/estilo-secciones'
 import type { ElementoLibre, LibreConfig } from '@/lib/secciones'
 
 const ALTO_ESPACIO: Record<'sm' | 'md' | 'lg', string> = { sm: 'h-6', md: 'h-12', lg: 'h-24' }
@@ -18,7 +25,7 @@ export function LibreBloque({ elementos, estilo }: LibreConfig) {
   const conFondo = !!estilo?.fondo && estilo.fondo !== 'transparente'
 
   return (
-    <section className="w-full">
+    <section data-fondo={tieneFondo(estilo)} style={paddingTopVars(estilo)} className="w-full">
       <div className={`mx-auto max-w-3xl px-6 md:px-10 ${tamano.padding}`}>
         <div
           className={`flex flex-col gap-4 ${alineacion.items} ${alineacion.texto} ${fondoClase} ${radioClase} ${

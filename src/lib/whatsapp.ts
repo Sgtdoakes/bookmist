@@ -24,8 +24,10 @@ export type DatosPedidoMensaje = {
   zonaEnvio?: string | null
   costoEnvio: number | null
   metodoPago: MetodoPago
-  // Monto descontado por pagar con transferencia (0 = sin descuento).
+  // Monto descontado, transferencia + cupón combinados (0 = sin descuento).
   descuento?: number
+  // Código de cupón usado, si usó uno (Fase 8e).
+  cuponCodigo?: string | null
   total: number
   notas?: string | null
 }
@@ -46,7 +48,10 @@ export function construirMensajePedido(d: DatosPedidoMensaje): string {
   lineas.push(`Envío a: ${d.direccionEnvio}`)
   if (d.zonaEnvio) lineas.push(`Zona: ${d.zonaEnvio}`)
   lineas.push(`Costo de envío: ${d.costoEnvio != null ? formatARS(d.costoEnvio) : 'a coordinar'}`)
-  if (d.descuento && d.descuento > 0) lineas.push(`Descuento transferencia: -${formatARS(d.descuento)}`)
+  if (d.descuento && d.descuento > 0) {
+    const detalle = d.cuponCodigo ? ` (incluye cupón ${d.cuponCodigo})` : ''
+    lineas.push(`Descuento: -${formatARS(d.descuento)}${detalle}`)
+  }
   lineas.push(`Pago: ${METODO_PAGO_LABEL[d.metodoPago]}`)
   lineas.push(`*Total: ${formatARS(d.total)}*`)
   if (d.notas) {
