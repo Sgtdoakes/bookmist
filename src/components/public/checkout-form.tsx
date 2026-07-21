@@ -106,25 +106,31 @@ export function CheckoutForm({
     cp_envio: cpEnvio,
     modo_envio: modoEnvio,
     cupon: cuponTexto,
+    cliente_email: clienteEmail,
     // eslint-disable-next-line react-hooks/incompatible-library
   } = watch()
   const esRetiro = retiroActivo && modoEnvio === 'retiro'
 
-  // Si edita el código después de verificarlo, el resultado anterior queda
-  // obsoleto — vuelve a "sin verificar" hasta que apriete "Aplicar" de nuevo.
+  // Si edita el código o el email después de verificarlo, el resultado
+  // anterior queda obsoleto — vuelve a "sin verificar" hasta apretar
+  // "Aplicar" de nuevo (el cupón está atado al email de quien compra).
   useEffect(() => {
     setCupon((c) => (c.estado === 'sin_verificar' ? c : { estado: 'sin_verificar' }))
-  }, [cuponTexto])
+  }, [cuponTexto, clienteEmail])
 
   async function verificarCupon() {
     const codigo = (cuponTexto ?? '').trim()
     if (!codigo) return
+    if (!clienteEmail?.trim()) {
+      setCupon({ estado: 'invalido', mensaje: 'Completá tu email primero para poder validar el cupón.' })
+      return
+    }
     setCupon({ estado: 'verificando' })
     try {
       const res = await fetch('/api/cupon/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo }),
+        body: JSON.stringify({ codigo, email: clienteEmail }),
       })
       const json = await res.json()
       if (res.ok && json.ok) setCupon({ estado: 'valido', pct: json.pct })
@@ -222,7 +228,13 @@ export function CheckoutForm({
         return
       }
       if (values.cupon?.trim() && !json.cupon_aplicado) {
-        toast.error('El cupón ingresado no era válido — el pedido se creó igual, sin ese descuento.')
+        const motivo =
+          json.cupon_motivo === 'no_suscripto'
+            ? 'ese cupón es solo para quienes se suscribieron con este mismo mail'
+            : json.cupon_motivo === 'ya_usado'
+              ? 'ya usaste ese cupón antes'
+              : 'el cupón ingresado no era válido'
+        toast.error(`El pedido se creó igual, pero sin el descuento del cupón: ${motivo}.`)
       }
       try {
         sessionStorage.setItem(

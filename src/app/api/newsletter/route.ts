@@ -52,12 +52,25 @@ export async function POST(request: Request) {
 
   if (error) {
     // Email ya suscripto: no es un error para quien completa el form, pero
-    // tampoco reenviamos el mail (ver comentario arriba).
-    if (error.code === '23505') return NextResponse.json({ ok: true })
+    // tampoco reenviamos el mail (ver comentario arriba) — `ya_suscripto`
+    // le permite al popup mostrar un mensaje honesto en vez de "te mandamos
+    // tu cupón" cuando en realidad no se mandó nada nuevo.
+    if (error.code === '23505') return NextResponse.json({ ok: true, ya_suscripto: true })
     return NextResponse.json({ ok: false, error: 'No pudimos guardar tu suscripción.' }, { status: 500 })
   }
 
-  await enviarCuponBienvenida({ destinatario: email, nombre: data.nombre, codigo: cupon.codigo, pct: cupon.pct })
+  const envio = await enviarCuponBienvenida({
+    destinatario: email,
+    nombre: data.nombre,
+    codigo: cupon.codigo,
+    pct: cupon.pct,
+  })
+  // enviarEmail() nunca lanza (para no frenar la suscripción si el mail
+  // falla) — pero eso significa que un fallo queda invisible si no se loguea
+  // acá. Sin esto, "no me llegó el mail" no se puede diagnosticar nunca.
+  if (!envio.sent) {
+    console.error(`[newsletter] no se pudo enviar el cupón a ${email}: ${envio.reason}`)
+  }
 
   return NextResponse.json({ ok: true })
 }

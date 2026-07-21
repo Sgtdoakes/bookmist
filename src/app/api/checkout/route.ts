@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server'
 import { checkoutSchema } from '@/lib/validations'
 import { createAdminClient } from '@/lib/supabase/admin'
-import {
-  aplicarEnvioGratis,
-  getCuponBienvenida,
-  getDescuentoTransferenciaPct,
-  getEnvioConfig,
-  getMarcaConfig,
-} from '@/lib/configuracion'
+import { aplicarEnvioGratis, getDescuentoTransferenciaPct, getEnvioConfig, getMarcaConfig } from '@/lib/configuracion'
+import { validarCupon, type CuponMotivoRechazo } from '@/lib/cupon'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
 import { notificarPedidoNuevo } from '@/lib/email'
 import { avisarWhatsAppDani } from '@/lib/notificaciones'
@@ -175,16 +170,22 @@ export async function POST(request: Request) {
   const pctDescuentoTransferencia = data.metodo_pago === 'transferencia' ? await getDescuentoTransferenciaPct() : 0
 
   // 2c) Cupón de bienvenida (Fase 8e) — el código lo manda el navegador,
-  // pero el % de descuento SIEMPRE se recalcula acá contra la config real
-  // (nunca se confía en un monto que venga del cliente). Se combina con el
-  // descuento por transferencia (ambos se suman sobre el subtotal).
+  // pero SIEMPRE se revalida acá contra la config real y contra dos
+  // condiciones anti-abuso (nunca se confía en nada que venga del cliente):
+  // el email de quien compra tiene que estar suscripto, y no puede haber
+  // usado ya un cupón en un pedido anterior (ver validarCupon() en
+  // src/lib/cupon.ts). Se combina con el descuento por transferencia (ambos
+  // se suman sobre el subtotal).
   let cuponCodigoAplicado: string | null = null
   let pctDescuentoCupon = 0
+  let cuponMotivoRechazo: CuponMotivoRechazo | null = null
   if (data.cupon?.trim()) {
-    const cupon = await getCuponBienvenida()
-    if (cupon.activo && cupon.codigo === data.cupon.trim().toUpperCase()) {
-      cuponCodigoAplicado = cupon.codigo
-      pctDescuentoCupon = cupon.pct
+    const validacion = await validarCupon(supabase, data.cupon, data.cliente_email)
+    if (validacion.ok) {
+      cuponCodigoAplicado = data.cupon.trim().toUpperCase()
+      pctDescuentoCupon = validacion.pct
+    } else {
+      cuponMotivoRechazo = validacion.motivo
     }
   }
 
@@ -292,9 +293,10 @@ export async function POST(request: Request) {
     whatsapp_url: waUrl,
     total,
     mp_init_point: mpInitPoint,
-    // Para que el checkout avise si el código que tipeó no era válido — la
-    // validación real (arriba) es la única fuente de verdad, esto es solo
+    // Para que el checkout avise por qué el código que tipeó no se aplicó —
+    // la validación real (arriba) es la única fuente de verdad, esto es solo
     // feedback de UI post-submit.
     cupon_aplicado: cuponCodigoAplicado !== null,
+    cupon_motivo: cuponMotivoRechazo,
   })
 }

@@ -21,6 +21,7 @@ export function PopupCupon({ pct }: { pct: number }) {
   const [open, setOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
+  const [yaSuscripto, setYaSuscripto] = useState(false)
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
   const [nombre, setNombre] = useState('')
@@ -58,6 +59,7 @@ export function PopupCupon({ pct }: { pct: number }) {
         setError(data.error || 'No pudimos procesar tu suscripción.')
         return
       }
+      setYaSuscripto(!!data.ya_suscripto)
       setEnviado(true)
       localStorage.setItem(STORAGE_KEY, '1')
     } catch {
@@ -72,16 +74,20 @@ export function PopupCupon({ pct }: { pct: number }) {
       <DialogContent className="sm:max-w-md">
         {enviado ? (
           <div className="py-4 text-center">
-            <DialogTitle className="font-heading text-xl">¡Listo! 🎉</DialogTitle>
-            <DialogDescription className="mt-2 text-base">
-              Revisá tu email — te mandamos tu cupón de {pct}% OFF para tu primera compra.
+            <DialogTitle className="font-heading text-xl">
+              {yaSuscripto ? 'Ya estabas suscripta 👋' : '¡Listo! 🎉'}
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-base text-popover-foreground/75">
+              {yaSuscripto
+                ? 'Ese mail ya estaba suscripto — revisá la casilla, ya te habíamos mandado tu cupón antes.'
+                : `Revisá tu email — te mandamos tu cupón de ${pct}% OFF para tu primera compra.`}
             </DialogDescription>
           </div>
         ) : (
           <>
             <DialogHeader>
               <DialogTitle className="font-heading text-xl">¡Suscribite y recibí un regalo! 🎁</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-popover-foreground/75">
                 Sumate a la comunidad de Bookmist y llevate {pct}% OFF en tu primera compra.
               </DialogDescription>
             </DialogHeader>
@@ -133,7 +139,7 @@ export function PopupCupon({ pct }: { pct: number }) {
                 {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
                 Suscribirme
               </PrimaryButton>
-              <p className="text-center text-xs text-muted-foreground">Recibirás un mail con tu cupón.</p>
+              <p className="text-center text-xs text-popover-foreground/60">Recibirás un mail con tu cupón.</p>
             </form>
           </>
         )}
