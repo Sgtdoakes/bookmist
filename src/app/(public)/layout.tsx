@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { getMarcaConfig, getNavLinks, getCuponBienvenida } from '@/lib/configuracion'
 import { getCategorias } from '@/lib/productos'
 import { createClient } from '@/lib/supabase/server'
@@ -31,8 +32,17 @@ export default async function PublicLayout({ children }: { children: React.React
     getCuponBienvenida(),
   ])
 
+  // GA4 vive acá (no en el layout raíz) para que nunca corra en /admin — y
+  // se apaga también para quien navega el sitio público ya logueada como
+  // admin, para no mezclar los clics de Dani probando cosas con tráfico de
+  // clientes real (con solo un puñado de visitas reales por mes, unas pocas
+  // de Dani ya distorsionan los números). Apagado sin credenciales, mismo
+  // patrón que Andreani/Mercado Pago/Instagram.
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+
   return (
     <CartProvider>
+      {gaId && !isAdmin && <GoogleAnalytics gaId={gaId} />}
       <AnnouncementBar />
       <SiteHeader marca={marca} navLinks={navLinks} categorias={categorias} isAdmin={isAdmin} />
       <main className="flex-1">{children}</main>

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Playfair_Display, Caveat, Nunito } from 'next/font/google'
-import { GoogleAnalytics } from '@next/third-parties/google'
 import { getMarcaConfig } from '@/lib/configuracion'
 import { organizationJsonLd } from '@/lib/structured-data'
 import { SITE_URL } from '@/lib/constants'
@@ -92,10 +91,6 @@ export default async function RootLayout({
   const marca = await getMarcaConfig()
   const jsonLd = { ...organizationJsonLd(marca), description }
   const colores = estilosDeColor(marca)
-  // Analytics apagado hasta que el usuario cree la propiedad GA4 y cargue el
-  // Measurement ID en Vercel — mismo patrón "degrada sin credenciales" que
-  // Andreani/Mercado Pago/Instagram en este proyecto.
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
   return (
     <html
@@ -110,7 +105,6 @@ export default async function RootLayout({
         />
         {children}
       </body>
-      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   )
 }

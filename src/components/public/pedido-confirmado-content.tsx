@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { sendGAEvent } from '@next/third-parties/google'
 import { CheckCircle2, Clock, XCircle, MessageCircle } from 'lucide-react'
 import { PrimaryButton, OutlineButton } from '@/components/public/buttons'
 import { formatARS } from '@/lib/format'
@@ -54,6 +55,35 @@ export function PedidoConfirmadoContent({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setState({ loaded: true, order })
   }, [numero])
+
+  // Evento de compra para GA4 (antes de esto, Analytics no tenía forma de
+  // saber que una visita a esta página era una venta, solo la contaba como
+  // una pageview más). No se cuenta un pago rechazado; `pendiente` sí (ej.
+  // transferencia esperando confirmación) porque el pedido igual se creó —
+  // mismo criterio que ya usa este componente para mostrar el botón de
+  // WhatsApp. Se marca en sessionStorage para no duplicar el evento si esta
+  // página se refresca (GA4 además deduplica por transaction_id).
+  useEffect(() => {
+    if (!state.order || vista.tipo === 'rechazado') return
+    const marca = `bookmist-ga-purchase-${state.order.numero}`
+    try {
+      if (sessionStorage.getItem(marca)) return
+      sessionStorage.setItem(marca, '1')
+    } catch {
+      // sin sessionStorage: se manda igual, puede duplicarse en un refresh —
+      // GA4 lo deduplica por transaction_id de todos modos.
+    }
+    sendGAEvent('event', 'purchase', {
+      transaction_id: state.order.numero,
+      value: state.order.total,
+      currency: 'ARS',
+      items: state.order.items.map((i) => ({
+        item_name: i.nombre,
+        price: i.precio,
+        quantity: i.cantidad,
+      })),
+    })
+  }, [state.order, vista.tipo])
 
   if (!state.loaded) {
     return <div className="mx-auto max-w-xl px-6 py-16" />
