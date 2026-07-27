@@ -9,6 +9,7 @@ import { PrimaryButton, OutlineButton } from '@/components/public/buttons'
 import { formatARS } from '@/lib/format'
 import { resolverVistaPedido, type VistaPedidoTipo } from '@/lib/pedido-confirmacion'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
+import { GoogleCustomerReviews } from '@/components/public/google-customer-reviews'
 import type { CuentaPago } from '@/lib/configuracion'
 import type { MetodoPago } from '@/types/db'
 
@@ -18,6 +19,11 @@ type LastOrder = {
   total: number
   metodo_pago?: MetodoPago
   items: { nombre: string; cantidad: number; precio: number }[]
+  // Fase 8h (Google Customer Reviews) — ausentes en pedidos guardados antes
+  // de este cambio (sessionStorage viejo todavía en el navegador), por eso
+  // son opcionales.
+  email?: string
+  estimatedDeliveryDate?: string
 }
 
 type Estado = { loaded: boolean; order: LastOrder | null }
@@ -90,6 +96,7 @@ export function PedidoConfirmadoContent({
   }
 
   const { order } = state
+  const merchantId = process.env.NEXT_PUBLIC_GOOGLE_MERCHANT_ID
 
   return (
     <div className="mx-auto max-w-xl px-6 py-12 text-center">
@@ -131,6 +138,15 @@ export function PedidoConfirmadoContent({
             Avisarnos por WhatsApp
           </PrimaryButton>
         </a>
+      )}
+
+      {order?.email && order.estimatedDeliveryDate && merchantId && vista.tipo !== 'rechazado' && (
+        <GoogleCustomerReviews
+          merchantId={merchantId}
+          orderId={order.numero}
+          email={order.email}
+          estimatedDeliveryDate={order.estimatedDeliveryDate}
+        />
       )}
 
       <p className="mt-3 text-sm text-foreground/60">Guardá el número de tu pedido por las dudas.</p>

@@ -13,6 +13,7 @@ import { PrimaryButton } from '@/components/public/buttons'
 import { useCart } from '@/lib/cart'
 import { formatARS } from '@/lib/format'
 import { checkoutFormSchema, type CheckoutFormInput } from '@/lib/validations'
+import { fechaEstimadaEntrega } from '@/lib/fecha-estimada-entrega'
 import { METODO_PAGO_LABEL } from '@/lib/constants'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
 import type { CuentaPago } from '@/lib/configuracion'
@@ -246,6 +247,11 @@ export function CheckoutForm({
             total: json.total,
             metodo_pago: values.metodo_pago,
             items: items.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+            // Para el opt-in de Google Customer Reviews en la confirmación
+            // (Fase 8h) — la fecha es una estimación fija, no un ETA real de
+            // Andreani.
+            email: values.cliente_email,
+            estimatedDeliveryDate: fechaEstimadaEntrega(values.modo_envio),
           }),
         )
       } catch {

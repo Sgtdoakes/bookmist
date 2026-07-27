@@ -22,14 +22,25 @@ const isDev = process.env.NODE_ENV === 'development'
 // (0 datos en Analytics, sin ningún error visible salvo en la consola).
 // Dominios de Google recomendados por su propia documentación de CSP para
 // gtag.js. media-src es nuevo (Fase 8b): video de Cloudinary en <video>.
+// Revisitado en la Fase 8h (Google Customer Reviews, opt-in en /pedido/[numero]):
+// el widget carga apis.google.com/js/platform.js y usa el loader "gapi"
+// genérico de Google (el mismo que Google Sign-In históricamente), que trae
+// assets estáticos desde www.gstatic.com y renderiza la encuesta en un
+// iframe de www.google.com. A diferencia de gtag.js, Google NO documenta un
+// listado cerrado de dominios para CSP en su guía de integración — esta
+// lista sale del comportamiento conocido del loader "gapi", no de una
+// fuente oficial cerrada. Si en el navegador real (DevTools -> Console)
+// aparece algún "Refused to load/frame ... violates CSP" nuevo, sumar ese
+// dominio acá (mismo síntoma silencioso que el bug de GA4 de la Fase 7).
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://*.googletagmanager.com${isDev ? " 'unsafe-eval'" : ''};
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com;
+  script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://apis.google.com https://www.gstatic.com${isDev ? " 'unsafe-eval'" : ''};
+  style-src 'self' 'unsafe-inline' https://www.gstatic.com;
+  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://www.gstatic.com;
   media-src 'self' https://res.cloudinary.com;
   font-src 'self';
-  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com;
+  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.googleapis.com;
+  frame-src https://www.google.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
