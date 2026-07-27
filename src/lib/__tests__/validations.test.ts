@@ -8,6 +8,7 @@ const PEDIDO_VALIDO = {
   cliente_nombre: 'Juana Pérez',
   cliente_email: 'juana@example.com',
   cliente_telefono: '1122334455',
+  cliente_dni: '30111222',
   direccion_envio: 'Calle Falsa 123, Buenos Aires',
   zona_id: ZONA_ID,
   metodo_pago: 'transferencia' as const,
@@ -47,6 +48,19 @@ describe('checkoutSchema', () => {
     if (!r.success) {
       expect(r.error.issues.some((i) => i.path.includes('zona_id'))).toBe(true)
     }
+  })
+
+  it('rechaza sin DNI', () => {
+    const r = checkoutSchema.safeParse({ ...PEDIDO_VALIDO, cliente_dni: '' })
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.includes('cliente_dni'))).toBe(true)
+    }
+  })
+
+  it('acepta un DNI con formato no numérico (CUIT/documento extranjero)', () => {
+    const r = checkoutSchema.safeParse({ ...PEDIDO_VALIDO, cliente_dni: '20-30111222-4' })
+    expect(r.success).toBe(true)
   })
 
   it('rechaza un método de pago fuera del enum', () => {

@@ -87,6 +87,104 @@ export async function getProductosParaContenido(excludeId?: string): Promise<Pro
   return data ?? []
 }
 
+// --- Variantes (Fase 8g) -----------------------------------------------------
+// Candidatas para agrupar como variantes entre sí: solo cajas/kits (mismo
+// alcance que la constraint de la migración 0028).
+export async function getProductosParaVariantes(excludeId?: string): Promise<Producto[]> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return []
+  let query = supabase
+    .from('productos')
+    .select('*')
+    .in('tipo', ['caja', 'kit'])
+    .order('nombre', { ascending: true })
+  if (excludeId) query = query.neq('id', excludeId)
+  const { data, error } = await query
+  if (error) return []
+  return data ?? []
+}
+
+// Reemplaza el grupo de variantes de un producto por el conjunto elegido.
+// `variante_grupo_id` es un tag compartido sin tabla propia (ver migración
+// 0028): si el producto no tenía grupo, se crea uno nuevo acá mismo; si ya
+// tenía, se reusa para no romper el vínculo con quienes no se tocaron. Los
+// que salen del grupo quedan sueltos (variante_grupo_id = null); si el grupo
+// queda con un solo integrante después de sacar gente, también se suelta —
+// un grupo de 1 no tiene sentido (no hay "otra variante" que mostrar).
+export async function guardarVariantesProducto(productoId: string, miembroIds: string[]): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const { data: actual, error: actualErr } = await supabase
+    .from('productos')
+    .select('id, tipo, variante_grupo_id')
+    .eq('id', productoId)
+    .single()
+  if (actualErr || !actual) return { ok: false, error: 'No se encontró el producto.' }
+  if (actual.tipo !== 'caja' && actual.tipo !== 'kit') {
+    return { ok: false, error: 'Las variantes solo están disponibles para cajas y kits.' }
+  }
+
+  const idsUnicos = [...new Set(miembroIds)].filter((id) => id !== productoId)
+
+  if (idsUnicos.length === 0) {
+    if (actual.variante_grupo_id) {
+      const { error } = await supabase
+        .from('productos')
+        .update({ variante_grupo_id: null })
+        .eq('id', productoId)
+      if (error) return { ok: false, error: 'No se pudo actualizar la variante.' }
+      await soltarGrupoSiQuedaSolo(supabase, actual.variante_grupo_id)
+    }
+    revalidarPublico()
+    return { ok: true }
+  }
+
+  const grupoId = actual.variante_grupo_id ?? crypto.randomUUID()
+
+  if (actual.variante_grupo_id) {
+    const { data: anteriores } = await supabase
+      .from('productos')
+      .select('id')
+      .eq('variante_grupo_id', actual.variante_grupo_id)
+    const salen = (anteriores ?? [])
+      .map((p) => p.id)
+      .filter((id) => id !== productoId && !idsUnicos.includes(id))
+    if (salen.length > 0) {
+      const { error } = await supabase.from('productos').update({ variante_grupo_id: null }).in('id', salen)
+      if (error) return { ok: false, error: 'No se pudo actualizar la variante.' }
+    }
+  }
+
+  const { error: propioErr } = await supabase
+    .from('productos')
+    .update({ variante_grupo_id: grupoId })
+    .eq('id', productoId)
+  if (propioErr) return { ok: false, error: 'No se pudo actualizar la variante.' }
+
+  const { error: miembrosErr } = await supabase
+    .from('productos')
+    .update({ variante_grupo_id: grupoId })
+    .in('id', idsUnicos)
+  if (miembrosErr) return { ok: false, error: 'No se pudo actualizar la variante.' }
+
+  revalidarPublico()
+  return { ok: true }
+}
+
+async function soltarGrupoSiQuedaSolo(
+  supabase: NonNullable<Awaited<ReturnType<typeof clienteAutenticado>>>,
+  grupoId: string,
+) {
+  const { data } = await supabase.from('productos').select('id').eq('variante_grupo_id', grupoId)
+  if ((data ?? []).length === 1) {
+    await supabase
+      .from('productos')
+      .update({ variante_grupo_id: null })
+      .eq('variante_grupo_id', grupoId)
+  }
+}
+
 // --- Categorías (Fase 6i) ----------------------------------------------------
 
 export async function getCategoriasAdmin(): Promise<Categoria[]> {

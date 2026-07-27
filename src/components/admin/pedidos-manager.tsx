@@ -130,6 +130,7 @@ function TarjetaPedido({
             {p.cliente_telefono}
             {p.cliente_email ? ` · ${p.cliente_email}` : ''}
           </p>
+          {p.cliente_dni && <p className="text-muted-foreground">DNI: {p.cliente_dni}</p>}
           <p className="mt-1 text-muted-foreground">
             {p.direccion_envio}
             {p.zona_envio ? ` · ${p.zona_envio}` : ''}

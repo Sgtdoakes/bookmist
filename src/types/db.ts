@@ -28,6 +28,13 @@ export type Database = {
           alto_cm: number
           ancho_cm: number
           largo_cm: number
+          // Variantes (migración 0028): productos con el mismo grupo son
+          // variantes entre sí (ej. mismo kit en distintos colores). Solo
+          // aplica a tipo 'caja'/'kit' — ver constraint en la migración.
+          // variante_etiqueta es el texto corto propio de ESTE producto
+          // dentro del grupo (ej. "Celeste").
+          variante_grupo_id: string | null
+          variante_etiqueta: string | null
           activo: boolean
           orden: number
           created_at: string
@@ -48,6 +55,8 @@ export type Database = {
           alto_cm?: number
           ancho_cm?: number
           largo_cm?: number
+          variante_grupo_id?: string | null
+          variante_etiqueta?: string | null
           activo?: boolean
           orden?: number
           created_at?: string
@@ -139,6 +148,9 @@ export type Database = {
           cliente_nombre: string
           cliente_email: string
           cliente_telefono: string
+          // Migración 0027 — default '' para no romper pedidos históricos;
+          // el checkout exige un valor real para los pedidos nuevos.
+          cliente_dni: string
           direccion_envio: string
           zona_envio: string | null
           costo_envio: number | null
@@ -163,6 +175,7 @@ export type Database = {
           cliente_nombre: string
           cliente_email: string
           cliente_telefono: string
+          cliente_dni?: string
           direccion_envio: string
           zona_envio?: string | null
           costo_envio?: number | null

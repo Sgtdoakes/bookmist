@@ -178,6 +178,26 @@ export async function getRelacionados(producto: ProductoConItems, limit = 4): Pr
   }
 }
 
+// Otras variantes del mismo grupo (Fase 8g) — ej. el mismo kit en otro color.
+// Incluye al propio producto para que el selector pueda marcar "estás acá".
+export async function getVariantes(producto: Producto): Promise<Producto[]> {
+  if (!configured() || !producto.variante_grupo_id) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('variante_grupo_id', producto.variante_grupo_id)
+      .eq('activo', true)
+      .neq('id', producto.id)
+      .order('variante_etiqueta', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
 // Selección manual de productos (fuente "manual" del bloque de productos) —
 // preserva el orden elegido por Dani, no el orden de la tabla.
 export async function getProductosPorIds(ids: string[]): Promise<Producto[]> {

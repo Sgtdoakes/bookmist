@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { ProductoForm } from '@/components/admin/producto-form'
-import { getCategoriasAdmin, getProductosParaContenido } from '@/app/admin/productos/actions'
+import { getCategoriasAdmin, getProductosParaContenido, getProductosParaVariantes } from '@/app/admin/productos/actions'
 
 export const metadata = { title: 'Nuevo producto' }
 
 export default async function NuevoProductoPage() {
-  const [itemsDisponibles, categoriasDisponibles] = await Promise.all([
+  const [itemsDisponibles, categoriasDisponibles, variantesDisponibles] = await Promise.all([
     getProductosParaContenido(),
     getCategoriasAdmin(),
+    getProductosParaVariantes(),
   ])
 
   return (
@@ -22,7 +23,11 @@ export default async function NuevoProductoPage() {
       </Link>
       <h1 className="text-2xl font-bold">Nuevo producto</h1>
       <div className="mt-6">
-        <ProductoForm itemsDisponibles={itemsDisponibles} categoriasDisponibles={categoriasDisponibles} />
+        <ProductoForm
+          itemsDisponibles={itemsDisponibles}
+          categoriasDisponibles={categoriasDisponibles}
+          variantesDisponibles={variantesDisponibles}
+        />
       </div>
     </div>
   )

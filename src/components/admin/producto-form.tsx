@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/admin/image-uploader'
 import { SelectorItems } from '@/components/admin/selector-items'
+import { SelectorVariantes } from '@/components/admin/selector-variantes'
 import { generarSlug } from '@/lib/slugs'
 import {
   actualizarProducto,
@@ -17,6 +18,7 @@ import {
   crearProducto,
   guardarCategoriasProducto,
   guardarContenidoProducto,
+  guardarVariantesProducto,
   type ContenidoInput,
 } from '@/app/admin/productos/actions'
 import type { Categoria, Producto, ProductoConItems, ProductoTipo } from '@/types/db'
@@ -25,6 +27,7 @@ type Props = {
   producto?: ProductoConItems
   itemsDisponibles: Producto[]
   categoriasDisponibles: Categoria[]
+  variantesDisponibles: Producto[]
 }
 
 const TIPO_OPCIONES: { value: ProductoTipo; label: string }[] = [
@@ -34,7 +37,7 @@ const TIPO_OPCIONES: { value: ProductoTipo; label: string }[] = [
   { value: 'accesorio', label: 'Accesorio suelto' },
 ]
 
-export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles }: Props) {
+export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles, variantesDisponibles }: Props) {
   const router = useRouter()
   const [nombre, setNombre] = useState(producto?.nombre ?? '')
   const [slug, setSlug] = useState(producto?.slug ?? '')
@@ -55,6 +58,13 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
   )
   const [nuevaCategoria, setNuevaCategoria] = useState('')
   const [creandoCategoria, setCreandoCategoria] = useState(false)
+  const [varianteEtiqueta, setVarianteEtiqueta] = useState(producto?.variante_etiqueta ?? '')
+  const [variantesElegidas, setVariantesElegidas] = useState<string[]>(
+    () =>
+      producto?.variante_grupo_id
+        ? variantesDisponibles.filter((p) => p.variante_grupo_id === producto.variante_grupo_id).map((p) => p.id)
+        : [],
+  )
   const [imagenPrincipal, setImagenPrincipal] = useState<string | null>(producto?.imagen_principal ?? null)
   const [imagenesGaleria, setImagenesGaleria] = useState<string[]>(producto?.imagenes_galeria ?? [])
   const [guardando, setGuardando] = useState(false)
@@ -95,6 +105,10 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
     })
   }
 
+  function toggleVariante(id: string, checked: boolean) {
+    setVariantesElegidas((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+  }
+
   async function onPortadaChange(url: string | null) {
     if (!producto) return
     const r = await actualizarProducto(producto.id, { imagen_principal: url })
@@ -127,6 +141,11 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       alto_cm: Math.max(1, Number(altoCm) || 5),
       ancho_cm: Math.max(1, Number(anchoCm) || 20),
       largo_cm: Math.max(1, Number(largoCm) || 30),
+      variante_etiqueta: tipo === 'caja' || tipo === 'kit' ? varianteEtiqueta.trim() || null : null,
+      // Si deja de ser caja/kit, se suelta del grupo de variantes (ver
+      // constraint de la migración 0028) — guardarVariantesProducto de abajo
+      // rechazaría un tipo que ya no califica.
+      ...(tipo === 'caja' || tipo === 'kit' ? {} : { variante_grupo_id: null }),
       activo,
     }
 
@@ -161,11 +180,21 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       cantidad,
     }))
     const rContenido = await guardarContenidoProducto(id, contenido)
-    setGuardando(false)
     if (!rContenido.ok) {
+      setGuardando(false)
       toast.error(rContenido.error)
       return
     }
+
+    if (tipo === 'caja' || tipo === 'kit') {
+      const rVariantes = await guardarVariantesProducto(id, variantesElegidas)
+      if (!rVariantes.ok) {
+        setGuardando(false)
+        toast.error(rVariantes.error)
+        return
+      }
+    }
+    setGuardando(false)
 
     toast.success(producto ? 'Producto actualizado' : 'Producto creado')
     if (producto) {
@@ -404,6 +433,42 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
           rows={3}
         />
       </div>
+
+      {(tipo === 'caja' || tipo === 'kit') && (
+        <div>
+          <h2 className="font-semibold">Variantes</h2>
+          <p className="text-sm text-muted-foreground">
+            Otras cajas/kits que son variantes de este (ej. el mismo kit en otro color). En la ficha
+            pública aparece un botón para saltar directo de una variante a la otra.
+          </p>
+          <div className="mt-2 max-w-xs">
+            <Label htmlFor="variante_etiqueta" className="text-xs">
+              Etiqueta de esta variante (ej. &quot;Celeste&quot;)
+            </Label>
+            <Input
+              id="variante_etiqueta"
+              value={varianteEtiqueta}
+              onChange={(e) => setVarianteEtiqueta(e.target.value)}
+              placeholder="Celeste"
+              className="mt-1"
+            />
+          </div>
+
+          {variantesDisponibles.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Todavía no hay otra caja/kit en el catálogo para marcar como variante.
+            </p>
+          ) : (
+            <div className="mt-3">
+              <SelectorVariantes
+                candidatas={variantesDisponibles}
+                elegidos={variantesElegidas}
+                onToggle={toggleVariante}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <h2 className="font-semibold">Qué incluye</h2>

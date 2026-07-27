@@ -89,6 +89,7 @@ export function CheckoutForm({
       cliente_nombre: '',
       cliente_email: '',
       cliente_telefono: '',
+      cliente_dni: '',
       modo_envio: 'domicilio',
       direccion_envio: '',
       zona_id: null,
@@ -285,6 +286,11 @@ export function CheckoutForm({
               <Input id="cliente_telefono" type="tel" {...register('cliente_telefono')} className="mt-1" />
               <FieldError msg={errors.cliente_telefono?.message} />
             </div>
+          </div>
+          <div>
+            <Label htmlFor="cliente_dni">DNI</Label>
+            <Input id="cliente_dni" {...register('cliente_dni')} className="mt-1 max-w-40" />
+            <FieldError msg={errors.cliente_dni?.message} />
           </div>
         </section>
 

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BookOpen, Gift } from 'lucide-react'
-import { getProductoConItems, getRelacionados } from '@/lib/productos'
+import { getProductoConItems, getRelacionados, getVariantes } from '@/lib/productos'
 import type { ProductoTipo } from '@/types/db'
 import { ProductGallery } from '@/components/public/product-gallery'
 import { AddToCart } from '@/components/public/add-to-cart'
 import { ProductCard } from '@/components/public/product-card'
+import { SelectorVariantes } from '@/components/public/selector-variantes'
 import { SeccionesDePagina } from '@/components/public/secciones-renderer'
 import { formatARS } from '@/lib/format'
 import { productJsonLd } from '@/lib/structured-data'
@@ -45,7 +46,10 @@ export default async function ProductoDetallePage({ params }: Props) {
   if (!producto) notFound()
 
   const contenido = [...producto.producto_items].sort((a, b) => a.orden - b.orden)
-  const relacionados = await getRelacionados(producto, 4)
+  const [relacionados, otrasVariantes] = await Promise.all([
+    getRelacionados(producto, 4),
+    getVariantes(producto),
+  ])
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
@@ -68,6 +72,8 @@ export default async function ProductoDetallePage({ params }: Props) {
           <p className="mb-6 font-heading text-2xl font-semibold text-primary">
             {formatARS(producto.precio)}
           </p>
+
+          <SelectorVariantes actual={producto} otrasVariantes={otrasVariantes} />
 
           {producto.descripcion && (
             <p className="mb-6 text-base leading-relaxed text-foreground/85">{producto.descripcion}</p>

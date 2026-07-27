@@ -19,6 +19,7 @@ export type DatosPedidoMensaje = {
   numeroPedido: string
   clienteNombre: string
   clienteTelefono?: string
+  clienteDni?: string
   items: ItemMensaje[]
   direccionEnvio: string
   zonaEnvio?: string | null
@@ -39,6 +40,7 @@ export function construirMensajePedido(d: DatosPedidoMensaje): string {
   lineas.push('')
   lineas.push(`Cliente: ${d.clienteNombre}`)
   if (d.clienteTelefono) lineas.push(`Teléfono: ${d.clienteTelefono}`)
+  if (d.clienteDni) lineas.push(`DNI: ${d.clienteDni}`)
   lineas.push('')
   lineas.push('*Cajas/kits:*')
   for (const it of d.items) {

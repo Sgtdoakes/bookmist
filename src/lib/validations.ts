@@ -17,6 +17,9 @@ const checkoutBase = z.object({
   cliente_nombre: z.string().trim().min(2, 'Ingresá tu nombre'),
   cliente_email: z.email('Ingresá un email válido'),
   cliente_telefono: z.string().trim().min(6, 'Ingresá un teléfono de contacto'),
+  // Texto libre a propósito (sin validar formato de dígitos): además de DNI
+  // argentino puede haber CUIT o documento extranjero.
+  cliente_dni: z.string().trim().min(1, 'Ingresá tu DNI'),
   // nullish (no .default): mantiene idénticos los tipos de entrada y salida,
   // que es lo que espera react-hook-form; ausente = domicilio (clientes con
   // el JS viejo en caché no mandan este campo).

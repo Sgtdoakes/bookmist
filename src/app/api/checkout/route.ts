@@ -199,6 +199,7 @@ export async function POST(request: Request) {
       cliente_nombre: data.cliente_nombre,
       cliente_email: data.cliente_email,
       cliente_telefono: data.cliente_telefono,
+      cliente_dni: data.cliente_dni,
       direccion_envio: direccionEnvio,
       zona_envio: zonaNombre,
       costo_envio: costoEnvio,
@@ -268,6 +269,7 @@ export async function POST(request: Request) {
     numeroPedido: order.numero_pedido,
     clienteNombre: data.cliente_nombre,
     clienteTelefono: data.cliente_telefono,
+    clienteDni: data.cliente_dni,
     items: itemsValidados.map((x) => ({
       nombre: x.producto.nombre,
       cantidad: x.cantidad,
