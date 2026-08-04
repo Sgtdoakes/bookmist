@@ -182,11 +182,11 @@ export function cuentaValida(c: CuentaPago): boolean {
   return !!c.cbu || !!c.alias
 }
 
-// Porcentaje de descuento por pagar con transferencia (la promesa "10% OFF
+// Porcentaje de descuento por pagar con transferencia (la promesa "5% OFF
 // transferencia" de la barra de beneficios). Editable vía la clave
-// `descuento_transferencia_pct` en la tabla configuracion; default 10.
+// `descuento_transferencia_pct` en la tabla configuracion; default 5.
 const CLAVE_DESCUENTO_TRANSFERENCIA = 'descuento_transferencia_pct'
-const DESCUENTO_TRANSFERENCIA_DEFAULT = 10
+const DESCUENTO_TRANSFERENCIA_DEFAULT = 5
 
 export async function getDescuentoTransferenciaPct(): Promise<number> {
   if (!configured()) return DESCUENTO_TRANSFERENCIA_DEFAULT

@@ -1,5 +1,10 @@
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { getMarcaConfig, getNavLinks, getCuponBienvenida } from '@/lib/configuracion'
+import {
+  getMarcaConfig,
+  getNavLinks,
+  getCuponBienvenida,
+  getDescuentoTransferenciaPct,
+} from '@/lib/configuracion'
 import { getCategorias } from '@/lib/productos'
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementBar } from '@/components/public/announcement-bar'
@@ -24,12 +29,13 @@ async function getIsAdmin(): Promise<boolean> {
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [marca, navLinks, categorias, isAdmin, cupon] = await Promise.all([
+  const [marca, navLinks, categorias, isAdmin, cupon, descuentoTransferenciaPct] = await Promise.all([
     getMarcaConfig(),
     getNavLinks(),
     getCategorias(),
     getIsAdmin(),
     getCuponBienvenida(),
+    getDescuentoTransferenciaPct(),
   ])
 
   // GA4 vive acá (no en el layout raíz) para que nunca corra en /admin — y
@@ -43,7 +49,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <CartProvider>
       {gaId && !isAdmin && <GoogleAnalytics gaId={gaId} />}
-      <AnnouncementBar />
+      <AnnouncementBar descuentoPct={descuentoTransferenciaPct} />
       <SiteHeader marca={marca} navLinks={navLinks} categorias={categorias} isAdmin={isAdmin} />
       <main className="flex-1">{children}</main>
       <SiteFooter marca={marca} navLinks={navLinks} />

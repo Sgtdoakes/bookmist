@@ -66,7 +66,7 @@ insert into pagina_secciones (pagina, tipo, orden, activo, config) values
     "items": [
       { "emoji": "💳", "texto": "3 cuotas sin interés +$75.000" },
       { "emoji": "📦", "texto": "Envíos a todo el país" },
-      { "emoji": "💸", "texto": "10% OFF transferencia" }
+      { "emoji": "💸", "texto": "5% OFF transferencia" }
     ]
   }'),
   ('home', 'categorias', 3, true, '{
