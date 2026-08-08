@@ -161,7 +161,13 @@ export type Database = {
           descuento: number
           // Código de cupón usado, si usó uno (migración 0026) — solo a fines
           // de que Dani lo vea en el pedido, el monto ya está en `descuento`.
+          // Es el string que tipeó el cliente: sobrevive aunque el cupón se
+          // renombre o se borre.
           cupon_codigo: string | null
+          // A qué cupón corresponde (migración 0030). Los usos se cuentan por
+          // acá y no por el string, para que renombrar un cupón no le resetee
+          // la cuenta y regale descuentos de más.
+          cupon_id: string | null
           total: number
           notas: string | null
           leido: boolean
@@ -183,6 +189,7 @@ export type Database = {
           estado?: EstadoPedido
           descuento?: number
           cupon_codigo?: string | null
+          cupon_id?: string | null
           total?: number
           notas?: string | null
           leido?: boolean
@@ -348,9 +355,14 @@ export type Database = {
           codigo: string
           pct: number
           activo: boolean
-          // null = sin tope de usos. 1 = el de la búsqueda del tesoro.
+          // null = sin tope de usos. 1 = un cupón de un solo uso.
           usos_maximos: number | null
+          // Cuánto se puede llevar UNA misma persona. null = sin límite.
+          usos_maximos_por_email: number | null
           requiere_suscripcion: boolean
+          // Muerto desde la 0030: lo reemplazó usos_maximos_por_email. Sigue
+          // en la tabla (con default) hasta que se borre en una migración
+          // posterior; nadie lo lee.
           una_vez_por_email: boolean
           es_bienvenida: boolean
           nota: string | null
@@ -362,8 +374,8 @@ export type Database = {
           pct: number
           activo?: boolean
           usos_maximos?: number | null
+          usos_maximos_por_email?: number | null
           requiere_suscripcion?: boolean
-          una_vez_por_email?: boolean
           es_bienvenida?: boolean
           nota?: string | null
           created_at?: string

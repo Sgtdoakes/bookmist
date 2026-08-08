@@ -1,37 +1,36 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, Copy, Download, Loader2, Plus, Search, Sparkles, Ticket, Trash2, X } from 'lucide-react'
+import { Check, Copy, Download, Loader2, Pencil, Plus, Search, Sparkles, Ticket, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { armarCsv, descargarCsv, sufijoFechaArchivo } from '@/lib/csv'
-import { estadoCupon, type EstadoCupon } from '@/lib/cupon-codigo'
+import { estadoCupon, reglaCupon, usosRestantes, type EstadoCupon } from '@/lib/cupon-codigo'
 import type { Cupon } from '@/types/db'
 import {
-  actualizarCupon,
   borrarCupon,
   borrarCupones,
   crearCupon,
+  editarCupon,
   generarTandaCupones,
+  toggleActivoCupon,
 } from '@/app/admin/cupones/actions'
 
 const ESTADO_ETIQUETA: Record<EstadoCupon, string> = {
   disponible: 'Sin usar',
-  usado: 'Usado',
+  usado: 'En uso',
   agotado: 'Agotado',
   apagado: 'Apagado',
 }
 
-// `outline` para los que todavía sirven y `secondary` (apagado) para los que
-// ya no: de un vistazo se tiene que ver cuáles quedan vivos después de
-// repartir una tanda, sin leer cada fila.
 const ESTADO_VARIANTE: Record<EstadoCupon, 'default' | 'secondary' | 'outline'> = {
   disponible: 'default',
-  usado: 'secondary',
+  usado: 'default',
   agotado: 'secondary',
   apagado: 'outline',
 }
@@ -42,18 +41,11 @@ function fechaCorta(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function reglaCupon(c: Cupon): string {
-  if (c.es_bienvenida) return 'Se manda por mail al suscribirse'
-  if (c.usos_maximos === 1) return 'Un solo uso'
-  if (c.usos_maximos != null) return `Hasta ${c.usos_maximos} usos`
-  if (c.una_vez_por_email) return 'Uno por persona'
-  return 'Sin límite de usos'
-}
-
-// El mapa de usos viene del server con las claves en mayúsculas (las arma
-// contarUsosPorCodigo normalizando orders.cupon_codigo).
-function estadoDe(cupon: Cupon, usos: Record<string, number>): EstadoCupon {
-  return estadoCupon(cupon, usos[cupon.codigo.toUpperCase()] ?? 0)
+// Los usos vienen indexados por id del cupón (orders.cupon_id), no por
+// código: desde que los códigos se pueden editar, contar por texto hacía que
+// renombrar un cupón le reseteara la cuenta.
+function usosDe(cupon: Cupon, usos: Record<string, number>): number {
+  return usos[cupon.id] ?? 0
 }
 
 export function CuponesManager({
@@ -64,49 +56,50 @@ export function CuponesManager({
   usosIniciales: Record<string, number>
 }) {
   const [items, setItems] = useState<Cupon[]>(cuponesIniciales)
-  // Los usos vienen contados del server y no cambian mientras Dani está en
-  // esta pantalla (los genera un cliente comprando, no ella).
   const usos = usosIniciales
 
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('todos')
-
-  // Códigos recién generados: se muestran aparte y grandes porque este es el
-  // único momento en que están juntos y en orden. Es lo que Dani copia o
-  // imprime para salir a repartir; después se mezclan con el resto de la
-  // lista y volver a juntarlos es un trabajo manual.
+  const [editando, setEditando] = useState<Cupon | null>(null)
   const [ultimaTanda, setUltimaTanda] = useState<{ codigos: string[]; pct: number; nota: string } | null>(null)
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toUpperCase()
     return items.filter((c) => {
       if (q && !c.codigo.toUpperCase().includes(q) && !(c.nota ?? '').toUpperCase().includes(q)) return false
-      const estado = estadoDe(c, usos)
+      const estado = estadoCupon(c, usosDe(c, usos))
       if (filtro === 'vivos') return estado === 'disponible' || estado === 'usado'
       if (filtro === 'muertos') return estado === 'agotado' || estado === 'apagado'
       return true
     })
   }, [items, busqueda, filtro, usos])
 
-  // Solo los agotados: un cupón apagado se puede volver a prender, uno
-  // agotado ya no sirve para nada y solo ensucia la lista.
   const agotados = useMemo(
-    () => items.filter((c) => !c.es_bienvenida && estadoDe(c, usos) === 'agotado'),
+    () => items.filter((c) => !c.es_bienvenida && estadoCupon(c, usosDe(c, usos)) === 'agotado'),
     [items, usos],
   )
 
+  function patch(cupon: Cupon) {
+    setItems((prev) => prev.map((x) => (x.id === cupon.id ? cupon : x)))
+  }
+
   function bajarCsvLista() {
     const filas = [
-      ['Código', 'Descuento', 'Estado', 'Usos', 'Regla', 'Nota', 'Creado'],
-      ...filtrados.map((c) => [
-        c.codigo,
-        `${c.pct}%`,
-        ESTADO_ETIQUETA[estadoDe(c, usos)],
-        usos[c.codigo.toUpperCase()] ?? 0,
-        reglaCupon(c),
-        c.nota ?? '',
-        fechaCorta(c.created_at),
-      ]),
+      ['Código', 'Descuento', 'Estado', 'Usados', 'Quedan', 'Regla', 'Nota', 'Creado'],
+      ...filtrados.map((c) => {
+        const u = usosDe(c, usos)
+        const quedan = usosRestantes(c, u)
+        return [
+          c.codigo,
+          `${c.pct}%`,
+          ESTADO_ETIQUETA[estadoCupon(c, u)],
+          u,
+          quedan ?? 'sin tope',
+          reglaCupon(c),
+          c.nota ?? '',
+          fechaCorta(c.created_at),
+        ]
+      }),
     ]
     descargarCsv(`cupones-${sufijoFechaArchivo()}`, armarCsv(filas))
   }
@@ -124,6 +117,11 @@ export function CuponesManager({
 
   return (
     <div className="space-y-6">
+      <CuponForm
+        modo="crear"
+        onGuardado={(c) => setItems((prev) => [c, ...prev])}
+      />
+
       <GeneradorTanda
         onGenerado={(nuevos, pct, nota) => {
           setUltimaTanda({ codigos: nuevos.map((c) => c.codigo), pct, nota })
@@ -131,11 +129,7 @@ export function CuponesManager({
         }}
       />
 
-      {ultimaTanda && (
-        <TandaGenerada tanda={ultimaTanda} onCerrar={() => setUltimaTanda(null)} />
-      )}
-
-      <CuponManual onCreado={(c) => setItems((prev) => [c, ...prev])} />
+      {ultimaTanda && <TandaGenerada tanda={ultimaTanda} onCerrar={() => setUltimaTanda(null)} />}
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -149,7 +143,7 @@ export function CuponesManager({
                 id="cupon-busqueda"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Código o nota de la tanda…"
+                placeholder="Código o nota…"
                 className="pl-8"
               />
             </div>
@@ -189,7 +183,7 @@ export function CuponesManager({
 
         {items.length === 0 ? (
           <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Todavía no hay cupones. Generá una tanda acá arriba.
+            Todavía no hay cupones cargados.
           </p>
         ) : filtrados.length === 0 ? (
           <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
@@ -202,9 +196,9 @@ export function CuponesManager({
                 <TableRow>
                   <TableHead>Código</TableHead>
                   <TableHead>Descuento</TableHead>
+                  <TableHead>Usados</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Regla</TableHead>
-                  <TableHead>Creado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -213,11 +207,9 @@ export function CuponesManager({
                   <FilaCupon
                     key={c.id}
                     cupon={c}
-                    usos={usos[c.codigo.toUpperCase()] ?? 0}
-                    estado={estadoDe(c, usos)}
-                    onPatch={(id, cambio) =>
-                      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...cambio } : x)))
-                    }
+                    usos={usosDe(c, usos)}
+                    onEditar={() => setEditando(c)}
+                    onPatch={patch}
                     onRemove={(id) => setItems((prev) => prev.filter((x) => x.id !== id))}
                   />
                 ))}
@@ -226,19 +218,247 @@ export function CuponesManager({
           </div>
         )}
       </div>
+
+      <Dialog open={editando !== null} onOpenChange={(abierto) => !abierto && setEditando(null)}>
+        <DialogContent className="sm:max-w-xl" showCloseButton>
+          <DialogTitle>Editar cupón</DialogTitle>
+          {editando && (
+            <CuponForm
+              modo="editar"
+              cupon={editando}
+              usados={usosDe(editando, usos)}
+              onGuardado={(c) => {
+                patch(c)
+                setEditando(null)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-// --- Generar una tanda ------------------------------------------------------
+// --- Alta y edición comparten formulario -----------------------------------
+// Mismos campos y mismas reglas en los dos lados: que un cupón se pueda crear
+// con algo que después la edición rechaza sería desconcertante.
+
+function CuponForm({
+  modo,
+  cupon,
+  usados = 0,
+  onGuardado,
+}: {
+  modo: 'crear' | 'editar'
+  cupon?: Cupon
+  usados?: number
+  onGuardado: (c: Cupon) => void
+}) {
+  const [abierto, setAbierto] = useState(modo === 'editar')
+  const [codigo, setCodigo] = useState(cupon?.codigo ?? '')
+  const [pct, setPct] = useState(String(cupon?.pct ?? 10))
+  const [conTope, setConTope] = useState(cupon ? cupon.usos_maximos != null : true)
+  const [usosMax, setUsosMax] = useState(String(cupon?.usos_maximos ?? 30))
+  const [conTopePersona, setConTopePersona] = useState(cupon ? cupon.usos_maximos_por_email != null : false)
+  const [porPersona, setPorPersona] = useState(String(cupon?.usos_maximos_por_email ?? 1))
+  const [requiereSusc, setRequiereSusc] = useState(cupon?.requiere_suscripcion ?? false)
+  const [nota, setNota] = useState(cupon?.nota ?? '')
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault()
+    const datos = {
+      codigo: codigo.trim().toUpperCase(),
+      pct: Number(pct),
+      usosMaximos: conTope ? Number(usosMax) : null,
+      usosMaximosPorEmail: conTopePersona ? Number(porPersona) : null,
+      requiereSuscripcion: requiereSusc,
+      nota,
+    }
+
+    setGuardando(true)
+    const r = modo === 'editar' && cupon ? await editarCupon(cupon.id, datos) : await crearCupon(datos)
+    setGuardando(false)
+    if (!r.ok) return toast.error(r.error)
+
+    onGuardado(r.cupon)
+    if (modo === 'crear') {
+      setCodigo('')
+      setNota('')
+      setAbierto(false)
+    }
+    toast.success(modo === 'editar' ? 'Cupón guardado' : 'Cupón creado')
+  }
+
+  if (!abierto) {
+    return (
+      <Button type="button" variant="outline" onClick={() => setAbierto(true)}>
+        <Plus className="h-4 w-4" />
+        Cargar un cupón
+      </Button>
+    )
+  }
+
+  const topeMenorQueUsados = conTope && Number(usosMax) < usados
+
+  return (
+    <form onSubmit={guardar} className={modo === 'crear' ? 'space-y-4 rounded-lg border bg-muted/30 p-4' : 'space-y-4'}>
+      {modo === 'crear' && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 font-semibold">
+            <Ticket className="h-4 w-4 text-primary" />
+            Cupón nuevo
+          </h2>
+          <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setAbierto(false)} aria-label="Cerrar">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <Label htmlFor={`${modo}-codigo`}>Código</Label>
+          <Input
+            id={`${modo}-codigo`}
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+            placeholder="BIENVENIDOS"
+            className="mt-1 w-52 font-mono uppercase"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${modo}-pct`}>Descuento (%)</Label>
+          <Input
+            id={`${modo}-pct`}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100}
+            value={pct}
+            onChange={(e) => setPct(e.target.value)}
+            className="mt-1 w-28"
+          />
+        </div>
+        <div className="min-w-[12rem] flex-1">
+          <Label htmlFor={`${modo}-nota`}>Nota (para vos)</Label>
+          <Input
+            id={`${modo}-nota`}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej: papeles del barrio, 7 de agosto"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2 rounded-md border p-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={conTope}
+            onChange={(e) => setConTope(e.target.checked)}
+            className="size-4 accent-[var(--primary)]"
+          />
+          Limitar cuántas veces se puede usar en total
+        </label>
+        {conTope && (
+          <div className="flex flex-wrap items-center gap-2 pl-6">
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={usosMax}
+              onChange={(e) => setUsosMax(e.target.value)}
+              className="h-9 w-24"
+              aria-label="Cantidad total de usos"
+            />
+            <span className="text-sm text-muted-foreground">
+              usos en total{modo === 'editar' && ` — ya lleva ${usados}`}
+            </span>
+          </div>
+        )}
+        {topeMenorQueUsados && (
+          <p className="pl-6 text-sm text-amber-500">
+            Ese número es menor que los {usados} usos que ya tiene: el cupón va a quedar agotado al guardar.
+          </p>
+        )}
+        <p className="pl-6 text-xs text-muted-foreground">
+          Si imprimiste 30 papeles con el mismo código, poné 30: al trigésimo pedido el cupón se apaga solo.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-md border p-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={conTopePersona}
+            onChange={(e) => setConTopePersona(e.target.checked)}
+            className="size-4 accent-[var(--primary)]"
+          />
+          Limitar cuántas veces lo puede usar una misma persona
+        </label>
+        {conTopePersona && (
+          <div className="flex flex-wrap items-center gap-2 pl-6">
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={porPersona}
+              onChange={(e) => setPorPersona(e.target.value)}
+              className="h-9 w-24"
+              aria-label="Máximo por persona"
+            />
+            <span className="text-sm text-muted-foreground">veces por mail</span>
+          </div>
+        )}
+        <p className="pl-6 text-xs text-muted-foreground">
+          Con un código repetido en varios papeles, el papel no prueba cuántos tiene cada uno. Esto acota al vivo sin
+          romperle el pedido a quien de verdad juntó dos.
+          {conTopePersona && (
+            <>
+              {' '}
+              <strong>Ojo:</strong> para contar por persona hace falta saber quién es, así que el cliente va a tener
+              que completar su email antes de poder aplicar el cupón.
+            </>
+          )}
+        </p>
+      </div>
+
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={requiereSusc}
+          onChange={(e) => setRequiereSusc(e.target.checked)}
+          className="size-4 accent-[var(--primary)]"
+        />
+        Solo para quienes se suscribieron con ese mismo mail
+      </label>
+
+      {cupon?.es_bienvenida && (
+        <p className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+          Este es el que se manda por mail a quien se suscribe desde el popup del sitio. Si le cambiás el código, los
+          mails nuevos van a llevar el código nuevo — los ya enviados siguen diciendo el viejo.
+        </p>
+      )}
+
+      <Button type="submit" disabled={guardando}>
+        {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        {modo === 'editar' ? 'Guardar cambios' : 'Crear cupón'}
+      </Button>
+    </form>
+  )
+}
+
+// --- Generar códigos únicos ------------------------------------------------
 
 function GeneradorTanda({
   onGenerado,
 }: {
   onGenerado: (cupones: Cupon[], pct: number, nota: string) => void
 }) {
+  const [abierto, setAbierto] = useState(false)
   const [cantidad, setCantidad] = useState('20')
-  const [pct, setPct] = useState('15')
+  const [pct, setPct] = useState('10')
   const [prefijo, setPrefijo] = useState('TESORO')
   const [nota, setNota] = useState('')
   const [generando, setGenerando] = useState(false)
@@ -256,20 +476,35 @@ function GeneradorTanda({
     if (!r.ok) return toast.error(r.error)
 
     onGenerado(r.cupones, p, nota.trim())
-    toast.success(`${r.cupones.length} cupones generados`)
+    toast.success(`${r.cupones.length} códigos generados`)
+  }
+
+  if (!abierto) {
+    return (
+      <Button type="button" variant="ghost" size="sm" onClick={() => setAbierto(true)}>
+        <Sparkles className="h-4 w-4" />
+        …o generar códigos únicos, uno distinto por papel
+      </Button>
+    )
   }
 
   return (
-    <form onSubmit={generar} className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-4">
-      <div className="flex items-start gap-2">
-        <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-        <div>
-          <h2 className="font-semibold">Generar una tanda para repartir</h2>
-          <p className="text-sm text-muted-foreground">
-            Cada cupón sale con su propio código y sirve una sola vez: apenas alguien lo usa, ese código deja de
-            andar y los demás siguen intactos. No hace falta estar suscripto para usarlos.
-          </p>
+    <form onSubmit={generar} className="space-y-3 rounded-lg border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <h2 className="font-semibold">Códigos únicos, uno por papel</h2>
+            <p className="text-sm text-muted-foreground">
+              Cada papel lleva un código distinto y sirve una sola vez, así nadie puede usar más de los que tiene en la
+              mano. <strong>Solo sirve si imprimís cada código por separado</strong> — si vas a hacer una tirada de N
+              copias iguales, usá &laquo;Cargar un cupón&raquo; con cantidad de usos.
+            </p>
+          </div>
         </div>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setAbierto(false)} aria-label="Cerrar">
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -315,7 +550,7 @@ function GeneradorTanda({
             id="tanda-nota"
             value={nota}
             onChange={(e) => setNota(e.target.value)}
-            placeholder="Ej: barrio, 7 de agosto"
+            placeholder="Ej: tesoro barrio"
             className="mt-1"
           />
         </div>
@@ -325,14 +560,12 @@ function GeneradorTanda({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Los códigos salen como <span className="font-mono">{prefijo.trim() ? `${prefijo.trim()}-K7M4Q` : 'K7M4Q'}</span>{' '}
-        — sin las letras y números que se confunden al leerlos de un papel (0 y O, 1 e I).
+        Salen como <span className="font-mono">{prefijo.trim() ? `${prefijo.trim()}-K7M4Q` : 'K7M4Q'}</span> — sin las
+        letras y números que se confunden al leerlos de un papel (0 y O, 1 e I).
       </p>
     </form>
   )
 }
-
-// --- Los códigos recién generados ------------------------------------------
 
 function TandaGenerada({
   tanda,
@@ -363,7 +596,7 @@ function TandaGenerada({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold">
-            {tanda.codigos.length} cupones de {tanda.pct}% listos
+            {tanda.codigos.length} códigos de {tanda.pct}% listos
           </h3>
           <p className="text-sm text-muted-foreground">
             Copialos o descargalos ahora para imprimirlos: es la única vez que aparecen juntos.
@@ -396,134 +629,25 @@ function TandaGenerada({
   )
 }
 
-// --- Cargar uno a mano ------------------------------------------------------
-
-function CuponManual({ onCreado }: { onCreado: (c: Cupon) => void }) {
-  const [abierto, setAbierto] = useState(false)
-  const [codigo, setCodigo] = useState('')
-  const [pct, setPct] = useState('10')
-  const [unSoloUso, setUnSoloUso] = useState(false)
-  const [nota, setNota] = useState('')
-  const [creando, setCreando] = useState(false)
-
-  async function crear(e: React.FormEvent) {
-    e.preventDefault()
-    const p = Number(pct)
-    if (!codigo.trim()) return toast.error('Escribí un código.')
-    if (!Number.isInteger(p) || p < 1 || p > 100) return toast.error('El descuento va de 1 a 100.')
-
-    setCreando(true)
-    const r = await crearCupon({
-      codigo: codigo.trim().toUpperCase(),
-      pct: p,
-      usosMaximos: unSoloUso ? 1 : null,
-      requiereSuscripcion: false,
-      unaVezPorEmail: false,
-      nota,
-    })
-    setCreando(false)
-    if (!r.ok) return toast.error(r.error)
-
-    onCreado(r.cupon)
-    setCodigo('')
-    setNota('')
-    toast.success('Cupón creado')
-  }
-
-  if (!abierto) {
-    return (
-      <Button type="button" variant="outline" size="sm" onClick={() => setAbierto(true)}>
-        <Plus className="h-4 w-4" />
-        Cargar un cupón a mano
-      </Button>
-    )
-  }
-
-  return (
-    <form onSubmit={crear} className="space-y-3 rounded-lg border bg-muted/30 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Ticket className="h-4 w-4 text-primary" />
-          Cupón a mano
-        </h2>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setAbierto(false)} aria-label="Cerrar">
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <Label htmlFor="manual-codigo">Código</Label>
-          <Input
-            id="manual-codigo"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-            placeholder="PRIMAVERA20"
-            className="mt-1 w-48 uppercase"
-          />
-        </div>
-        <div>
-          <Label htmlFor="manual-pct">Descuento (%)</Label>
-          <Input
-            id="manual-pct"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={100}
-            value={pct}
-            onChange={(e) => setPct(e.target.value)}
-            className="mt-1 w-28"
-          />
-        </div>
-        <div className="min-w-[10rem] flex-1">
-          <Label htmlFor="manual-nota">Nota (para vos)</Label>
-          <Input
-            id="manual-nota"
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder="Ej: sorteo de Instagram"
-            className="mt-1"
-          />
-        </div>
-        <label className="flex h-9 cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={unSoloUso}
-            onChange={(e) => setUnSoloUso(e.target.checked)}
-            className="size-4 accent-[var(--primary)]"
-          />
-          Un solo uso
-        </label>
-        <Button type="submit" disabled={creando}>
-          {creando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Crear
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Sin &laquo;un solo uso&raquo;, este código lo puede usar cualquiera todas las veces que quiera — sirve para
-        una promo abierta, no para repartir en papel.
-      </p>
-    </form>
-  )
-}
-
 // --- Una fila de la lista ---------------------------------------------------
 
 function FilaCupon({
   cupon,
   usos,
-  estado,
+  onEditar,
   onPatch,
   onRemove,
 }: {
   cupon: Cupon
   usos: number
-  estado: EstadoCupon
-  onPatch: (id: string, cambio: Partial<Cupon>) => void
+  onEditar: () => void
+  onPatch: (c: Cupon) => void
   onRemove: (id: string) => void
 }) {
   const [trabajando, setTrabajando] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const estado = estadoCupon(cupon, usos)
+  const quedan = usosRestantes(cupon, usos)
 
   async function copiar() {
     try {
@@ -537,10 +661,10 @@ function FilaCupon({
 
   async function toggleActivo(val: boolean) {
     setTrabajando(true)
-    const r = await actualizarCupon(cupon.id, { activo: val })
+    const r = await toggleActivoCupon(cupon.id, val)
     setTrabajando(false)
     if (!r.ok) return toast.error(r.error)
-    onPatch(cupon.id, { activo: val })
+    onPatch({ ...cupon, activo: val })
   }
 
   async function borrar() {
@@ -569,18 +693,24 @@ function FilaCupon({
       </TableCell>
       <TableCell className="font-medium">{cupon.pct}%</TableCell>
       <TableCell>
-        <Badge variant={ESTADO_VARIANTE[estado]}>{ESTADO_ETIQUETA[estado]}</Badge>
-        {usos > 0 && (
-          <span className="ml-2 text-xs text-muted-foreground">
-            {usos} {usos === 1 ? 'uso' : 'usos'}
+        {cupon.usos_maximos != null ? (
+          <span className="font-medium">
+            {usos} <span className="text-muted-foreground">de {cupon.usos_maximos}</span>
+            {quedan != null && quedan > 0 && (
+              <span className="block text-xs text-muted-foreground">quedan {quedan}</span>
+            )}
           </span>
+        ) : (
+          <span className="text-muted-foreground">{usos} · sin tope</span>
         )}
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">{reglaCupon(cupon)}</TableCell>
-      <TableCell className="text-sm text-muted-foreground">{fechaCorta(cupon.created_at)}</TableCell>
       <TableCell>
-        <div className="flex items-center justify-end gap-2">
-          <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+        <Badge variant={ESTADO_VARIANTE[estado]}>{ESTADO_ETIQUETA[estado]}</Badge>
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">{reglaCupon(cupon)}</TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <label className="mr-1 flex cursor-pointer items-center gap-1.5 text-sm">
             <input
               type="checkbox"
               checked={cupon.activo}
@@ -595,10 +725,21 @@ function FilaCupon({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            onClick={onEditar}
+            title="Editar"
+            aria-label={`Editar cupón ${cupon.codigo}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
             onClick={borrar}
             disabled={trabajando || cupon.es_bienvenida}
             title={cupon.es_bienvenida ? 'Este se manda por mail al suscribirse: apagalo en vez de borrarlo' : 'Borrar'}
-            aria-label="Borrar cupón"
+            aria-label={`Borrar cupón ${cupon.codigo}`}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>

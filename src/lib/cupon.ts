@@ -3,31 +3,61 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { codigoBienFormado, normalizarCodigo } from '@/lib/cupon-codigo'
 import type { Database } from '@/types/db'
 
-export type CuponMotivoRechazo = 'invalido' | 'agotado' | 'no_suscripto' | 'ya_usado' | 'falta_email'
-export type CuponValidacion = { ok: true; pct: number } | { ok: false; motivo: CuponMotivoRechazo }
+export type CuponMotivoRechazo =
+  | 'invalido'
+  | 'agotado'
+  | 'limite_persona'
+  | 'no_suscripto'
+  | 'ya_usado'
+  | 'falta_email'
 
-// Cuántos pedidos usaron cada código. La fuente es orders.cupon_codigo, no un
-// contador propio en la tabla `cupones`: es el único registro de que el
-// descuento se aplicó de verdad, y así no hay dos números que puedan
-// discrepar. Cuenta cualquier estado (pendiente/pagado/cancelado) a
+export type CuponValidacion =
+  | { ok: true; pct: number; cuponId: string; codigo: string }
+  | { ok: false; motivo: CuponMotivoRechazo }
+
+// Cuántos pedidos consumió cada cupón, por ID. Desde la 0030 se cuenta por
+// orders.cupon_id y no por el string: los códigos ahora se pueden editar
+// desde el panel, y contar por nombre significaba que renombrar un cupón
+// usado 18 veces le reseteaba la cuenta a cero y regalaba 30 descuentos más
+// sin que nadie se enterara.
+//
+// Cuenta cualquier estado del pedido (pendiente/pagado/cancelado) a
 // propósito — si solo contara los pagados, alguien podría armar pedidos sin
 // pagar para reusar el mismo código todas las veces que quiera.
-export async function contarUsosPorCodigo(
+export async function contarUsosPorCupon(
   supabase: SupabaseClient<Database>,
-  codigos?: string[],
+  cuponIds?: string[],
 ): Promise<Record<string, number>> {
-  let q = supabase.from('orders').select('cupon_codigo').not('cupon_codigo', 'is', null)
-  if (codigos && codigos.length > 0) q = q.in('cupon_codigo', codigos)
+  let q = supabase.from('orders').select('cupon_id').not('cupon_id', 'is', null)
+  if (cuponIds && cuponIds.length > 0) q = q.in('cupon_id', cuponIds)
   const { data, error } = await q
   if (error) throw error
 
   const usos: Record<string, number> = {}
   for (const fila of data ?? []) {
-    if (!fila.cupon_codigo) continue
-    const codigo = normalizarCodigo(fila.cupon_codigo)
-    usos[codigo] = (usos[codigo] ?? 0) + 1
+    if (!fila.cupon_id) continue
+    usos[fila.cupon_id] = (usos[fila.cupon_id] ?? 0) + 1
   }
   return usos
+}
+
+// Cuántas veces usó ESTE cupón ESTA persona. Es lo único que se puede medir
+// cuando 30 papeles llevan el mismo código impreso: el papel no prueba nada
+// (quien tipea el código manda lo mismo tenga 1 papel o 10), así que el tope
+// total acota el daño a lo que se imprimió y este número acota cuánto se
+// puede llevar una sola persona.
+async function contarUsosDePersona(
+  supabase: SupabaseClient<Database>,
+  cuponId: string,
+  email: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('cupon_id', cuponId)
+    .ilike('cliente_email', email)
+  if (error) throw error
+  return count ?? 0
 }
 
 // Validación real del cupón — la usan /api/checkout (la única fuente de
@@ -36,10 +66,9 @@ export async function contarUsosPorCodigo(
 // el cliente de service role: ni `cupones` ni `orders` tienen policy para
 // `anon`, justamente para que nadie se baje la lista de códigos.
 //
-// Las reglas ya no están hardcodeadas como antes (cuando había un solo cupón
-// atado al newsletter): cada cupón trae las suyas, y solo se chequea lo que
-// ese cupón pide. Un cupón de la calle con requiere_suscripcion = false ni
-// mira el mail; el de bienvenida sí, porque es su razón de ser.
+// Cada cupón trae sus propias reglas y solo se chequea lo que ese cupón
+// pide. Un cupón de la calle con requiere_suscripcion = false ni mira el
+// mail; el de bienvenida sí, porque es su razón de ser.
 //
 // `emailComprador` puede venir vacío: en /api/cupon/validar el cliente puede
 // apretar "Aplicar" antes de completar su mail. Solo se exige si el cupón lo
@@ -48,10 +77,10 @@ export async function contarUsosPorCodigo(
 //
 // Límite conocido y aceptado: entre que se cuentan los usos y que
 // /api/checkout inserta el pedido no hay un lock, así que dos personas
-// tipeando el MISMO código en el mismo instante podrían pasar las dos. Con
-// cupones de un solo uso impresos en papeles distintos eso no puede pasar
-// (cada uno tiene su código), y cerrarlo del todo obligaría a mover la
-// creación del pedido entero a una función de Postgres.
+// tipeando el mismo código en el mismo instante podrían pasar las dos.
+// Cerrarlo del todo obligaría a mover la creación del pedido entera a una
+// función de Postgres; con el volumen de esta tienda el riesgo es un
+// descuento de más, no una sobreventa.
 export async function validarCupon(
   supabase: SupabaseClient<Database>,
   codigoIngresado: string,
@@ -63,17 +92,15 @@ export async function validarCupon(
   const { data: cupon } = await supabase.from('cupones').select('*').ilike('codigo', codigo).maybeSingle()
   if (!cupon || !cupon.activo) return { ok: false, motivo: 'invalido' }
 
-  // Tope de usos: acá es donde muere el cupón del tesoro apenas alguien lo
-  // usa (usos_maximos = 1).
+  // Cupo total: acá es donde se apaga solo el cupón impreso al llegar a la
+  // cantidad de papeles que se repartieron.
   if (cupon.usos_maximos != null) {
-    const usos = await contarUsosPorCodigo(supabase, [cupon.codigo])
-    if ((usos[normalizarCodigo(cupon.codigo)] ?? 0) >= cupon.usos_maximos) {
-      return { ok: false, motivo: 'agotado' }
-    }
+    const usos = await contarUsosPorCupon(supabase, [cupon.id])
+    if ((usos[cupon.id] ?? 0) >= cupon.usos_maximos) return { ok: false, motivo: 'agotado' }
   }
 
   const email = emailComprador.trim()
-  const necesitaEmail = cupon.requiere_suscripcion || cupon.una_vez_por_email
+  const necesitaEmail = cupon.requiere_suscripcion || cupon.usos_maximos_por_email != null
   if (necesitaEmail && !email) return { ok: false, motivo: 'falta_email' }
 
   if (cupon.requiere_suscripcion) {
@@ -85,27 +112,22 @@ export async function validarCupon(
     if (!suscriptor) return { ok: false, motivo: 'no_suscripto' }
   }
 
-  // "Ya usaste ESTE cupón", no "ya usaste algún cupón" (que era la regla
-  // vieja, cuando el de bienvenida era el único que existía). Con varios
-  // cupones dando vueltas, la regla vieja significaría que encontrar un
-  // papelito en la calle te deja sin el de bienvenida para siempre.
-  if (cupon.una_vez_por_email) {
-    const { data: usoPrevio } = await supabase
-      .from('orders')
-      .select('id')
-      .ilike('cliente_email', email)
-      .ilike('cupon_codigo', cupon.codigo)
-      .limit(1)
-      .maybeSingle()
-    if (usoPrevio) return { ok: false, motivo: 'ya_usado' }
+  if (cupon.usos_maximos_por_email != null) {
+    const usados = await contarUsosDePersona(supabase, cupon.id, email)
+    if (usados >= cupon.usos_maximos_por_email) {
+      // Con tope 1 el mensaje honesto es "ya lo usaste"; con tope mayor, que
+      // llegó a su límite. Son situaciones distintas para quien compra.
+      return { ok: false, motivo: cupon.usos_maximos_por_email === 1 ? 'ya_usado' : 'limite_persona' }
+    }
   }
 
-  return { ok: true, pct: cupon.pct }
+  return { ok: true, pct: cupon.pct, cuponId: cupon.id, codigo: cupon.codigo }
 }
 
 export const CUPON_MOTIVO_MENSAJE: Record<CuponMotivoRechazo, string> = {
   invalido: 'Ese cupón no es válido.',
-  agotado: 'Ese cupón ya fue usado.',
+  agotado: 'Ese cupón ya se agotó.',
+  limite_persona: 'Ya usaste ese cupón todas las veces permitidas.',
   no_suscripto: 'Ese cupón es solo para quienes se suscribieron con este mismo mail.',
   ya_usado: 'Ya usaste ese cupón en un pedido anterior.',
   falta_email: 'Completá tu email primero para poder validar el cupón.',

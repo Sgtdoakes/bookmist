@@ -57,8 +57,9 @@ type EstadoCupon =
 const MOTIVO_CUPON_TEXTO: Record<string, string> = {
   no_suscripto: 'ese cupón es solo para quienes se suscribieron con este mismo mail',
   ya_usado: 'ya usaste ese cupón antes',
-  agotado: 'ese cupón ya lo usó otra persona',
-  falta_email: 'ese cupón necesita el mail con el que te suscribiste',
+  limite_persona: 'ya usaste ese cupón todas las veces permitidas',
+  agotado: 'ese cupón ya se agotó',
+  falta_email: 'ese cupón necesita que completes tu email',
 }
 
 export function CheckoutForm({

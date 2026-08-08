@@ -5,6 +5,8 @@ import {
   generarCodigo,
   generarCodigosUnicos,
   normalizarCodigo,
+  reglaCupon,
+  usosRestantes,
 } from '@/lib/cupon-codigo'
 
 describe('normalizarCodigo', () => {
@@ -91,9 +93,13 @@ describe('estadoCupon', () => {
   })
 
   it('el de un solo uso muere con el primer uso', () => {
-    // Es la regla de la búsqueda del tesoro: lo encuentra alguien, lo usa, y
-    // ese código concreto deja de servir.
     expect(estadoCupon({ activo: true, usos_maximos: 1 }, 1)).toBe('agotado')
+  })
+
+  it('el de 30 papeles sigue vivo hasta el trigésimo', () => {
+    // El caso real: 30 papeles impresos con el mismo código.
+    expect(estadoCupon({ activo: true, usos_maximos: 30 }, 29)).toBe('usado')
+    expect(estadoCupon({ activo: true, usos_maximos: 30 }, 30)).toBe('agotado')
   })
 
   it('uno sin tope sigue sirviendo aunque ya lo hayan usado', () => {
@@ -112,5 +118,54 @@ describe('estadoCupon', () => {
 
   it('más usos que el tope (dato viejo) sigue contando como agotado', () => {
     expect(estadoCupon({ activo: true, usos_maximos: 1 }, 5)).toBe('agotado')
+  })
+})
+
+describe('usosRestantes', () => {
+  it('cuenta hacia atrás desde el tope', () => {
+    expect(usosRestantes({ usos_maximos: 30 }, 12)).toBe(18)
+  })
+
+  it('sin tope no hay nada que contar', () => {
+    expect(usosRestantes({ usos_maximos: null }, 12)).toBeNull()
+  })
+
+  it('nunca da negativo aunque el tope se haya bajado a mano', () => {
+    // Dani puede editar un cupón y bajarle el tope por debajo de los usos que
+    // ya tiene: "quedan -5" sería absurdo en pantalla.
+    expect(usosRestantes({ usos_maximos: 10 }, 25)).toBe(0)
+  })
+})
+
+describe('reglaCupon', () => {
+  const base = {
+    es_bienvenida: false,
+    usos_maximos: null,
+    usos_maximos_por_email: null,
+    requiere_suscripcion: false,
+  }
+
+  it('describe el cupón de papeles impresos', () => {
+    expect(reglaCupon({ ...base, usos_maximos: 30 })).toBe('30 usos')
+  })
+
+  it('suma el máximo por persona cuando lo hay', () => {
+    expect(reglaCupon({ ...base, usos_maximos: 30, usos_maximos_por_email: 2 })).toBe(
+      '30 usos · hasta 2 por persona',
+    )
+  })
+
+  it('el tope de 1 por persona se lee natural, no "hasta 1"', () => {
+    expect(reglaCupon({ ...base, usos_maximos_por_email: 1 })).toBe('Usos ilimitados · uno por persona')
+  })
+
+  it('describe el de bienvenida completo', () => {
+    expect(
+      reglaCupon({ ...base, es_bienvenida: true, usos_maximos_por_email: 1, requiere_suscripcion: true }),
+    ).toBe('Usos ilimitados · uno por persona · solo suscriptos · se manda por mail')
+  })
+
+  it('un solo uso no se lee como "1 usos"', () => {
+    expect(reglaCupon({ ...base, usos_maximos: 1 })).toBe('Un solo uso')
   })
 })

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { contarUsosPorCodigo } from '@/lib/cupon'
+import { contarUsosPorCupon } from '@/lib/cupon'
 import { CuponesManager } from '@/components/admin/cupones-manager'
 import type { Cupon } from '@/types/db'
 
@@ -12,12 +12,12 @@ async function getCupones(): Promise<{ cupones: Cupon[]; usos: Record<string, nu
   const { data, error } = await supabase.from('cupones').select('*').order('created_at', { ascending: false })
   if (error) return { cupones: [], usos: {} }
 
-  // Los usos se cuentan sobre orders.cupon_codigo (ver src/lib/cupon.ts): sin
-  // esto la lista no puede distinguir un cupón virgen de uno ya quemado, que
-  // es justo lo que Dani necesita mirar después de repartir una tanda.
+  // Los usos se cuentan sobre orders.cupon_id (ver src/lib/cupon.ts): sin
+  // esto la lista no puede mostrar el "12 de 30", que es justo lo que Dani
+  // necesita mirar mientras reparte los papeles.
   let usos: Record<string, number> = {}
   try {
-    usos = await contarUsosPorCodigo(supabase)
+    usos = await contarUsosPorCupon(supabase)
   } catch {
     usos = {}
   }

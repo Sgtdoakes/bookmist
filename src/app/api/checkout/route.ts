@@ -177,12 +177,16 @@ export async function POST(request: Request) {
   // src/lib/cupon.ts). Se combina con el descuento por transferencia (ambos
   // se suman sobre el subtotal).
   let cuponCodigoAplicado: string | null = null
+  let cuponIdAplicado: string | null = null
   let pctDescuentoCupon = 0
   let cuponMotivoRechazo: CuponMotivoRechazo | null = null
   if (data.cupon?.trim()) {
     const validacion = await validarCupon(supabase, data.cupon, data.cliente_email)
     if (validacion.ok) {
-      cuponCodigoAplicado = data.cupon.trim().toUpperCase()
+      // El código se guarda como lo tiene cargado el cupón, no como lo tipeó
+      // el cliente: así el pedido muestra el mismo texto que el panel.
+      cuponCodigoAplicado = validacion.codigo
+      cuponIdAplicado = validacion.cuponId
       pctDescuentoCupon = validacion.pct
     } else {
       cuponMotivoRechazo = validacion.motivo
@@ -207,6 +211,7 @@ export async function POST(request: Request) {
       estado: 'pendiente',
       descuento,
       cupon_codigo: cuponCodigoAplicado,
+      cupon_id: cuponIdAplicado,
       total,
       notas: data.notas ?? null,
     })
