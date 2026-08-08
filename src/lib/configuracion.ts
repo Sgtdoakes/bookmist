@@ -247,31 +247,37 @@ export function aplicarEnvioGratis(subtotal: number, umbral: number, costo: numb
 
 // Cupón de bienvenida por suscribirse al newsletter (Fase 8e): un único
 // código general para todos (no uno por persona) — se manda por mail apenas
-// alguien completa el popup, sin verificación de email. Editable desde
-// /admin/configuracion; `activo` empieza en false a propósito (que Dani lo
-// prenda cuando ya cargó código y porcentaje, no antes).
+// alguien completa el popup, sin verificación de email.
+//
+// Desde la Fase 8i ya no vive en claves sueltas de `configuracion`: es una
+// fila más de la tabla `cupones`, la que tiene es_bienvenida = true (la
+// migración 0029 la creó a partir de las claves viejas). Se edita en
+// /admin/cupones junto con todos los demás. Este helper sigue existiendo
+// porque /api/newsletter necesita saber QUÉ código mandar por mail, y eso es
+// una pregunta distinta de "¿este código que me tipearon vale?"
+// (validarCupon en src/lib/cupon.ts).
 export type CuponBienvenidaConfig = {
   activo: boolean
   codigo: string
   pct: number
 }
 
-const CLAVES_CUPON = ['cupon_bienvenida_activo', 'cupon_bienvenida_codigo', 'cupon_bienvenida_pct'] as const
 const CUPON_BIENVENIDA_DEFAULT: CuponBienvenidaConfig = { activo: false, codigo: 'BIENVENIDA10', pct: 10 }
 
 export async function getCuponBienvenida(): Promise<CuponBienvenidaConfig> {
   if (!configured()) return CUPON_BIENVENIDA_DEFAULT
   try {
     const supabase = createClient()
-    const { data, error } = await supabase.from('configuracion').select('clave, valor').in('clave', CLAVES_CUPON)
+    const { data, error } = await supabase
+      .from('cupones')
+      .select('codigo, pct, activo')
+      .eq('es_bienvenida', true)
+      .maybeSingle()
     if (error) throw error
-    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
-    const pct = Number(map.get('cupon_bienvenida_pct'))
-    return {
-      activo: map.get('cupon_bienvenida_activo') === 'true',
-      codigo: map.get('cupon_bienvenida_codigo')?.trim().toUpperCase() || CUPON_BIENVENIDA_DEFAULT.codigo,
-      pct: Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : CUPON_BIENVENIDA_DEFAULT.pct,
-    }
+    // Sin fila de bienvenida (Dani la borró desde /admin/cupones) el popup
+    // no tiene nada que mandar: apagado, no un código inventado que rebote.
+    if (!data) return { ...CUPON_BIENVENIDA_DEFAULT, activo: false }
+    return { activo: data.activo, codigo: data.codigo.trim().toUpperCase(), pct: data.pct }
   } catch {
     return CUPON_BIENVENIDA_DEFAULT
   }

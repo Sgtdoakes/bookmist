@@ -50,6 +50,17 @@ type EstadoCupon =
   | { estado: 'valido'; pct: number }
   | { estado: 'invalido'; mensaje: string }
 
+// Por qué no se aplicó el cupón, redactado para ir adentro de "El pedido se
+// creó igual, pero sin el descuento del cupón: ___". Los motivos los define
+// el server (CuponMotivoRechazo en src/lib/cupon.ts); si llega uno que no
+// está acá se cae al texto genérico.
+const MOTIVO_CUPON_TEXTO: Record<string, string> = {
+  no_suscripto: 'ese cupón es solo para quienes se suscribieron con este mismo mail',
+  ya_usado: 'ya usaste ese cupón antes',
+  agotado: 'ese cupón ya lo usó otra persona',
+  falta_email: 'ese cupón necesita el mail con el que te suscribiste',
+}
+
 export function CheckoutForm({
   zonas,
   mpEnabled,
@@ -120,19 +131,20 @@ export function CheckoutForm({
     setCupon((c) => (c.estado === 'sin_verificar' ? c : { estado: 'sin_verificar' }))
   }, [cuponTexto, clienteEmail])
 
+  // El mail se manda si está, pero no se exige acá: solo algunos cupones lo
+  // necesitan (el de bienvenida, atado a la suscripción), y el server es
+  // quien sabe cuál es cuál. Si hace falta, contesta pidiéndolo. Frenarlo
+  // del lado del cliente le pedía el dato a todo el mundo, incluso a quien
+  // está validando un cupón que encontró en la calle y no necesita ninguno.
   async function verificarCupon() {
     const codigo = (cuponTexto ?? '').trim()
     if (!codigo) return
-    if (!clienteEmail?.trim()) {
-      setCupon({ estado: 'invalido', mensaje: 'Completá tu email primero para poder validar el cupón.' })
-      return
-    }
     setCupon({ estado: 'verificando' })
     try {
       const res = await fetch('/api/cupon/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo, email: clienteEmail }),
+        body: JSON.stringify({ codigo, email: clienteEmail ?? '' }),
       })
       const json = await res.json()
       if (res.ok && json.ok) setCupon({ estado: 'valido', pct: json.pct })
@@ -230,13 +242,7 @@ export function CheckoutForm({
         return
       }
       if (values.cupon?.trim() && !json.cupon_aplicado) {
-        const motivo =
-          json.cupon_motivo === 'no_suscripto'
-            ? 'ese cupón es solo para quienes se suscribieron con este mismo mail'
-            : json.cupon_motivo === 'ya_usado'
-              ? 'ya usaste ese cupón antes'
-              : 'el cupón ingresado no era válido'
-        toast.error(`El pedido se creó igual, pero sin el descuento del cupón: ${motivo}.`)
+        toast.error(`El pedido se creó igual, pero sin el descuento del cupón: ${MOTIVO_CUPON_TEXTO[json.cupon_motivo as string] ?? 'el cupón ingresado no era válido'}.`)
       }
       try {
         sessionStorage.setItem(

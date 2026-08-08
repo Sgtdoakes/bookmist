@@ -342,6 +342,35 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['suscriptores_newsletter']['Insert']>
         Relationships: []
       }
+      cupones: {
+        Row: {
+          id: string
+          codigo: string
+          pct: number
+          activo: boolean
+          // null = sin tope de usos. 1 = el de la búsqueda del tesoro.
+          usos_maximos: number | null
+          requiere_suscripcion: boolean
+          una_vez_por_email: boolean
+          es_bienvenida: boolean
+          nota: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          codigo: string
+          pct: number
+          activo?: boolean
+          usos_maximos?: number | null
+          requiere_suscripcion?: boolean
+          una_vez_por_email?: boolean
+          es_bienvenida?: boolean
+          nota?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['cupones']['Insert']>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -394,3 +423,5 @@ export type NavLink = Database['public']['Tables']['nav_links']['Row']
 export type PaginaRow = Database['public']['Tables']['paginas']['Row']
 export type SuscriptorNewsletter = Database['public']['Tables']['suscriptores_newsletter']['Row']
 export type SuscriptorNewsletterInsert = Database['public']['Tables']['suscriptores_newsletter']['Insert']
+export type Cupon = Database['public']['Tables']['cupones']['Row']
+export type CuponInsert = Database['public']['Tables']['cupones']['Insert']
