@@ -425,12 +425,15 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
 
       <div>
         <Label htmlFor="descripcion">Descripción</Label>
+        <p className="text-sm text-muted-foreground">
+          Dejá una línea en blanco entre párrafos y así se van a ver en la ficha del producto.
+        </p>
         <Textarea
           id="descripcion"
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
           className="mt-1"
-          rows={3}
+          rows={8}
         />
       </div>
 

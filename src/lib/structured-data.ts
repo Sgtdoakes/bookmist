@@ -1,6 +1,7 @@
 import type { MarcaConfig } from '@/lib/configuracion'
 import type { ProductoConItems } from '@/types/db'
 import { SITE_URL } from '@/lib/constants'
+import { enUnaLinea } from '@/lib/format'
 
 // Bookmist no tiene local físico (a diferencia de Martín Libros), así que la
 // entidad estructurada es una Organization/OnlineStore genérica, sin
@@ -26,7 +27,9 @@ export function productJsonLd(producto: ProductoConItems) {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: producto.nombre,
-    description: producto.descripcion ?? undefined,
+    // Sin saltos de línea: acá la descripción es un dato para Google, no
+    // texto maquetado (los párrafos se ven en la ficha, no en el JSON-LD).
+    description: enUnaLinea(producto.descripcion) || undefined,
     image: producto.imagen_principal ?? undefined,
     offers: {
       '@type': 'Offer',

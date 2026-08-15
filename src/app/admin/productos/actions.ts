@@ -199,6 +199,67 @@ export async function getCategoriasAdmin(): Promise<Categoria[]> {
   return data ?? []
 }
 
+// Cuántos productos y cuántos bloques de página dependen de cada categoría —
+// solo lo necesita el manager de categorías, para poder avisar qué se
+// rompería ANTES de borrar (ver borrarCategoria). El catálogo es de un
+// puñado de productos y de páginas, así que se cuenta en memoria en vez de
+// pelear con los embeds de conteo de PostgREST.
+export type CategoriaConUso = Categoria & { productos: number; bloques: number }
+
+export async function getCategoriasAdminConUso(): Promise<CategoriaConUso[]> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return []
+
+  const [categorias, vinculos, secciones] = await Promise.all([
+    supabase
+      .from('categorias')
+      .select('*')
+      .order('orden', { ascending: true })
+      .order('nombre', { ascending: true }),
+    supabase.from('producto_categorias').select('categoria_id'),
+    supabase.from('pagina_secciones').select('tipo, config'),
+  ])
+
+  const porCategoria = new Map<string, number>()
+  for (const v of vinculos.data ?? []) {
+    porCategoria.set(v.categoria_id, (porCategoria.get(v.categoria_id) ?? 0) + 1)
+  }
+
+  const porSlug = new Map<string, number>()
+  for (const slug of slugsUsadosPorBloques(secciones.data ?? [])) {
+    porSlug.set(slug, (porSlug.get(slug) ?? 0) + 1)
+  }
+
+  return (categorias.data ?? []).map((c) => ({
+    ...c,
+    productos: porCategoria.get(c.id) ?? 0,
+    bloques: porSlug.get(c.slug) ?? 0,
+  }))
+}
+
+// Los bloques guardan la categoría por slug, en dos formas distintas: los
+// carruseles de productos en config.categoria (cuando fuente = 'categoria',
+// ver migración 0024) y las cards de categoría en config.categorias[].
+// categoriaSlug. Devuelve un slug por referencia encontrada — repetidos
+// incluidos, así el conteo dice "3 bloques" y no "3 categorías distintas".
+function slugsUsadosPorBloques(filas: { tipo: string; config: unknown }[]): string[] {
+  const slugs: string[] = []
+  for (const fila of filas) {
+    const config = (fila.config ?? {}) as Record<string, unknown>
+    if (fila.tipo === 'productos' || fila.tipo === 'mas_vendidos') {
+      if (config.fuente === 'categoria' && typeof config.categoria === 'string' && config.categoria) {
+        slugs.push(config.categoria)
+      }
+    }
+    if (fila.tipo === 'categorias' && Array.isArray(config.categorias)) {
+      for (const card of config.categorias as { categoriaSlug?: unknown }[]) {
+        if (typeof card?.categoriaSlug === 'string' && card.categoriaSlug) slugs.push(card.categoriaSlug)
+      }
+    }
+  }
+  return slugs
+}
+
 export async function crearCategoria(nombre: string): Promise<{ ok: true; categoria: Categoria } | Err> {
   const supabase = await clienteAutenticado()
   if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
@@ -238,6 +299,43 @@ export async function renombrarCategoria(id: string, nombre: string): Promise<Ok
     if (error.code === '23505') return { ok: false, error: 'Ya existe una categoría con ese nombre.' }
     return { ok: false, error: 'No se pudo renombrar la categoría.' }
   }
+
+  revalidarPublico()
+  return { ok: true }
+}
+
+// "Destacados" no es una temática más: de ella dependen el toggle de la
+// lista de productos (toggleDestacado la busca por este slug) y la vidriera
+// de la home. Borrarla dejaría ambas cosas rotas sin ningún aviso, así que
+// es la única que no se puede borrar.
+const CATEGORIA_PROTEGIDA = 'destacados'
+
+// Borrar una categoría NO borra sus productos: producto_categorias tiene
+// "on delete cascade" (migración 0020), así que solo se cortan los vínculos
+// y los productos quedan sin esa etiqueta. Los bloques de página que
+// apuntaban a ella sí quedan mudos (0 resultados = la sección desaparece en
+// silencio, el mismo fallo que documenta la migración 0024) — por eso el
+// manager avisa cuántos son antes de confirmar.
+export async function borrarCategoria(id: string): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  const { data: categoria, error: buscarErr } = await supabase
+    .from('categorias')
+    .select('slug')
+    .eq('id', id)
+    .maybeSingle()
+  if (buscarErr) return { ok: false, error: 'No se pudo borrar la categoría.' }
+  if (!categoria) return { ok: false, error: 'Esa categoría ya no existe.' }
+  if (categoria.slug === CATEGORIA_PROTEGIDA) {
+    return {
+      ok: false,
+      error: '"Destacados" no se puede borrar: de ella dependen el toggle de destacados y la vidriera de la home.',
+    }
+  }
+
+  const { error } = await supabase.from('categorias').delete().eq('id', id)
+  if (error) return { ok: false, error: 'No se pudo borrar la categoría.' }
 
   revalidarPublico()
   return { ok: true }

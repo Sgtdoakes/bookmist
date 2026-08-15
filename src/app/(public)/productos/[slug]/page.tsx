@@ -8,7 +8,9 @@ import { AddToCart } from '@/components/public/add-to-cart'
 import { ProductCard } from '@/components/public/product-card'
 import { SelectorVariantes } from '@/components/public/selector-variantes'
 import { SeccionesDePagina } from '@/components/public/secciones-renderer'
-import { formatARS } from '@/lib/format'
+import { BotonEditarProducto } from '@/components/public/boton-editar-producto'
+import { getIsAdmin } from '@/lib/admin'
+import { enUnaLinea, formatARS, separarEnParrafos } from '@/lib/format'
 import { productJsonLd } from '@/lib/structured-data'
 
 // ISR: sin esto, la ficha de producto queda estática desde el build.
@@ -20,7 +22,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const producto = await getProductoConItems(slug)
   if (!producto) return {}
-  const description = producto.descripcion ?? `${producto.nombre} — envíos a todo el país desde Argentina.`
+  // enUnaLinea: la descripción puede venir escrita en párrafos, y los saltos
+  // de línea en un meta tag son ruido (Google los recorta igual).
+  const description =
+    enUnaLinea(producto.descripcion) || `${producto.nombre} — envíos a todo el país desde Argentina.`
   return {
     title: producto.nombre,
     description,
@@ -46,10 +51,12 @@ export default async function ProductoDetallePage({ params }: Props) {
   if (!producto) notFound()
 
   const contenido = [...producto.producto_items].sort((a, b) => a.orden - b.orden)
-  const [relacionados, otrasVariantes] = await Promise.all([
+  const [relacionados, otrasVariantes, isAdmin] = await Promise.all([
     getRelacionados(producto, 4),
     getVariantes(producto),
+    getIsAdmin(),
   ])
+  const parrafos = separarEnParrafos(producto.descripcion)
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
@@ -75,8 +82,16 @@ export default async function ProductoDetallePage({ params }: Props) {
 
           <SelectorVariantes actual={producto} otrasVariantes={otrasVariantes} />
 
-          {producto.descripcion && (
-            <p className="mb-6 text-base leading-relaxed text-foreground/85">{producto.descripcion}</p>
+          {/* Un <p> por párrafo — whitespace-pre-line respeta además los
+              saltos de línea sueltos de adentro de cada uno. */}
+          {parrafos.length > 0 && (
+            <div className="mb-6 space-y-4">
+              {parrafos.map((parrafo, i) => (
+                <p key={i} className="whitespace-pre-line text-base leading-relaxed text-foreground/85">
+                  {parrafo}
+                </p>
+              ))}
+            </div>
           )}
 
           {contenido.length > 0 && (
@@ -121,6 +136,8 @@ export default async function ProductoDetallePage({ params }: Props) {
       <div className="mt-16">
         <SeccionesDePagina pagina="producto_detalle" />
       </div>
+
+      {isAdmin && <BotonEditarProducto productoId={producto.id} nombre={producto.nombre} />}
     </div>
   )
 }

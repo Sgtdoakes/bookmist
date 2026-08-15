@@ -3,7 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductosManager } from '@/components/admin/productos-manager'
 import { CategoriasManager } from '@/components/admin/categorias-manager'
-import { getCategoriasAdmin } from '@/app/admin/productos/actions'
+import { getCategoriasAdminConUso } from '@/app/admin/productos/actions'
 import type { ProductoConCategorias } from '@/types/db'
 
 export const metadata = { title: 'Catálogo de productos' }
@@ -24,7 +24,7 @@ async function getProductosAdmin(): Promise<ProductoConCategorias[]> {
 }
 
 export default async function AdminProductosPage() {
-  const [productos, categorias] = await Promise.all([getProductosAdmin(), getCategoriasAdmin()])
+  const [productos, categorias] = await Promise.all([getProductosAdmin(), getCategoriasAdminConUso()])
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
