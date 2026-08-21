@@ -480,6 +480,11 @@ function Contenido({
       return (
         <>
           <Campo label="Imagen de fondo">
+            <p className="text-xs text-muted-foreground">
+              Si dejás vacíos el texto pequeño, el título, el texto y el botón, la imagen se muestra
+              sola: entera, con su proporción real y sin oscurecer. Ideal para una placa ya diseñada.
+              Con cualquier texto cargado, vuelve a usarse como fondo oscurecido para que se lea encima.
+            </p>
             <div className="mt-1">
               <ImageUploader
                 carpeta="secciones"
