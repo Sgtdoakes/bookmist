@@ -96,6 +96,46 @@ describe('checkoutSchema', () => {
     }
   })
 
+  it('con sucursal no exige dirección, pero sí CP y código de sucursal', () => {
+    const completo = checkoutSchema.safeParse({
+      ...PEDIDO_VALIDO,
+      modo_envio: 'sucursal',
+      direccion_envio: '',
+      zona_id: null,
+      cp_envio: '5000',
+      sucursal_codigo: 'HOP1182',
+    })
+    expect(completo.success).toBe(true)
+
+    const sinCodigo = checkoutSchema.safeParse({
+      ...PEDIDO_VALIDO,
+      modo_envio: 'sucursal',
+      direccion_envio: '',
+      zona_id: null,
+      cp_envio: '5000',
+    })
+    expect(sinCodigo.success).toBe(false)
+    if (!sinCodigo.success) {
+      expect(sinCodigo.error.issues.some((i) => i.path.includes('sucursal_codigo'))).toBe(true)
+    }
+  })
+
+  it('con sucursal no alcanza la zona manual: hace falta el CP', () => {
+    // La zona manual no sabe de sucursales — sin CP, Andreani no puede
+    // resolver a qué sucursal va el paquete.
+    const r = checkoutSchema.safeParse({
+      ...PEDIDO_VALIDO,
+      modo_envio: 'sucursal',
+      direccion_envio: '',
+      cp_envio: null,
+      sucursal_codigo: 'SAB',
+    })
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.includes('cp_envio'))).toBe(true)
+    }
+  })
+
   it('sin modo_envio sigue validando como domicilio (clientes con el JS viejo)', () => {
     // El campo queda ausente y la API lo trata como domicilio (todo lo que
     // no es 'retiro' va por el camino de domicilio) — acá verificamos que

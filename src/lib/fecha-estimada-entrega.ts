@@ -1,9 +1,9 @@
 // Fecha estimada de entrega para el opt-in de Google Customer Reviews (Fase 8h)
 // — Google la exige en formato YYYY-MM-DD. No hay una fecha real: Andreani
 // solo cotiza costo, no un ETA. El usuario aceptó una estimación fija
-// (aclarando que con Andreani puede variar): domicilio = +5 días hábiles
-// (salteando sábados/domingos), retiro en persona = +2 días corridos (no es
-// un envío, solo el tiempo para que Dani lo tenga listo).
+// (aclarando que con Andreani puede variar): domicilio y sucursal = +5 días
+// hábiles (salteando sábados/domingos), retiro en persona = +2 días corridos
+// (no es un envío, solo el tiempo para que Dani lo tenga listo).
 
 function sumarDiasHabiles(desde: Date, dias: number): Date {
   const fecha = new Date(desde)
@@ -32,7 +32,7 @@ function formatoYYYYMMDD(fecha: Date): string {
 }
 
 export function fechaEstimadaEntrega(
-  modoEnvio: 'domicilio' | 'retiro' | null | undefined,
+  modoEnvio: 'domicilio' | 'sucursal' | 'retiro' | null | undefined,
   desde: Date = new Date(),
 ): string {
   const fecha = modoEnvio === 'retiro' ? sumarDiasCorridos(desde, 2) : sumarDiasHabiles(desde, 5)

@@ -8,7 +8,7 @@ import { notificarPedidoNuevo } from '@/lib/email'
 import { avisarWhatsAppDani } from '@/lib/notificaciones'
 import { getReservasActivas } from '@/lib/reservas'
 import { mpConfigured, crearPreferencia } from '@/lib/mercadopago'
-import { andreaniConfigured, cotizarEnvioDomicilio } from '@/lib/andreani'
+import { andreaniConfigured, cotizarEnvio } from '@/lib/andreani'
 import type { OrderItemInsert } from '@/types/db'
 
 type LineaValidada = {
@@ -103,9 +103,11 @@ export async function POST(request: Request) {
   const subtotal = itemsValidados.reduce((acc, x) => acc + x.producto.precio * x.cantidad, 0)
 
   // 2) Costo de envío (Fase 6k: retiro en persona y envío gratis por
-  // umbral). Camino principal con domicilio: cotización en vivo de Andreani
-  // por CP (Fase 6d) — se RE-cotiza acá con los productos reales, nunca se
-  // confía en el precio que haya visto el navegador. Respaldo: zona manual.
+  // umbral; Fase 8j: envío a sucursal de Andreani). Camino principal con
+  // domicilio o sucursal: cotización en vivo de Andreani por CP (Fase 6d) —
+  // se RE-cotiza acá con los productos reales, nunca se confía en el precio
+  // que haya visto el navegador, ni en la sucursal que haya mandado (se
+  // busca por código en la lista real del CP). Respaldo: zona manual.
   const envioCfg = await getEnvioConfig()
   let costoEnvio: number
   let zonaNombre: string
@@ -120,8 +122,16 @@ export async function POST(request: Request) {
     costoEnvio = 0
     zonaNombre = envioCfg.retiroEtiqueta
     direccionEnvio = envioCfg.retiroEtiqueta
+  } else if (data.modo_envio === 'sucursal' && !(data.cp_envio && andreaniConfigured())) {
+    // Sin Andreani no hay sucursales que ofrecer, y el respaldo de zonas
+    // manuales no sabe de sucursales: mejor frenar que registrar un pedido
+    // "a sucursal" sin dirección de entrega.
+    return NextResponse.json(
+      { ok: false, error: 'El envío a sucursal no está disponible en este momento. Elegí otra opción.' },
+      { status: 400 },
+    )
   } else if (data.cp_envio && andreaniConfigured()) {
-    const cotizado = await cotizarEnvioDomicilio(
+    const cotizado = await cotizarEnvio(
       data.cp_envio,
       itemsValidados.map((x) => ({
         cantidad: x.cantidad,
@@ -138,8 +148,34 @@ export async function POST(request: Request) {
         { status: 502 },
       )
     }
-    costoEnvio = cotizado
-    zonaNombre = `Andreani a domicilio (CP ${data.cp_envio})`
+
+    if (data.modo_envio === 'sucursal') {
+      const elegida = cotizado.sucursales.find(
+        (s) => s.codigo === data.sucursal_codigo?.trim().toUpperCase(),
+      )
+      if (!elegida) {
+        return NextResponse.json(
+          { ok: false, error: 'Esa sucursal ya no está disponible para tu código postal. Elegí otra.' },
+          { status: 409 },
+        )
+      }
+      costoEnvio = elegida.costo
+      zonaNombre = `Andreani a sucursal ${elegida.codigo} (CP ${data.cp_envio})`
+      // La dirección del pedido es la de la sucursal: es a donde Dani
+      // despacha y lo que tiene que ver en el panel, el mail y el WhatsApp.
+      // Sin repetir el código ni la palabra "Andreani": de eso ya se encarga
+      // `zonaNombre`, que se muestra justo al lado.
+      direccionEnvio = [elegida.nombre, elegida.direccion].filter(Boolean).join(' — ')
+    } else {
+      if (cotizado.domicilio == null) {
+        return NextResponse.json(
+          { ok: false, error: 'No pudimos cotizar el envío a ese código postal. Probá de nuevo.' },
+          { status: 502 },
+        )
+      }
+      costoEnvio = cotizado.domicilio
+      zonaNombre = `Andreani a domicilio (CP ${data.cp_envio})`
+    }
   } else {
     const { data: zona } = await supabase
       .from('zonas_envio')

@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/public'
-import { andreaniConfigured, cotizarEnvioDomicilio, normalizarCP } from '@/lib/andreani'
+import { andreaniConfigured, cotizarEnvio, normalizarCP } from '@/lib/andreani'
 
-// Cotiza el envío del carrito a un CP, en vivo contra Andreani. El precio
-// que devuelve es informativo para la UI del checkout — al confirmar el
-// pedido, /api/checkout vuelve a cotizar del lado del servidor con los
-// productos reales (nunca se confía en el costo que diga el navegador).
+// Cotiza el envío del carrito a un CP, en vivo contra Andreani: el costo a
+// domicilio y el de cada sucursal/punto HOP que atienda ese CP. Todo lo que
+// devuelve es informativo para la UI del checkout — al confirmar el pedido,
+// /api/checkout vuelve a cotizar del lado del servidor con los productos
+// reales (nunca se confía en el costo ni en la sucursal que diga el
+// navegador).
 
 const schema = z.object({
   cp: z.string().min(4).max(10),
@@ -61,13 +63,20 @@ export async function POST(request: Request) {
     }
   })
 
-  const costo = await cotizarEnvioDomicilio(cp, bultos)
-  if (costo == null) {
+  const cotizacion = await cotizarEnvio(cp, bultos)
+  if (cotizacion == null || (cotizacion.domicilio == null && cotizacion.sucursales.length === 0)) {
     return NextResponse.json(
       { ok: false, error: 'No pudimos cotizar a ese código postal. Revisalo o probá de nuevo.' },
       { status: 502 },
     )
   }
 
-  return NextResponse.json({ ok: true, cp, costo })
+  return NextResponse.json({
+    ok: true,
+    cp,
+    // `costo` es el del envío a domicilio — se mantiene el nombre del campo
+    // para no romper el JS viejo que pueda quedar en caché de un navegador.
+    costo: cotizacion.domicilio,
+    sucursales: cotizacion.sucursales,
+  })
 }

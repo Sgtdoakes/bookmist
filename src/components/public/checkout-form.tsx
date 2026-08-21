@@ -38,10 +38,23 @@ function NotaMetodoPago({ metodo, cuentasPago }: { metodo: MetodoPago; cuentasPa
   return null
 }
 
+// Una sucursal/punto HOP de Andreani con su precio, tal como lo devuelve
+// /api/envio/cotizar.
+type OpcionSucursal = { codigo: string; nombre: string; direccion: string; costo: number }
+
+type ModoEnvio = 'domicilio' | 'sucursal' | 'retiro'
+
+// "retiro" no está acá porque su texto lo elige Dani en /admin/zonas
+// (retiroEtiqueta) — se resuelve con un fallback donde se usa este mapa.
+const MODO_ENVIO_LABEL: Partial<Record<ModoEnvio, string>> = {
+  domicilio: 'Envío a domicilio',
+  sucursal: 'Envío a sucursal Andreani',
+}
+
 type EstadoCotizacion =
   | { estado: 'sin_cotizar' }
   | { estado: 'cotizando' }
-  | { estado: 'ok'; cp: string; costo: number }
+  | { estado: 'ok'; cp: string; costo: number | null; sucursales: OpcionSucursal[] }
   | { estado: 'error'; mensaje: string }
 
 type EstadoCupon =
@@ -107,6 +120,7 @@ export function CheckoutForm({
       direccion_envio: '',
       zona_id: null,
       cp_envio: null,
+      sucursal_codigo: null,
       metodo_pago: mpEnabled ? 'mercadopago' : 'transferencia',
       cupon: '',
       notas: '',
@@ -119,11 +133,23 @@ export function CheckoutForm({
     zona_id: zonaId,
     cp_envio: cpEnvio,
     modo_envio: modoEnvio,
+    sucursal_codigo: sucursalCodigo,
     cupon: cuponTexto,
     cliente_email: clienteEmail,
     // eslint-disable-next-line react-hooks/incompatible-library
   } = watch()
   const esRetiro = retiroActivo && modoEnvio === 'retiro'
+  // El envío a sucursal solo existe con Andreani cotizando: el respaldo de
+  // zonas manuales no sabe de sucursales.
+  const esSucursal = envioCotizado && modoEnvio === 'sucursal'
+  const sucursalesDisponibles = cotizacion.estado === 'ok' ? cotizacion.sucursales : []
+  const sucursalElegida = sucursalesDisponibles.find((s) => s.codigo === sucursalCodigo)
+  // Con un solo modo posible no se muestran los radios: no hay nada que elegir.
+  const modosDisponibles: ModoEnvio[] = [
+    'domicilio',
+    ...(envioCotizado ? (['sucursal'] as const) : []),
+    ...(retiroActivo ? (['retiro'] as const) : []),
+  ]
 
   // Si edita el código o el email después de verificarlo, el resultado
   // anterior queda obsoleto — vuelve a "sin verificar" hasta apretar
@@ -181,7 +207,13 @@ export function CheckoutForm({
         })
         const json = await res.json()
         if (seq !== cotizacionSeq.current) return // llegó tarde: ya hay otra cotización en curso
-        if (res.ok && json.ok) setCotizacion({ estado: 'ok', cp: json.cp, costo: json.costo })
+        if (res.ok && json.ok)
+          setCotizacion({
+            estado: 'ok',
+            cp: json.cp,
+            costo: json.costo ?? null,
+            sucursales: json.sucursales ?? [],
+          })
         else setCotizacion({ estado: 'error', mensaje: json.error ?? 'No pudimos cotizar el envío.' })
       } catch {
         if (seq === cotizacionSeq.current)
@@ -201,7 +233,8 @@ export function CheckoutForm({
     : zonaElegida
       ? Number(zonaElegida.costo)
       : null
-  const costoEnvio = esRetiro || envioGratis ? 0 : costoDomicilio
+  const costoSinDescuentos = esSucursal ? (sucursalElegida?.costo ?? null) : costoDomicilio
+  const costoEnvio = esRetiro || envioGratis ? 0 : costoSinDescuentos
   const pctTransferencia = metodoPago === 'transferencia' ? descuentoTransferenciaPct : 0
   const pctCupon = cupon.estado === 'valido' ? cupon.pct : 0
   const descuento = Math.round(totalPrecio * ((pctTransferencia + pctCupon) / 100))
@@ -224,6 +257,12 @@ export function CheckoutForm({
     // retiro no hay nada que cotizar.
     if (values.modo_envio !== 'retiro' && envioCotizado && cotizacion.estado !== 'ok') {
       toast.error('Ingresá tu código postal para cotizar el envío.')
+      return
+    }
+    // La sucursal tiene que seguir estando entre las del CP cotizado: si
+    // cambió el CP después de elegirla, la de antes ya no sirve.
+    if (values.modo_envio === 'sucursal' && !sucursalElegida) {
+      toast.error('Elegí la sucursal donde querés retirar tu pedido.')
       return
     }
     setEnviando(true)
@@ -310,9 +349,9 @@ export function CheckoutForm({
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">Envío</h2>
 
-          {retiroActivo && (
+          {modosDisponibles.length > 1 && (
             <div className="space-y-2 pb-2">
-              {(['domicilio', 'retiro'] as const).map((m) => (
+              {modosDisponibles.map((m) => (
                 <label
                   key={m}
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
@@ -328,7 +367,7 @@ export function CheckoutForm({
                     className="mt-1 size-4 accent-[var(--primary)]"
                   />
                   <span className="font-medium text-foreground">
-                    {m === 'domicilio' ? 'Envío a domicilio' : retiroEtiqueta}
+                    {MODO_ENVIO_LABEL[m] ?? retiroEtiqueta}
                     {m === 'retiro' && (
                       <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
                         Gratis
@@ -357,16 +396,62 @@ export function CheckoutForm({
               />
               <FieldError msg={errors.cp_envio?.message} />
               {cotizacion.estado === 'cotizando' && (
-                <p className="mt-1 text-sm text-foreground/60">Cotizando envío…</p>
+                <p className="mt-1 text-sm text-foreground/60">
+                  {esSucursal ? 'Buscando sucursales…' : 'Cotizando envío…'}
+                </p>
               )}
-              {cotizacion.estado === 'ok' && (
+              {cotizacion.estado === 'ok' && !esSucursal && (
                 <p className="mt-1 text-sm text-foreground">
-                  Envío a domicilio por Andreani:{' '}
-                  <strong>{envioGratis ? 'Gratis' : formatARS(cotizacion.costo)}</strong>
+                  {cotizacion.costo == null ? (
+                    'Andreani no llega a domicilio a ese código postal — probá con envío a sucursal.'
+                  ) : (
+                    <>
+                      Envío a domicilio por Andreani:{' '}
+                      <strong>{envioGratis ? 'Gratis' : formatARS(cotizacion.costo)}</strong>
+                    </>
+                  )}
                 </p>
               )}
               {cotizacion.estado === 'error' && (
                 <p className="mt-1 text-sm text-red-300">{cotizacion.mensaje}</p>
+              )}
+
+              {esSucursal && cotizacion.estado === 'ok' && (
+                <div className="mt-3">
+                  <Label htmlFor="sucursal_codigo">Sucursal donde retirás</Label>
+                  {sucursalesDisponibles.length === 0 ? (
+                    <p className="mt-1 text-sm text-red-300">
+                      No hay sucursales de Andreani para ese código postal. Probá con envío a
+                      domicilio.
+                    </p>
+                  ) : (
+                    <>
+                      <select
+                        id="sucursal_codigo"
+                        {...register('sucursal_codigo')}
+                        className="mt-1 h-9 w-full rounded-lg border border-foreground/16 bg-background px-3 text-sm text-foreground"
+                      >
+                        <option value="">Elegí una sucursal…</option>
+                        {sucursalesDisponibles.map((s) => (
+                          <option key={s.codigo} value={s.codigo}>
+                            {s.nombre}
+                            {s.direccion ? ` — ${s.direccion}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <FieldError msg={errors.sucursal_codigo?.message} />
+                      {sucursalElegida && (
+                        <p className="mt-1 text-sm text-foreground">
+                          {sucursalElegida.direccion && (
+                            <span className="text-foreground/70">{sucursalElegida.direccion} · </span>
+                          )}
+                          Envío a sucursal:{' '}
+                          <strong>{envioGratis ? 'Gratis' : formatARS(sucursalElegida.costo)}</strong>
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -393,7 +478,7 @@ export function CheckoutForm({
             </>
           )}
 
-          {!esRetiro && (
+          {!esRetiro && !esSucursal && (
             <>
               <div className="pt-2">
                 <Label htmlFor="direccion_envio">Dirección completa</Label>
@@ -407,6 +492,12 @@ export function CheckoutForm({
               </div>
               <p className="text-xs text-foreground/60">Enviamos a todo el país con Andreani.</p>
             </>
+          )}
+
+          {esSucursal && (
+            <p className="pt-1 text-xs text-foreground/60">
+              Te avisamos apenas el pedido llegue a la sucursal. Llevá tu DNI para retirarlo.
+            </p>
           )}
         </section>
 
@@ -530,9 +621,11 @@ export function CheckoutForm({
                     ? 'Gratis'
                     : costoEnvio != null
                       ? formatARS(costoEnvio)
-                      : envioCotizado
-                        ? 'ingresá tu CP'
-                        : 'elegí tu zona'}
+                      : esSucursal
+                        ? 'elegí tu sucursal'
+                        : envioCotizado
+                          ? 'ingresá tu CP'
+                          : 'elegí tu zona'}
               </span>
             </div>
             {!esRetiro && envioGratisUmbral > 0 && !envioGratis && (

@@ -1,13 +1,16 @@
 import { z } from 'zod'
 
 // --- Checkout (sitio público) -------------------------------------------
-// Dos modos de entrega (Fase 6k): envío a domicilio o retiro en persona
-// (punto de retiro configurable en /admin/zonas). Con domicilio, el costo se
-// resuelve de una de dos formas: cotización en vivo de Andreani por código
-// postal (cp_envio, Fase 6d — el server SIEMPRE re-cotiza, nunca confía en
-// el precio del navegador) o, si Andreani no está configurado/disponible,
-// la zona manual (zona_id, el sistema original de la Fase 4a que queda como
-// respaldo). Con retiro no hay dirección ni costo: el server pone ambos.
+// Tres modos de entrega: envío a domicilio, envío a sucursal de Andreani
+// (Fase 8j) y retiro en persona (punto de retiro configurable en
+// /admin/zonas, Fase 6k). Con domicilio, el costo se resuelve de una de dos
+// formas: cotización en vivo de Andreani por código postal (cp_envio, Fase
+// 6d — el server SIEMPRE re-cotiza, nunca confía en el precio del
+// navegador) o, si Andreani no está configurado/disponible, la zona manual
+// (zona_id, el sistema original de la Fase 4a que queda como respaldo). Con
+// sucursal hace falta el CP y el código de sucursal, pero no la dirección:
+// el server la resuelve contra Andreani y la escribe en el pedido. Con
+// retiro no hay dirección ni costo: el server pone ambos.
 export const checkoutItemSchema = z.object({
   producto_id: z.uuid(),
   cantidad: z.number().int().positive(),
@@ -23,7 +26,7 @@ const checkoutBase = z.object({
   // nullish (no .default): mantiene idénticos los tipos de entrada y salida,
   // que es lo que espera react-hook-form; ausente = domicilio (clientes con
   // el JS viejo en caché no mandan este campo).
-  modo_envio: z.enum(['domicilio', 'retiro']).nullish(),
+  modo_envio: z.enum(['domicilio', 'sucursal', 'retiro']).nullish(),
   // Obligatoria solo con envío a domicilio — ver el refine de abajo.
   direccion_envio: z.string().trim().max(300),
   zona_id: z.uuid('Elegí una zona de envío').nullish(),
@@ -32,6 +35,10 @@ const checkoutBase = z.object({
     .trim()
     .regex(/^\d{4}$/, 'Ingresá un código postal de 4 dígitos')
     .nullish(),
+  // Código de la sucursal Andreani elegida (ej. "SAB", "HOP1182"), solo con
+  // modo_envio = 'sucursal'. El server lo revalida contra la lista real de
+  // sucursales del CP: nunca se confía en lo que mande el navegador.
+  sucursal_codigo: z.string().trim().max(20).nullish(),
   metodo_pago: z.enum(['transferencia', 'deposito', 'efectivo', 'mercadopago']),
   // Cupón de bienvenida (Fase 8e), opcional — el server valida el código
   // contra la config real, nunca confía en un descuento que mande el cliente.
@@ -39,22 +46,31 @@ const checkoutBase = z.object({
   notas: z.string().trim().max(500).nullish(),
 })
 
-// Con retiro no se valida nada del envío; con domicilio hacen falta la
+// Con retiro no se valida nada del envío; con sucursal hacen falta el CP y
+// la sucursal (la dirección la pone el server); con domicilio hacen falta la
 // dirección y (CP o zona).
 type DatosDeEnvio = {
-  modo_envio?: 'domicilio' | 'retiro' | null
+  modo_envio?: 'domicilio' | 'sucursal' | 'retiro' | null
   direccion_envio: string
   zona_id?: string | null
   cp_envio?: string | null
+  sucursal_codigo?: string | null
 }
-const direccionValida = (d: DatosDeEnvio) => d.modo_envio === 'retiro' || d.direccion_envio.length >= 5
-const envioDefinido = (d: DatosDeEnvio) => d.modo_envio === 'retiro' || !!d.zona_id || !!d.cp_envio
+const sinDireccionPropia = (d: DatosDeEnvio) => d.modo_envio === 'retiro' || d.modo_envio === 'sucursal'
+const direccionValida = (d: DatosDeEnvio) => sinDireccionPropia(d) || d.direccion_envio.length >= 5
+const envioDefinido = (d: DatosDeEnvio) =>
+  d.modo_envio === 'retiro' || (d.modo_envio === 'sucursal' ? !!d.cp_envio : !!d.zona_id || !!d.cp_envio)
+const sucursalDefinida = (d: DatosDeEnvio) => d.modo_envio !== 'sucursal' || !!d.sucursal_codigo?.trim()
 const MSG_DIRECCION = { message: 'Ingresá la dirección de envío', path: ['direccion_envio'] as (string | number)[] }
 const MSG_ENVIO = { message: 'Falta definir el envío (código postal o zona).', path: ['cp_envio'] as (string | number)[] }
+const MSG_SUCURSAL = { message: 'Elegí la sucursal donde querés retirar.', path: ['sucursal_codigo'] as (string | number)[] }
 
 // Esquema del formulario (lo usa react-hook-form en el cliente). El form
 // completa cp_envio O zona_id según el modo (Andreani vs. zonas manuales).
-export const checkoutFormSchema = checkoutBase.refine(direccionValida, MSG_DIRECCION).refine(envioDefinido, MSG_ENVIO)
+export const checkoutFormSchema = checkoutBase
+  .refine(direccionValida, MSG_DIRECCION)
+  .refine(envioDefinido, MSG_ENVIO)
+  .refine(sucursalDefinida, MSG_SUCURSAL)
 export type CheckoutFormInput = z.infer<typeof checkoutFormSchema>
 
 // Esquema completo del pedido (lo valida la API, incluye los items).
@@ -64,6 +80,7 @@ export const checkoutSchema = checkoutBase
   })
   .refine(direccionValida, MSG_DIRECCION)
   .refine(envioDefinido, MSG_ENVIO)
+  .refine(sucursalDefinida, MSG_SUCURSAL)
 export type CheckoutInput = z.infer<typeof checkoutSchema>
 
 // --- Suscripción al newsletter (popup de cupón, Fase 8e) -----------------
