@@ -88,16 +88,15 @@ export async function getProductosParaContenido(excludeId?: string): Promise<Pro
 }
 
 // --- Variantes (Fase 8g) -----------------------------------------------------
-// Candidatas para agrupar como variantes entre sí: solo cajas/kits (mismo
-// alcance que la constraint de la migración 0028).
+// Candidatas para agrupar como variantes entre sí: cualquier producto del
+// catálogo. Hasta la migración 0031 esto se limitaba a cajas/kits; se abrió
+// a todos los tipos porque los accesorios también vienen en varios colores
+// (los vitrales). El SelectorVariantes trae buscador, así que una lista
+// larga no molesta.
 export async function getProductosParaVariantes(excludeId?: string): Promise<Producto[]> {
   const supabase = await clienteAutenticado()
   if (!supabase) return []
-  let query = supabase
-    .from('productos')
-    .select('*')
-    .in('tipo', ['caja', 'kit'])
-    .order('nombre', { ascending: true })
+  let query = supabase.from('productos').select('*').order('nombre', { ascending: true })
   if (excludeId) query = query.neq('id', excludeId)
   const { data, error } = await query
   if (error) return []
@@ -105,6 +104,7 @@ export async function getProductosParaVariantes(excludeId?: string): Promise<Pro
 }
 
 // Reemplaza el grupo de variantes de un producto por el conjunto elegido.
+// Sirve para cualquier tipo de producto desde la migración 0031.
 // `variante_grupo_id` es un tag compartido sin tabla propia (ver migración
 // 0028): si el producto no tenía grupo, se crea uno nuevo acá mismo; si ya
 // tenía, se reusa para no romper el vínculo con quienes no se tocaron. Los
@@ -117,13 +117,10 @@ export async function guardarVariantesProducto(productoId: string, miembroIds: s
 
   const { data: actual, error: actualErr } = await supabase
     .from('productos')
-    .select('id, tipo, variante_grupo_id')
+    .select('id, variante_grupo_id')
     .eq('id', productoId)
     .single()
   if (actualErr || !actual) return { ok: false, error: 'No se encontró el producto.' }
-  if (actual.tipo !== 'caja' && actual.tipo !== 'kit') {
-    return { ok: false, error: 'Las variantes solo están disponibles para cajas y kits.' }
-  }
 
   const idsUnicos = [...new Set(miembroIds)].filter((id) => id !== productoId)
 

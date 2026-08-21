@@ -14,8 +14,8 @@ type Props = {
 
 // Picker de variantes: mismo patrón visual que SelectorItems (buscador +
 // grilla con portada), pero sin cantidad — acá solo importa "es variante de
-// este producto sí/no". `candidatas` ya viene filtrada a cajas/kits desde
-// getProductosParaVariantes().
+// este producto sí/no". `candidatas` es todo el catálogo menos el producto
+// que se está editando (getProductosParaVariantes()).
 export function SelectorVariantes({ candidatas, elegidos, onToggle }: Props) {
   const [busqueda, setBusqueda] = useState('')
 

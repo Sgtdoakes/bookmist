@@ -141,11 +141,7 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       alto_cm: Math.max(1, Number(altoCm) || 5),
       ancho_cm: Math.max(1, Number(anchoCm) || 20),
       largo_cm: Math.max(1, Number(largoCm) || 30),
-      variante_etiqueta: tipo === 'caja' || tipo === 'kit' ? varianteEtiqueta.trim() || null : null,
-      // Si deja de ser caja/kit, se suelta del grupo de variantes (ver
-      // constraint de la migración 0028) — guardarVariantesProducto de abajo
-      // rechazaría un tipo que ya no califica.
-      ...(tipo === 'caja' || tipo === 'kit' ? {} : { variante_grupo_id: null }),
+      variante_etiqueta: varianteEtiqueta.trim() || null,
       activo,
     }
 
@@ -186,13 +182,11 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       return
     }
 
-    if (tipo === 'caja' || tipo === 'kit') {
-      const rVariantes = await guardarVariantesProducto(id, variantesElegidas)
-      if (!rVariantes.ok) {
-        setGuardando(false)
-        toast.error(rVariantes.error)
-        return
-      }
+    const rVariantes = await guardarVariantesProducto(id, variantesElegidas)
+    if (!rVariantes.ok) {
+      setGuardando(false)
+      toast.error(rVariantes.error)
+      return
     }
     setGuardando(false)
 
@@ -437,41 +431,39 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
         />
       </div>
 
-      {(tipo === 'caja' || tipo === 'kit') && (
-        <div>
-          <h2 className="font-semibold">Variantes</h2>
-          <p className="text-sm text-muted-foreground">
-            Otras cajas/kits que son variantes de este (ej. el mismo kit en otro color). En la ficha
-            pública aparece un botón para saltar directo de una variante a la otra.
+      <div>
+        <h2 className="font-semibold">Variantes</h2>
+        <p className="text-sm text-muted-foreground">
+          Otros productos que son variantes de este (ej. el mismo vitral o kit en otro color). En la
+          ficha pública aparece un botón para saltar directo de una variante a la otra.
+        </p>
+        <div className="mt-2 max-w-xs">
+          <Label htmlFor="variante_etiqueta" className="text-xs">
+            Etiqueta de esta variante (ej. &quot;Celeste&quot;)
+          </Label>
+          <Input
+            id="variante_etiqueta"
+            value={varianteEtiqueta}
+            onChange={(e) => setVarianteEtiqueta(e.target.value)}
+            placeholder="Celeste"
+            className="mt-1"
+          />
+        </div>
+
+        {variantesDisponibles.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Todavía no hay otro producto en el catálogo para marcar como variante.
           </p>
-          <div className="mt-2 max-w-xs">
-            <Label htmlFor="variante_etiqueta" className="text-xs">
-              Etiqueta de esta variante (ej. &quot;Celeste&quot;)
-            </Label>
-            <Input
-              id="variante_etiqueta"
-              value={varianteEtiqueta}
-              onChange={(e) => setVarianteEtiqueta(e.target.value)}
-              placeholder="Celeste"
-              className="mt-1"
+        ) : (
+          <div className="mt-3">
+            <SelectorVariantes
+              candidatas={variantesDisponibles}
+              elegidos={variantesElegidas}
+              onToggle={toggleVariante}
             />
           </div>
-
-          {variantesDisponibles.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Todavía no hay otra caja/kit en el catálogo para marcar como variante.
-            </p>
-          ) : (
-            <div className="mt-3">
-              <SelectorVariantes
-                candidatas={variantesDisponibles}
-                elegidos={variantesElegidas}
-                onToggle={toggleVariante}
-              />
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       <div>
         <h2 className="font-semibold">Qué incluye</h2>

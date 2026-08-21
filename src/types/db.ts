@@ -29,10 +29,10 @@ export type Database = {
           ancho_cm: number
           largo_cm: number
           // Variantes (migración 0028): productos con el mismo grupo son
-          // variantes entre sí (ej. mismo kit en distintos colores). Solo
-          // aplica a tipo 'caja'/'kit' — ver constraint en la migración.
-          // variante_etiqueta es el texto corto propio de ESTE producto
-          // dentro del grupo (ej. "Celeste").
+          // variantes entre sí (ej. mismo kit en distintos colores). Sirve
+          // para cualquier tipo desde la 0031, que soltó la restricción a
+          // 'caja'/'kit'. variante_etiqueta es el texto corto propio de ESTE
+          // producto dentro del grupo (ej. "Celeste").
           variante_grupo_id: string | null
           variante_etiqueta: string | null
           activo: boolean
