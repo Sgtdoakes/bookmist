@@ -12,6 +12,7 @@ import { ImageUploader } from '@/components/admin/image-uploader'
 import { SelectorItems } from '@/components/admin/selector-items'
 import { SelectorVariantes } from '@/components/admin/selector-variantes'
 import { generarSlug } from '@/lib/slugs'
+import { formatPesoLegible, pesoFacturableGramos, pesoVolumetricoGramos } from '@/lib/paquete'
 import {
   actualizarProducto,
   crearCategoria,
@@ -415,6 +416,12 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
             />
           </div>
         </div>
+        <AvisoPesoFacturable
+          pesoGramos={Number(pesoGramos) || 0}
+          altoCm={Number(altoCm) || 0}
+          anchoCm={Number(anchoCm) || 0}
+          largoCm={Number(largoCm) || 0}
+        />
       </div>
 
       <div>
@@ -495,5 +502,47 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
         {guardando ? 'Guardando…' : producto ? 'Guardar cambios' : 'Crear producto'}
       </Button>
     </form>
+  )
+}
+
+// Aviso en vivo de cuánto "pesa" el paquete para la tarifa de Andreani, que
+// cobra por el mayor entre el peso real y el volumen (~1 kg cada 3.000 cm³,
+// ver src/lib/paquete.ts). Existe por un caso real: un marcapáginas cargado
+// como cubo de 20×20×20 y 1 kg hizo que un pedido de 4 cotizara $21.348 de
+// envío en vez de ~$9.600, y nadie lo vio hasta que un cliente de prueba se
+// topó con el número. El error de tipeo es invisible en cuatro campos
+// chicos; el "se cobra como 2,7 kg" en rojo no.
+function AvisoPesoFacturable({
+  pesoGramos,
+  altoCm,
+  anchoCm,
+  largoCm,
+}: {
+  pesoGramos: number
+  altoCm: number
+  anchoCm: number
+  largoCm: number
+}) {
+  if (pesoGramos <= 0 || altoCm <= 0 || anchoCm <= 0 || largoCm <= 0) return null
+  const volumetrico = pesoVolumetricoGramos(altoCm, anchoCm, largoCm)
+  const facturable = pesoFacturableGramos(pesoGramos, altoCm, anchoCm, largoCm)
+  // El volumen "infla" cuando manda él y la diferencia es grande de verdad:
+  // duplica al peso real y agrega al menos medio kilo tarifado. Un paquete
+  // razonable donde el volumen apenas gana no merece un cartel de alarma.
+  const volumenInfla = volumetrico > pesoGramos * 2 && volumetrico - pesoGramos >= 500
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="text-xs text-muted-foreground">
+        Para la tarifa de Andreani este paquete cuenta como <strong>~{formatPesoLegible(facturable)}</strong> (cobra
+        por el mayor entre el peso y el volumen).
+      </p>
+      {volumenInfla && (
+        <p className="text-xs font-medium text-amber-500">
+          Ojo: las medidas ({altoCm}×{anchoCm}×{largoCm} cm) valen ~{formatPesoLegible(volumetrico)} aunque el paquete
+          pese {formatPesoLegible(pesoGramos)} — el envío se va a cotizar caro. Si el producto embalado es más chico,
+          corregí alto/ancho/largo.
+        </p>
+      )}
+    </div>
   )
 }
