@@ -59,6 +59,7 @@ import { CatalogoInteractivo } from '@/components/public/catalogo-interactivo'
 import { BuilderInspector, TIPO_LABEL } from '@/components/admin/builder-inspector'
 import { guardarLayout, previewSecciones, crearPagina, eliminarPagina } from '@/app/admin/pagina/actions'
 import {
+  anclaDeBloqueProductos,
   resolverSeccion,
   TIPOS_BLOQUE_LIBRE,
   type ElementoLibre,
@@ -123,7 +124,7 @@ function SeccionView({ s }: { s: SeccionPreview }) {
           ctaTexto={s.config.ctaTexto}
           ctaHref={s.config.ctaHref}
           estilo={s.config.estilo}
-          anclaId={s.config.anclaId}
+          anclaId={anclaDeBloqueProductos(s.config)}
         />
       )
     case 'banner':

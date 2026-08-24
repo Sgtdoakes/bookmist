@@ -124,6 +124,29 @@ export type ProductosConfig = {
   anclaId: string
 }
 
+// El ancla de un bloque de categoría se deriva SIEMPRE del slug de su
+// categoría, ignorando el `anclaId` guardado. Sin esto el ancla se despega de
+// la categoría en cuanto se duplica un bloque: como `anclaId` no tiene UI en
+// el inspector, la copia se queda con el ancla del original y no hay forma de
+// corregirla desde el panel. Eso fue exactamente lo que pasó en /productos —
+// el bloque "Accesorios mágicos" (categoría accesorios-magicos) quedó con
+// anclaId "accesorios", así que había dos secciones con id="accesorios": el
+// dropdown del header y las cards de la home mandaban "Mundo dragón"
+// (/productos#accesorios) a la primera de las dos —la de Accesorios mágicos—
+// y "Accesorios mágicos" (/productos#accesorios-magicos) no tenía destino y
+// no hacía nada.
+//
+// Los bloques de otras fuentes (manual/destacados/novedades) no tienen
+// categoría de la cual derivar, así que siguen usando el `anclaId` guardado.
+export function anclaDeBloqueProductos(config: {
+  fuente: ProductosFuente
+  categoria: string
+  anclaId?: string
+}): string | undefined {
+  if (config.fuente === 'categoria' && config.categoria) return config.categoria
+  return config.anclaId || undefined
+}
+
 // Catálogo interactivo (/productos): buscador + orden + rango de precios +
 // navegación por categoría, todo client-side sobre el catálogo completo.
 // La config solo define el encabezado y el estilo — los filtros son parte

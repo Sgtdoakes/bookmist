@@ -3,6 +3,7 @@ import { BestSellersScroller } from '@/components/public/best-sellers-scroller'
 import { resolverFondo, resolverRadio, resolverTamano, paddingTopVars, tieneFondo } from '@/lib/estilo-secciones'
 import type { EstiloBloque } from '@/lib/estilo-secciones'
 import type { Producto } from '@/types/db'
+import { anclaDeBloqueProductos } from '@/lib/secciones'
 import type { ProductosConfig, ProductosFuente } from '@/lib/secciones'
 
 // Resuelve la fuente configurada a productos reales — separado del render
@@ -101,7 +102,7 @@ export async function ProductosBloque({
       ctaTexto={ctaTexto}
       ctaHref={ctaHref}
       estilo={estilo}
-      anclaId={anclaId}
+      anclaId={anclaDeBloqueProductos({ fuente, categoria, anclaId })}
     />
   )
 }
