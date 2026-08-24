@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { armarCsv, descargarCsv, sufijoFechaArchivo } from '@/lib/csv'
 import { estadoCupon, reglaCupon, usosRestantes, type EstadoCupon } from '@/lib/cupon-codigo'
-import type { Cupon } from '@/types/db'
+import type { Cupon, MetodoPago } from '@/types/db'
 import {
   borrarCupon,
   borrarCupones,
@@ -262,6 +262,8 @@ function CuponForm({
   const [conTopePersona, setConTopePersona] = useState(cupon ? cupon.usos_maximos_por_email != null : false)
   const [porPersona, setPorPersona] = useState(String(cupon?.usos_maximos_por_email ?? 1))
   const [requiereSusc, setRequiereSusc] = useState(cupon?.requiere_suscripcion ?? false)
+  // '' = sirve con cualquier medio de pago (en la base es null).
+  const [metodoPago, setMetodoPago] = useState<MetodoPago | ''>(cupon?.metodo_pago_requerido ?? '')
   const [nota, setNota] = useState(cupon?.nota ?? '')
   const [guardando, setGuardando] = useState(false)
 
@@ -273,6 +275,7 @@ function CuponForm({
       usosMaximos: conTope ? Number(usosMax) : null,
       usosMaximosPorEmail: conTopePersona ? Number(porPersona) : null,
       requiereSuscripcion: requiereSusc,
+      metodoPagoRequerido: metodoPago === '' ? null : metodoPago,
       nota,
     }
 
@@ -421,6 +424,29 @@ function CuponForm({
               que completar su email antes de poder aplicar el cupón.
             </>
           )}
+        </p>
+      </div>
+
+      <div className="space-y-1 rounded-md border p-3">
+        <Label htmlFor={`${modo}-metodo-pago`} className="text-sm font-medium">
+          ¿Con qué medio de pago sirve?
+        </Label>
+        <select
+          id={`${modo}-metodo-pago`}
+          value={metodoPago}
+          onChange={(e) => setMetodoPago(e.target.value as MetodoPago | '')}
+          className="mt-1 h-9 w-full max-w-xs rounded-lg border border-input bg-transparent px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+        >
+          <option value="">Todos los medios de pago</option>
+          <option value="transferencia">Solo transferencia</option>
+          <option value="mercadopago">Solo Mercado Pago</option>
+        </select>
+        <p className="text-xs text-muted-foreground">
+          {metodoPago === 'transferencia'
+            ? 'Si el cliente elige Mercado Pago, el cupón no se aplica y el checkout le avisa que cambie a transferencia. Se suma al descuento automático por transferencia, si lo tenés activo.'
+            : metodoPago === 'mercadopago'
+              ? 'Solo se aplica pagando con Mercado Pago. Ojo con la comisión: ese descuento sale entero de tu margen.'
+              : 'El cupón se aplica con cualquier medio de pago.'}
         </p>
       </div>
 

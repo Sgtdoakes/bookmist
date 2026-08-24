@@ -1,11 +1,16 @@
-// El porcentaje llega por prop desde el layout (que lo lee de la config real)
-// y no hardcodeado: si Dani cambia el descuento, la barra no puede quedar
-// prometiendo un número distinto al que después cobra el checkout.
-export function AnnouncementBar({ descuentoPct }: { descuentoPct: number }) {
-  if (descuentoPct <= 0) return null
+import { textoCintillo, type CintilloConfig } from '@/lib/cintillo'
+
+// La franja de arriba de todo. El texto se resuelve en textoCintillo() a
+// partir de la config real (getCintilloConfig) y no acá: si Dani
+// apaga el cintillo o cambia el descuento, la barra no puede quedar
+// prometiendo algo distinto de lo que después cobra el checkout. Texto vacío
+// = no se dibuja nada, ni siquiera la franja.
+export function AnnouncementBar({ cintillo }: { cintillo: CintilloConfig }) {
+  const texto = textoCintillo(cintillo)
+  if (!texto) return null
   return (
     <div className="w-full bg-background py-2.5 text-center text-xs font-semibold tracking-wide text-foreground md:text-sm">
-      ✨ {descuentoPct}% de descuento con transferencia ✨
+      {texto}
     </div>
   )
 }

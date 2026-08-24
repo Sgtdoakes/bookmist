@@ -42,8 +42,9 @@ export function EnvioConfigForm({ inicial }: { inicial: EnvioConfig }) {
           className="mt-1 w-48"
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          Cuando el subtotal de productos llega a este monto, el envío a domicilio sale $0. Dejalo
-          en 0 para desactivarlo.
+          Cuando los productos del carrito suman este monto, el envío (a domicilio o a sucursal)
+          sale $0. Cuentan solo los productos: ni el costo del envío ni nada más ayuda a llegar.
+          Dejalo en 0 para desactivarlo.
         </p>
       </div>
 

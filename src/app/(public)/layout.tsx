@@ -3,7 +3,7 @@ import {
   getMarcaConfig,
   getNavLinks,
   getCuponBienvenida,
-  getDescuentoTransferenciaPct,
+  getCintilloConfig,
 } from '@/lib/configuracion'
 import { getCategorias } from '@/lib/productos'
 import { getIsAdmin } from '@/lib/admin'
@@ -16,13 +16,13 @@ import { CartProvider } from '@/lib/cart'
 import { Toaster } from '@/components/ui/sonner'
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [marca, navLinks, categorias, isAdmin, cupon, descuentoTransferenciaPct] = await Promise.all([
+  const [marca, navLinks, categorias, isAdmin, cupon, cintillo] = await Promise.all([
     getMarcaConfig(),
     getNavLinks(),
     getCategorias(),
     getIsAdmin(),
     getCuponBienvenida(),
-    getDescuentoTransferenciaPct(),
+    getCintilloConfig(),
   ])
 
   // GA4 vive acá (no en el layout raíz) para que nunca corra en /admin — y
@@ -36,7 +36,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <CartProvider>
       {gaId && !isAdmin && <GoogleAnalytics gaId={gaId} />}
-      <AnnouncementBar descuentoPct={descuentoTransferenciaPct} />
+      <AnnouncementBar cintillo={cintillo} />
       <SiteHeader marca={marca} navLinks={navLinks} categorias={categorias} isAdmin={isAdmin} />
       <main className="flex-1">{children}</main>
       <SiteFooter marca={marca} navLinks={navLinks} />

@@ -1,7 +1,8 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { codigoBienFormado, normalizarCodigo } from '@/lib/cupon-codigo'
-import type { Database } from '@/types/db'
+import { METODO_PAGO_CORTO } from '@/lib/constants'
+import type { Database, MetodoPago } from '@/types/db'
 
 export type CuponMotivoRechazo =
   | 'invalido'
@@ -10,10 +11,14 @@ export type CuponMotivoRechazo =
   | 'no_suscripto'
   | 'ya_usado'
   | 'falta_email'
+  | 'otro_medio_pago'
 
 export type CuponValidacion =
   | { ok: true; pct: number; cuponId: string; codigo: string }
-  | { ok: false; motivo: CuponMotivoRechazo }
+  // `metodoPagoRequerido` viaja solo con el rechazo por medio de pago: es lo
+  // que permite decir "este cupón es para transferencia" en vez de un "no
+  // sirve" a secas que deja al cliente sin saber qué cambiar.
+  | { ok: false; motivo: CuponMotivoRechazo; metodoPagoRequerido?: MetodoPago }
 
 // Cuántos pedidos consumió cada cupón, por ID. Desde la 0030 se cuenta por
 // orders.cupon_id y no por el string: los códigos ahora se pueden editar
@@ -85,12 +90,26 @@ export async function validarCupon(
   supabase: SupabaseClient<Database>,
   codigoIngresado: string,
   emailComprador: string,
+  metodoPago?: MetodoPago,
 ): Promise<CuponValidacion> {
   const codigo = normalizarCodigo(codigoIngresado)
   if (!codigo || !codigoBienFormado(codigo)) return { ok: false, motivo: 'invalido' }
 
   const { data: cupon } = await supabase.from('cupones').select('*').ilike('codigo', codigo).maybeSingle()
   if (!cupon || !cupon.activo) return { ok: false, motivo: 'invalido' }
+
+  // Medio de pago (0032): un cupón "solo transferencia" no se aplica si el
+  // pedido se paga con Mercado Pago. Se chequea ANTES que el cupo y el mail
+  // porque es lo único que quien compra puede corregir en el acto — cambia
+  // el medio de pago y el mismo código funciona.
+  //
+  // Sin `metodoPago` no se rechaza: quiere decir que quien pregunta todavía
+  // no eligió cómo paga. El checkout SIEMPRE lo manda (el formulario nace
+  // con un medio seleccionado), así que en el pedido real la regla se aplica
+  // igual — esto solo deja pasar una consulta suelta sin medio definido.
+  if (cupon.metodo_pago_requerido && metodoPago && cupon.metodo_pago_requerido !== metodoPago) {
+    return { ok: false, motivo: 'otro_medio_pago', metodoPagoRequerido: cupon.metodo_pago_requerido }
+  }
 
   // Cupo total: acá es donde se apaga solo el cupón impreso al llegar a la
   // cantidad de papeles que se repartieron.
@@ -131,4 +150,14 @@ export const CUPON_MOTIVO_MENSAJE: Record<CuponMotivoRechazo, string> = {
   no_suscripto: 'Ese cupón es solo para quienes se suscribieron con este mismo mail.',
   ya_usado: 'Ya usaste ese cupón en un pedido anterior.',
   falta_email: 'Completá tu email primero para poder validar el cupón.',
+  otro_medio_pago: 'Ese cupón sirve con otro medio de pago.',
+}
+
+// El mensaje del rechazo por medio de pago, con el medio que SÍ sirve — que
+// es la diferencia entre "no anda" y "elegí transferencia y andá".
+export function mensajeRechazoCupon(v: { motivo: CuponMotivoRechazo; metodoPagoRequerido?: MetodoPago }): string {
+  if (v.motivo === 'otro_medio_pago' && v.metodoPagoRequerido) {
+    return `Ese cupón es solo para pagos con ${METODO_PAGO_CORTO[v.metodoPagoRequerido]}.`
+  }
+  return CUPON_MOTIVO_MENSAJE[v.motivo]
 }

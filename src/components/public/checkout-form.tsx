@@ -73,6 +73,7 @@ const MOTIVO_CUPON_TEXTO: Record<string, string> = {
   limite_persona: 'ya usaste ese cupón todas las veces permitidas',
   agotado: 'ese cupón ya se agotó',
   falta_email: 'ese cupón necesita que completes tu email',
+  otro_medio_pago: 'ese cupón sirve con otro medio de pago',
 }
 
 export function CheckoutForm({
@@ -171,7 +172,10 @@ export function CheckoutForm({
       const res = await fetch('/api/cupon/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo, email: clienteEmail ?? '' }),
+        // El medio de pago va porque hay cupones atados a uno solo (ej. 10%
+        // solo por transferencia): sin este dato el sitio mostraría un
+        // descuento que el server después no aplica.
+        body: JSON.stringify({ codigo, email: clienteEmail ?? '', metodo_pago: metodoPago }),
       })
       const json = await res.json()
       if (res.ok && json.ok) setCupon({ estado: 'valido', pct: json.pct })
@@ -180,6 +184,24 @@ export function CheckoutForm({
       setCupon({ estado: 'invalido', mensaje: 'Problema de conexión al verificar el cupón.' })
     }
   }
+
+  // Cambiar el medio de pago puede volver inválido un cupón ya aplicado (o
+  // al revés: el de "solo transferencia" empieza a servir apenas elige
+  // transferencia). Se vuelve a preguntar solo, sin que tenga que apretar
+  // "Aplicar" de nuevo — el resumen no puede quedar mostrando un descuento
+  // que el server después va a rechazar. No corre en el primer render: ahí
+  // todavía no hay nada verificado.
+  const primerRenderPago = useRef(true)
+  useEffect(() => {
+    if (primerRenderPago.current) {
+      primerRenderPago.current = false
+      return
+    }
+    if (cupon.estado === 'sin_verificar' || cupon.estado === 'verificando') return
+    if (!(cuponTexto ?? '').trim()) return
+    verificarCupon()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metodoPago])
 
   // Cotización en vivo: cuando el CP tiene 4 dígitos, se cotiza con debounce
   // (y se re-cotiza si cambia el carrito). El precio mostrado es informativo:

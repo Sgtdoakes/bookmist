@@ -24,6 +24,17 @@ export const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
   mercadopago: 'Mercado Pago (tarjeta en cuotas, QR o billetera)',
 }
 
+// Los mismos medios, en dos palabras. METODO_PAGO_LABEL explica el método
+// completo porque es lo que se lee al elegir cómo pagar; este va adentro de
+// frases ("solo para pagos con Mercado Pago") donde el paréntesis largo
+// sobra.
+export const METODO_PAGO_CORTO: Record<MetodoPago, string> = {
+  transferencia: 'transferencia',
+  deposito: 'depósito bancario',
+  efectivo: 'efectivo',
+  mercadopago: 'Mercado Pago',
+}
+
 export const ESTADO_PEDIDO_LABEL: Record<EstadoPedido, string> = {
   pendiente: 'Pendiente',
   pagado: 'Pagado',

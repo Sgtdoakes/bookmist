@@ -143,6 +143,7 @@ describe('reglaCupon', () => {
     usos_maximos: null,
     usos_maximos_por_email: null,
     requiere_suscripcion: false,
+    metodo_pago_requerido: null,
   }
 
   it('describe el cupón de papeles impresos', () => {
@@ -167,5 +168,15 @@ describe('reglaCupon', () => {
 
   it('un solo uso no se lee como "1 usos"', () => {
     expect(reglaCupon({ ...base, usos_maximos: 1 })).toBe('Un solo uso')
+  })
+
+  it('el atado a un medio de pago lo dice con nombre y apellido', () => {
+    // El caso de Dani: 10% solo pagando por transferencia.
+    expect(reglaCupon({ ...base, metodo_pago_requerido: 'transferencia' })).toBe(
+      'Usos ilimitados · solo con transferencia',
+    )
+    expect(reglaCupon({ ...base, usos_maximos: 30, metodo_pago_requerido: 'mercadopago' })).toBe(
+      '30 usos · solo con Mercado Pago',
+    )
   })
 })

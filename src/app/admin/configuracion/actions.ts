@@ -73,6 +73,36 @@ export async function guardarCuentasPago(cuentas: CuentaPago[]): Promise<Ok | Er
 // `configuracion`. Desde la Fase 8i es una fila de la tabla `cupones` y se
 // edita con las acciones de src/app/admin/cupones/actions.ts.
 
+// Descuento automático por transferencia + cintillo que lo anuncia. Se
+// guardan juntos (una tarjeta en el panel) pero son claves separadas, porque
+// apagar el cartel no tiene por qué apagar el descuento ni al revés.
+export async function guardarDescuentoTransferencia(cfg: {
+  pct: number
+  cintilloVisible: boolean
+  cintilloTexto: string
+}): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  if (!Number.isFinite(cfg.pct) || cfg.pct < 0 || cfg.pct > 100) {
+    return { ok: false, error: 'El descuento va de 0 a 100.' }
+  }
+
+  try {
+    await guardarValoresConfiguracion(supabase, {
+      descuento_transferencia_pct: String(cfg.pct),
+      cintillo_visible: cfg.cintilloVisible ? 'true' : 'false',
+      cintillo_texto: cfg.cintilloTexto.trim(),
+    })
+  } catch {
+    return { ok: false, error: 'No se pudo guardar el descuento.' }
+  }
+
+  // El cintillo está en todas las páginas y el % se cobra en el checkout:
+  // mismo motivo que la marca para invalidar todo el sitio de una.
+  revalidarPublico()
+  return { ok: true }
+}
+
 export type NavLinkItem = { id: string; label: string; href: string; activo: boolean }
 
 // Reemplazo completo del lienzo de nav_links en una sola pasada — mismo

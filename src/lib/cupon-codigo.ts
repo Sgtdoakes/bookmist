@@ -1,3 +1,4 @@
+import { METODO_PAGO_CORTO } from '@/lib/constants'
 import type { Cupon } from '@/types/db'
 
 // Parte pura de los cupones: formato de los códigos y en qué estado está uno.
@@ -82,7 +83,14 @@ export function usosRestantes(cupon: Pick<Cupon, 'usos_maximos'>, usos: number):
 // dice a Dani de un vistazo si un cupón es de los impresos, el de mail, o
 // una promo abierta.
 export function reglaCupon(
-  c: Pick<Cupon, 'es_bienvenida' | 'usos_maximos' | 'usos_maximos_por_email' | 'requiere_suscripcion'>,
+  c: Pick<
+    Cupon,
+    | 'es_bienvenida'
+    | 'usos_maximos'
+    | 'usos_maximos_por_email'
+    | 'requiere_suscripcion'
+    | 'metodo_pago_requerido'
+  >,
 ): string {
   const partes: string[] = []
   if (c.usos_maximos == null) partes.push('Usos ilimitados')
@@ -92,6 +100,7 @@ export function reglaCupon(
   if (c.usos_maximos_por_email === 1) partes.push('uno por persona')
   else if (c.usos_maximos_por_email != null) partes.push(`hasta ${c.usos_maximos_por_email} por persona`)
 
+  if (c.metodo_pago_requerido) partes.push(`solo con ${METODO_PAGO_CORTO[c.metodo_pago_requerido]}`)
   if (c.requiere_suscripcion) partes.push('solo suscriptos')
   if (c.es_bienvenida) partes.push('se manda por mail')
 

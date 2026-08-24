@@ -217,7 +217,10 @@ export async function POST(request: Request) {
   let pctDescuentoCupon = 0
   let cuponMotivoRechazo: CuponMotivoRechazo | null = null
   if (data.cupon?.trim()) {
-    const validacion = await validarCupon(supabase, data.cupon, data.cliente_email)
+    // El medio de pago entra en la validación desde la 0032: un cupón puede
+    // exigir transferencia, y eso se decide acá con el medio real del
+    // pedido, no con el que el navegador tuviera seleccionado al aplicarlo.
+    const validacion = await validarCupon(supabase, data.cupon, data.cliente_email, data.metodo_pago)
     if (validacion.ok) {
       // El código se guarda como lo tiene cargado el cupón, no como lo tipeó
       // el cliente: así el pedido muestra el mismo texto que el panel.

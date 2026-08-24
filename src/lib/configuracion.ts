@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/public'
 import { storeConfig } from '@/lib/store-config'
 import { NAV_LINKS } from '@/lib/constants'
+import type { CintilloConfig } from '@/lib/cintillo'
 import type { Database } from '@/types/db'
 
 // Configuración de marca editable desde /admin/configuracion (Fase 6f-1):
@@ -182,11 +183,18 @@ export function cuentaValida(c: CuentaPago): boolean {
   return !!c.cbu || !!c.alias
 }
 
-// Porcentaje de descuento por pagar con transferencia (la promesa "5% OFF
-// transferencia" de la barra de beneficios). Editable vía la clave
-// `descuento_transferencia_pct` en la tabla configuracion; default 5.
+// Porcentaje de descuento por pagar con transferencia. Editable desde
+// /admin/configuracion vía la clave `descuento_transferencia_pct`; default 5.
+// 0 = sin descuento (el checkout cobra el precio de lista y el cartelito
+// "% OFF" al lado de Transferencia desaparece solo).
 const CLAVE_DESCUENTO_TRANSFERENCIA = 'descuento_transferencia_pct'
 const DESCUENTO_TRANSFERENCIA_DEFAULT = 5
+
+function parsePct(valor: string | undefined): number | null {
+  if (!valor) return null
+  const pct = Number(valor)
+  return Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : null
+}
 
 export async function getDescuentoTransferenciaPct(): Promise<number> {
   if (!configured()) return DESCUENTO_TRANSFERENCIA_DEFAULT
@@ -198,11 +206,36 @@ export async function getDescuentoTransferenciaPct(): Promise<number> {
       .eq('clave', CLAVE_DESCUENTO_TRANSFERENCIA)
       .maybeSingle()
     if (error) throw error
-    if (!data?.valor) return DESCUENTO_TRANSFERENCIA_DEFAULT
-    const pct = Number(data.valor)
-    return Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : DESCUENTO_TRANSFERENCIA_DEFAULT
+    // `?? DEFAULT` y no `|| DEFAULT`: un 0 guardado a propósito (descuento
+    // apagado) tiene que quedar en 0, no volver al 5 de fábrica.
+    return parsePct(data?.valor) ?? DESCUENTO_TRANSFERENCIA_DEFAULT
   } catch {
     return DESCUENTO_TRANSFERENCIA_DEFAULT
+  }
+}
+
+// Lectura de la config del cintillo (la franja de arriba de todo). El tipo y
+// la resolución del texto viven en src/lib/cintillo.ts, que es puro: el
+// formulario del panel los necesita para previsualizar sin traerse Supabase.
+const CLAVES_CINTILLO = ['descuento_transferencia_pct', 'cintillo_visible', 'cintillo_texto'] as const
+
+export async function getCintilloConfig(): Promise<CintilloConfig> {
+  const base: CintilloConfig = { visible: true, texto: '', descuentoPct: DESCUENTO_TRANSFERENCIA_DEFAULT }
+  if (!configured()) return base
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.from('configuracion').select('clave, valor').in('clave', CLAVES_CINTILLO)
+    if (error) throw error
+    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
+    return {
+      // Sin la clave guardada, visible: así se comportaba antes de que
+      // existiera el interruptor.
+      visible: map.get('cintillo_visible') !== 'false',
+      texto: map.get('cintillo_texto')?.trim() ?? '',
+      descuentoPct: parsePct(map.get('descuento_transferencia_pct')) ?? base.descuentoPct,
+    }
+  } catch {
+    return base
   }
 }
 

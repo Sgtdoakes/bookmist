@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { codigoBienFormado, generarCodigosUnicos, normalizarCodigo } from '@/lib/cupon-codigo'
-import type { Cupon, CuponInsert } from '@/types/db'
+import type { Cupon, CuponInsert, MetodoPago } from '@/types/db'
 
 type Ok = { ok: true }
 type Err = { ok: false; error: string }
@@ -31,8 +31,15 @@ type CamposCupon = {
   usosMaximos: number | null
   usosMaximosPorEmail: number | null
   requiereSuscripcion: boolean
+  // null = sirve con cualquier medio de pago (0032).
+  metodoPagoRequerido: MetodoPago | null
   nota: string
 }
+
+// Los medios que el checkout ofrece de verdad. 'efectivo' y 'deposito'
+// existen en el enum por pedidos viejos, pero hoy nadie puede elegirlos al
+// comprar: un cupón atado a ellos no lo podría usar nadie.
+const METODOS_ELEGIBLES: MetodoPago[] = ['transferencia', 'mercadopago']
 
 function validarCampos(datos: CamposCupon): { ok: true; codigo: string } | Err {
   const codigo = normalizarCodigo(datos.codigo)
@@ -61,6 +68,9 @@ function validarCampos(datos: CamposCupon): { ok: true; codigo: string } | Err {
   ) {
     return { ok: false, error: 'El máximo por persona no puede ser mayor que la cantidad total de usos.' }
   }
+  if (datos.metodoPagoRequerido != null && !METODOS_ELEGIBLES.includes(datos.metodoPagoRequerido)) {
+    return { ok: false, error: 'Ese medio de pago no se puede elegir al comprar.' }
+  }
   return { ok: true, codigo }
 }
 
@@ -80,6 +90,7 @@ export async function crearCupon(datos: NuevoCupon): Promise<{ ok: true; cupon: 
     usos_maximos: datos.usosMaximos,
     usos_maximos_por_email: datos.usosMaximosPorEmail,
     requiere_suscripcion: datos.requiereSuscripcion,
+    metodo_pago_requerido: datos.metodoPagoRequerido,
     nota: datos.nota.trim() || null,
   }
   const { data: creado, error } = await supabase.from('cupones').insert(fila).select('*').single()
@@ -112,6 +123,7 @@ export async function editarCupon(id: string, datos: CamposCupon): Promise<{ ok:
       usos_maximos: datos.usosMaximos,
       usos_maximos_por_email: datos.usosMaximosPorEmail,
       requiere_suscripcion: datos.requiereSuscripcion,
+      metodo_pago_requerido: datos.metodoPagoRequerido,
       nota: datos.nota.trim() || null,
     })
     .eq('id', id)

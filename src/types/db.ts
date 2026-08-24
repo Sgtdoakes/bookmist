@@ -360,6 +360,9 @@ export type Database = {
           // Cuánto se puede llevar UNA misma persona. null = sin límite.
           usos_maximos_por_email: number | null
           requiere_suscripcion: boolean
+          // Medio de pago exigido por el cupón (0032). null = sirve con
+          // cualquiera; 'transferencia' = solo transferencia, etc.
+          metodo_pago_requerido: MetodoPago | null
           // Muerto desde la 0030: lo reemplazó usos_maximos_por_email. Sigue
           // en la tabla (con default) hasta que se borre en una migración
           // posterior; nadie lo lee.
@@ -376,6 +379,7 @@ export type Database = {
           usos_maximos?: number | null
           usos_maximos_por_email?: number | null
           requiere_suscripcion?: boolean
+          metodo_pago_requerido?: MetodoPago | null
           es_bienvenida?: boolean
           nota?: string | null
           created_at?: string
