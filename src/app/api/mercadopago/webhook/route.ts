@@ -1,8 +1,7 @@
 import { obtenerPago } from '@/lib/mercadopago'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verificarAutoMantenimiento } from '@/lib/mantenimiento'
-import { avisarWhatsAppDani } from '@/lib/notificaciones'
-import { formatARS } from '@/lib/format'
+import { notificarPagoAcreditado, enviarCambioEstado } from '@/lib/email'
 
 // Webhook de Mercado Pago. MP avisa cuando cambia un pago.
 // Nunca confiamos en el body del aviso: volvemos a pedirle a Mercado Pago el
@@ -58,18 +57,50 @@ export async function POST(request: Request) {
           } catch (e) {
             console.error('[mp-webhook] verificarAutoMantenimiento falló', e)
           }
-          // Aviso a Dani de plata acreditada (best-effort: si falla, el
-          // pago ya quedó registrado y MP no tiene por qué reintentar).
+          // El pedido acaba de pasar a 'pagado': se le avisa a Dani (entró la
+          // plata) y al cliente (su pago se confirmó). Best-effort — si algo
+          // falla el pago ya quedó registrado y MP no tiene por qué
+          // reintentar, pero queda en los logs de Vercel.
+          //
+          // `estado_actualizado_at` se escribe acá y no dentro de la RPC
+          // confirmar_pago_pedido (migración 0022) para no tocar una función
+          // atómica que ya funciona: si este update fallara, lo peor que pasa
+          // es una fecha vieja en la página de seguimiento — nunca un pago a
+          // medio registrar.
           try {
             const { data: pedido } = await supabase
               .from('orders')
-              .select('numero_pedido, total, cliente_nombre')
+              .select('numero_pedido,total,cliente_nombre,cliente_email,token_consulta,seguimiento')
               .eq('id', pago.external_reference)
               .maybeSingle()
             if (pedido) {
-              await avisarWhatsAppDani(
-                `💰 Pago acreditado por Mercado Pago\nPedido ${pedido.numero_pedido} — ${pedido.cliente_nombre}\nTotal: ${formatARS(pedido.total)}`,
-              )
+              await supabase
+                .from('orders')
+                .update({ estado_actualizado_at: new Date().toISOString() })
+                .eq('id', pago.external_reference)
+
+              const [aDani, aCliente] = await Promise.all([
+                notificarPagoAcreditado({
+                  numeroPedido: pedido.numero_pedido,
+                  clienteNombre: pedido.cliente_nombre,
+                  total: pedido.total,
+                }),
+                enviarCambioEstado({
+                  numeroPedido: pedido.numero_pedido,
+                  token: pedido.token_consulta,
+                  clienteNombre: pedido.cliente_nombre,
+                  clienteEmail: pedido.cliente_email,
+                  estado: 'pagado',
+                  seguimiento: pedido.seguimiento,
+                  total: pedido.total,
+                }),
+              ])
+              if (!aDani.sent) {
+                console.error(`[mp-webhook] aviso a Daniela NO enviado (${pedido.numero_pedido}):`, aDani.reason)
+              }
+              if (!aCliente.sent) {
+                console.error(`[mp-webhook] aviso al cliente NO enviado (${pedido.numero_pedido}):`, aCliente.reason)
+              }
             }
           } catch (e) {
             console.error('[mp-webhook] aviso de pago falló', e)

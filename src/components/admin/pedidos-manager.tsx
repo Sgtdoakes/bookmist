@@ -1,16 +1,31 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Eye, MessageCircle, PackageOpen } from 'lucide-react'
+import { Eye, MessageCircle, PackageOpen, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { formatARS } from '@/lib/format'
 import type { MarcaConfig } from '@/lib/configuracion'
 import { whatsappLink } from '@/lib/whatsapp'
-import { ESTADO_PEDIDO_LABEL, ESTADO_PEDIDO_BADGE, ESTADO_SIGUIENTE, METODO_PAGO_LABEL } from '@/lib/constants'
+import {
+  ESTADO_PEDIDO_LABEL,
+  ESTADO_PEDIDO_BADGE,
+  ESTADO_SIGUIENTE,
+  METODO_PAGO_LABEL,
+  andreaniSeguimientoUrl,
+} from '@/lib/constants'
 import type { OrderConItems, EstadoPedido } from '@/types/db'
-import { cambiarEstadoPedido, marcarLeido } from '@/app/admin/pedidos/actions'
+import { cambiarEstadoPedido, guardarSeguimiento, marcarLeido } from '@/app/admin/pedidos/actions'
+
+// Estados en los que el pedido ya terminó su recorrido: se esconden por
+// defecto para que la lista muestre solo lo que necesita atención.
+const ESTADOS_CERRADOS: EstadoPedido[] = ['entregado', 'cancelado']
+
+// El número de seguimiento solo tiene sentido una vez cobrado (antes no hay
+// nada que despachar) y hasta que se entrega.
+const ESTADOS_CON_SEGUIMIENTO: EstadoPedido[] = ['pagado', 'enviado']
 
 function fecha(iso: string) {
   return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
@@ -22,7 +37,7 @@ export function PedidosManager({ pedidos, marca }: { pedidos: OrderConItems[]; m
 
   const sinLeer = items.filter((p) => !p.leido).length
   const visibles = useMemo(
-    () => items.filter((p) => verCerrados || p.estado !== 'cancelado'),
+    () => items.filter((p) => verCerrados || !ESTADOS_CERRADOS.includes(p.estado)),
     [items, verCerrados],
   )
 
@@ -33,8 +48,18 @@ export function PedidosManager({ pedidos, marca }: { pedidos: OrderConItems[]; m
   async function cambiar(id: string, estado: EstadoPedido) {
     const r = await cambiarEstadoPedido(id, estado)
     if (r.ok) {
-      patch(id, { estado, leido: true })
-      toast.success(`Pedido: ${ESTADO_PEDIDO_LABEL[estado]}`)
+      patch(id, { estado, leido: true, estado_actualizado_at: new Date().toISOString() })
+      toast.success(`Pedido: ${ESTADO_PEDIDO_LABEL[estado]} — le avisamos por mail`)
+    } else {
+      toast.error(r.error)
+    }
+  }
+
+  async function seguimiento(id: string, valor: string) {
+    const r = await guardarSeguimiento(id, valor)
+    if (r.ok) {
+      patch(id, { seguimiento: valor.trim() || null })
+      toast.success(valor.trim() ? 'Número de seguimiento guardado' : 'Número de seguimiento borrado')
     } else {
       toast.error(r.error)
     }
@@ -73,17 +98,82 @@ export function PedidosManager({ pedidos, marca }: { pedidos: OrderConItems[]; m
             onChange={(e) => setVerCerrados(e.target.checked)}
             className="size-4"
           />
-          Mostrar cancelados
+          Mostrar entregados y cancelados
         </label>
       </div>
 
       {visibles.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          No hay pedidos activos. Activá la opción de arriba para ver los cancelados.
+          No hay pedidos abiertos. Activá la opción de arriba para ver los entregados y cancelados.
         </p>
       ) : (
-        visibles.map((p) => <TarjetaPedido key={p.id} pedido={p} marca={marca} onCambiar={cambiar} onVisto={visto} />)
+        visibles.map((p) => (
+          <TarjetaPedido
+            key={p.id}
+            pedido={p}
+            marca={marca}
+            onCambiar={cambiar}
+            onSeguimiento={seguimiento}
+            onVisto={visto}
+          />
+        ))
       )}
+    </div>
+  )
+}
+
+// Campo del número de envío de Andreani. Estado local para no guardar en cada
+// tecla; el valor confirmado vive en el pedido, así que si Dani escribe y no
+// guarda, al recargar vuelve lo último guardado de verdad.
+function CampoSeguimiento({
+  pedido: p,
+  onGuardar,
+}: {
+  pedido: OrderConItems
+  onGuardar: (id: string, valor: string) => void
+}) {
+  const [valor, setValor] = useState(p.seguimiento ?? '')
+  const [guardando, setGuardando] = useState(false)
+  const sinCambios = valor.trim() === (p.seguimiento ?? '')
+
+  async function guardar() {
+    setGuardando(true)
+    await onGuardar(p.id, valor)
+    setGuardando(false)
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-dashed p-3">
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <Truck className="h-4 w-4 text-muted-foreground" />
+        Seguimiento de Andreani
+      </label>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Input
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder="Número de envío"
+          className="max-w-64 font-mono"
+        />
+        <Button type="button" size="sm" variant="outline" disabled={sinCambios || guardando} onClick={guardar}>
+          Guardar
+        </Button>
+        {p.seguimiento && (
+          <a
+            href={andreaniSeguimientoUrl(p.seguimiento)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ size: 'sm', variant: 'ghost' }))}
+          >
+            Rastrear
+          </a>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {p.estado === 'pagado'
+          ? 'Cargalo antes de marcar el pedido como enviado: el mail al cliente lo lleva adentro.'
+          : 'El cliente ya lo ve en la página de su pedido.'}
+      </p>
     </div>
   )
 }
@@ -92,11 +182,13 @@ function TarjetaPedido({
   pedido: p,
   marca,
   onCambiar,
+  onSeguimiento,
   onVisto,
 }: {
   pedido: OrderConItems
   marca: MarcaConfig
   onCambiar: (id: string, estado: EstadoPedido) => void
+  onSeguimiento: (id: string, valor: string) => void
   onVisto: (id: string) => void
 }) {
   const wa = marca.whatsapp
@@ -171,6 +263,10 @@ function TarjetaPedido({
         <p className="mt-2 rounded bg-muted/40 p-2 text-sm">
           <span className="font-medium">Notas:</span> {p.notas}
         </p>
+      )}
+
+      {ESTADOS_CON_SEGUIMIENTO.includes(p.estado) && (
+        <CampoSeguimiento pedido={p} onGuardar={onSeguimiento} />
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

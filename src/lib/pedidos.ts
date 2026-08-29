@@ -1,6 +1,76 @@
+// Este módulo toca la base con service role: nunca puede terminar en el
+// bundle del navegador. El `server-only` hace que un import por valor desde un
+// componente cliente falle en el build en vez de filtrarse en silencio —
+// exactamente lo que pasó con el token de Instagram en la Fase 6l. El tipo
+// PedidoPublico sí lo importa un componente cliente, pero con `import type`,
+// que se borra en compilación y nunca carga el módulo.
+import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/db'
+import { createAdminClient } from '@/lib/supabase/admin'
+import type { Database, EstadoPedido, MetodoPago } from '@/types/db'
 import { verificarAutoMantenimiento } from '@/lib/mantenimiento'
+
+// Lo que ve quien compró cuando abre el link de seguimiento. Es un subconjunto
+// deliberado de la fila: NO salen el id interno, el token, los ids de Mercado
+// Pago ni las notas — nada de eso le sirve, y cuanto menos viaje al navegador,
+// menos hay que cuidar.
+export type PedidoPublico = {
+  numero_pedido: string
+  estado: EstadoPedido
+  estado_actualizado_at: string
+  created_at: string
+  cliente_nombre: string
+  cliente_email: string
+  direccion_envio: string
+  zona_envio: string | null
+  costo_envio: number | null
+  metodo_pago: MetodoPago
+  descuento: number
+  cupon_codigo: string | null
+  total: number
+  seguimiento: string | null
+  items: { nombre: string; cantidad: number; precio_unitario: number }[]
+}
+
+function configured() {
+  return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY
+}
+
+// Trae un pedido para su dueño, validando número + token juntos (migración
+// 0033). Usa service role porque `orders` no tiene ninguna policy para anon
+// (0005): el público nunca consulta la tabla directo, siempre pasa por acá.
+//
+// El token es lo único que autoriza. El número de pedido es correlativo, así
+// que si alcanzara solo, cualquiera podría recorrer BM-0001, BM-0002... y
+// leer nombre, dirección y DNI ajenos. Por eso el filtro va por los dos y la
+// comparación la hace Postgres sobre una columna unique.
+export async function getPedidoPublico(
+  numeroPedido: string,
+  token: string,
+): Promise<PedidoPublico | null> {
+  if (!configured()) return null
+  if (!numeroPedido?.trim() || !token?.trim()) return null
+
+  try {
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
+      .from('orders')
+      .select(
+        'numero_pedido,estado,estado_actualizado_at,created_at,cliente_nombre,cliente_email,direccion_envio,zona_envio,costo_envio,metodo_pago,descuento,cupon_codigo,total,seguimiento,order_items(nombre,cantidad,precio_unitario)',
+      )
+      .eq('numero_pedido', numeroPedido.trim().toUpperCase())
+      .eq('token_consulta', token.trim())
+      .maybeSingle()
+    if (error || !data) return null
+
+    const { order_items, ...pedido } = data
+    return { ...pedido, items: order_items ?? [] }
+  } catch {
+    // Un pedido que no se puede leer se comporta como uno que no existe: la
+    // página cae a la confirmación genérica en vez de romper.
+    return null
+  }
+}
 
 // Ajusta productos.stock a partir de los ítems de un pedido. Se llama en dos
 // momentos, desde el mismo lugar (server action del admin y webhook de

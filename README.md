@@ -127,7 +127,9 @@ administración está en [http://localhost:3000/admin](http://localhost:3000/adm
 | `NEXT_PUBLIC_SITE_URL` | ✅ | URL del sitio (`http://localhost:3000` en local). |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | ⬜ | WhatsApp de Bookmist, solo dígitos. Sin este valor, el botón flotante no se muestra (pero el checkout funciona igual). |
 | `NEXT_PUBLIC_STORE_*` / `NEXT_PUBLIC_INSTAGRAM_*` / `NEXT_PUBLIC_TIKTOK_URL` | ⬜ | Datos de marca (tienen valores por defecto). |
-| `EMAIL_PROVIDER` / `OWNER_EMAIL` / `EMAIL_FROM` / `RESEND_API_KEY` / `SMTP_*` | ⬜ | Notificación por email de pedidos nuevos a Daniela. Sin configurar, el pedido igual se registra y queda el link de WhatsApp como respaldo. |
+| `EMAIL_PROVIDER` / `EMAIL_FROM` / `RESEND_API_KEY` / `SMTP_*` | ✅ | Envío de mails. **Sin esto el cliente no recibe la confirmación de su compra** (con su número de pedido, los datos para transferir y el link para seguir el pedido). `EMAIL_FROM` tiene que ser un dominio verificado en Resend — no se puede enviar *desde* una casilla `@gmail.com`. |
+| `OWNER_EMAIL` | ✅ | Casilla donde Daniela recibe los avisos de pedido nuevo y de pago acreditado. **Si falta, esos avisos no salen** y `enviarEmail()` corta antes de llamar al proveedor. Pasó de verdad: estuvo sin cargar en Vercel un mes y medio. |
+| `EMAIL_FROM_PEDIDOS` / `EMAIL_FROM_PROMOCIONES` | ⬜ | Remitentes separados para pedidos y para promociones. Sin ellos, ambos caen a `EMAIL_FROM`. |
 | `MP_ACCESS_TOKEN` | ⬜ | Access token de Mercado Pago (Checkout Pro). Sin esto, el checkout solo ofrece transferencia/efectivo. **Secreto.** |
 
 ---
@@ -167,6 +169,32 @@ administración está en [http://localhost:3000/admin](http://localhost:3000/adm
   automática por código postal/peso, generación de etiquetas) cuando
   Bookmist tenga cuenta/contrato comercial con ellos. Hasta entonces, este
   esquema manual por zona es el costo real que se cobra.
+
+---
+
+## Seguimiento de pedidos
+
+Quien compra recibe un mail de confirmación con un link a
+`/pedido/<numero>?t=<token>`, donde puede ver el estado de su pedido cuando
+quiera.
+
+- **El token es lo único que autoriza.** `orders.token_consulta` (migración
+  `0033`) se genera solo al crear el pedido. El número de pedido es
+  correlativo, así que si alcanzara por sí solo, cualquiera podría recorrer
+  `BM-0001`, `BM-0002`… y leer nombre, teléfono, DNI y dirección ajenos.
+- La página lee de la base con service role (`getPedidoPublico()` en
+  `src/lib/pedidos.ts`): `orders` no tiene ninguna policy para `anon`, el
+  público nunca consulta la tabla directo. Solo viaja al navegador un
+  subconjunto de la fila — sin id interno, sin token, sin ids de Mercado Pago.
+- Sin token la página cae al camino viejo (el resumen que el navegador guardó
+  en `sessionStorage` al comprar), para no romper links ya repartidos.
+- **Estados** (`pendiente → pagado → enviado → entregado`, más `cancelado`):
+  cada cambio desde `/admin/pedidos` le manda un mail al cliente. `entregado`
+  es terminal. Cancelar repone stock solo si venía de un estado que ya lo
+  había descontado (`ESTADOS_CON_STOCK_DESCONTADO` en `src/lib/constants.ts`).
+- **El número de seguimiento de Andreani se carga a mano** en el panel: la
+  integración con Andreani solo cotiza, no despacha. Cargalo *antes* de marcar
+  el pedido como enviado — el mail al cliente lo lleva adentro.
 
 ---
 

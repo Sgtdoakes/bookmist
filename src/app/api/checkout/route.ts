@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
 import { checkoutSchema } from '@/lib/validations'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { aplicarEnvioGratis, getDescuentoTransferenciaPct, getEnvioConfig, getMarcaConfig } from '@/lib/configuracion'
+import {
+  aplicarEnvioGratis,
+  cuentaValida,
+  getCuentasPago,
+  getDescuentoTransferenciaPct,
+  getEnvioConfig,
+  getMarcaConfig,
+} from '@/lib/configuracion'
 import { validarCupon, type CuponMotivoRechazo } from '@/lib/cupon'
 import { whatsappLink, construirMensajePedido, type DatosPedidoMensaje } from '@/lib/whatsapp'
-import { notificarPedidoNuevo } from '@/lib/email'
-import { avisarWhatsAppDani } from '@/lib/notificaciones'
+import { notificarPedidoNuevo, enviarConfirmacionPedido } from '@/lib/email'
 import { getReservasActivas } from '@/lib/reservas'
 import { mpConfigured, crearPreferencia } from '@/lib/mercadopago'
 import { andreaniConfigured, cotizarEnvio } from '@/lib/andreani'
@@ -254,7 +260,9 @@ export async function POST(request: Request) {
       total,
       notas: data.notas ?? null,
     })
-    .select('id,numero_pedido')
+    // token_consulta lo genera la base sola (migración 0033) — se trae de
+    // vuelta acá porque es lo que arma el link de seguimiento del mail.
+    .select('id,numero_pedido,token_consulta')
     .single()
   if (orderErr || !order) {
     return NextResponse.json({ ok: false, error: 'No pudimos registrar el pedido.' }, { status: 500 })
@@ -291,6 +299,7 @@ export async function POST(request: Request) {
       })),
       costoEnvio,
       emailCliente: data.cliente_email,
+      tokenConsulta: order.token_consulta,
     })
     if (!pref) {
       // Limpiamos el pedido para no dejar uno colgado (cascade borra los items).
@@ -307,8 +316,9 @@ export async function POST(request: Request) {
     await supabase.from('orders').update({ mp_preference_id: pref.id }).eq('id', order.id)
   }
 
-  // 6) Avisos a Daniela: email + WhatsApp personal (best-effort, un aviso
-  // caído nunca frena el pedido).
+  // 6) Avisos: email a Daniela (pedido nuevo) y email al cliente
+  // (confirmación con su link de seguimiento). Best-effort — un aviso caído
+  // nunca frena un pedido ya registrado.
   const datosMsg: DatosPedidoMensaje = {
     numeroPedido: order.numero_pedido,
     clienteNombre: data.cliente_nombre,
@@ -330,23 +340,52 @@ export async function POST(request: Request) {
   }
   const marca = await getMarcaConfig()
   const waUrl = marca.whatsapp ? whatsappLink(marca.whatsapp, construirMensajePedido(datosMsg)) : null
-  // Best-effort, pero NUNCA en silencio: los avisos se mandan sin frenar el
-  // pedido, y si alguno no sale queda registrado en los logs de Vercel. Antes
-  // el resultado se descartaba, y por eso una variable de entorno que faltaba
-  // (OWNER_EMAIL, sin cargar en Vercel) dejó a Daniela mes y medio sin recibir
-  // un solo aviso de pedido nuevo, sin que nada lo delatara.
-  const avisoEmail = await notificarPedidoNuevo(datosMsg, waUrl ?? '(WhatsApp no configurado)')
-  if (!avisoEmail.sent) {
-    console.error(`[checkout] aviso por email NO enviado (${order.numero_pedido}):`, avisoEmail.reason)
+  // NUNCA en silencio: si un aviso no sale, queda en los logs de Vercel con
+  // el número de pedido. Antes el resultado se descartaba, y por eso una
+  // variable de entorno que faltaba (OWNER_EMAIL, sin cargar en Vercel) dejó
+  // a Daniela mes y medio sin recibir un solo aviso, sin que nada lo delatara.
+  //
+  // Los dos mails van en paralelo: son independientes entre sí y el cliente
+  // está esperando la respuesta de este endpoint del otro lado de la pantalla.
+  // Las cuentas solo se traen (y solo se muestran en el mail) si todavía hay
+  // algo que transferir: con Mercado Pago el pago ya se resolvió en la pasarela.
+  const pagaTransfiriendo = data.metodo_pago === 'transferencia' || data.metodo_pago === 'deposito'
+  const cuentas = pagaTransfiriendo ? (await getCuentasPago()).filter(cuentaValida) : []
+  const [avisoDani, avisoCliente] = await Promise.all([
+    notificarPedidoNuevo(datosMsg, waUrl ?? '(WhatsApp no configurado)'),
+    enviarConfirmacionPedido({
+      numeroPedido: order.numero_pedido,
+      token: order.token_consulta,
+      clienteNombre: data.cliente_nombre,
+      clienteEmail: data.cliente_email,
+      items: datosMsg.items,
+      costoEnvio,
+      descuento,
+      cuponCodigo: cuponCodigoAplicado,
+      total,
+      metodoPago: data.metodo_pago,
+      direccionEnvio,
+      zonaEnvio: zonaNombre,
+      cuentas,
+    }),
+  ])
+  if (!avisoDani.sent) {
+    console.error(`[checkout] aviso a Daniela NO enviado (${order.numero_pedido}):`, avisoDani.reason)
   }
-  const avisoWhatsApp = await avisarWhatsAppDani(`🛍️ ${construirMensajePedido(datosMsg)}`)
-  if (!avisoWhatsApp) {
-    console.error(`[checkout] aviso por WhatsApp NO enviado (${order.numero_pedido})`)
+  if (!avisoCliente.sent) {
+    console.error(
+      `[checkout] confirmación al cliente NO enviada (${order.numero_pedido}):`,
+      avisoCliente.reason,
+    )
   }
 
   return NextResponse.json({
     ok: true,
     numero_pedido: order.numero_pedido,
+    // El navegador que acaba de crear el pedido es su dueño legítimo, así que
+    // se le da el token para redirigir a /pedido/<numero>?t=<token> y que la
+    // confirmación lea de la base en vez de depender de sessionStorage.
+    token_consulta: order.token_consulta,
     whatsapp_url: waUrl,
     total,
     mp_init_point: mpInitPoint,

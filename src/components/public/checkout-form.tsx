@@ -326,12 +326,21 @@ export function CheckoutForm({
         // sessionStorage no disponible: la confirmación mostrará la versión genérica
       }
       clear()
-      // Mercado Pago: redirigimos a la pasarela de pago.
+      // Mercado Pago: redirigimos a la pasarela de pago. Al volver, las
+      // back_urls de la preferencia ya traen el token (src/lib/mercadopago.ts).
       if (json.mp_init_point) {
         window.location.href = json.mp_init_point
         return
       }
-      router.push(`/pedido/${json.numero_pedido}`)
+      // Con el token, la confirmación lee el pedido de la base en vez de
+      // depender del sessionStorage de arriba (que se pierde al cerrar la
+      // pestaña). El sessionStorage queda igual como respaldo: si por lo que
+      // sea el token no viniera, la página sigue mostrando el resumen.
+      router.push(
+        json.token_consulta
+          ? `/pedido/${json.numero_pedido}?t=${encodeURIComponent(json.token_consulta)}`
+          : `/pedido/${json.numero_pedido}`,
+      )
     } catch {
       toast.error('Hubo un problema de conexión. Probá de nuevo.')
     } finally {

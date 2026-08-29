@@ -25,6 +25,11 @@ export async function crearPreferencia(params: {
   items: ItemPref[]
   costoEnvio: number | null
   emailCliente: string
+  // Token de consulta del pedido (migración 0033). Viaja en las back_urls
+  // para que quien vuelve de Mercado Pago caiga en su pedido real leído de
+  // la base, y no en la confirmación genérica: al volver de la pasarela el
+  // sessionStorage puede no estar (otro navegador, o la app de MP).
+  tokenConsulta: string
 }): Promise<{ id: string; init_point: string } | null> {
   if (!mpConfigured()) return null
 
@@ -56,9 +61,9 @@ export async function crearPreferencia(params: {
         external_reference: params.orderId,
         payer: { email: params.emailCliente },
         back_urls: {
-          success: `${base}/pedido/${params.numeroPedido}?status=approved`,
-          failure: `${base}/pedido/${params.numeroPedido}?status=failure`,
-          pending: `${base}/pedido/${params.numeroPedido}?status=pending`,
+          success: `${base}/pedido/${params.numeroPedido}?t=${params.tokenConsulta}&status=approved`,
+          failure: `${base}/pedido/${params.numeroPedido}?t=${params.tokenConsulta}&status=failure`,
+          pending: `${base}/pedido/${params.numeroPedido}?t=${params.tokenConsulta}&status=pending`,
         },
         // auto_return solo funciona con URLs públicas https.
         ...(esHttps ? { auto_return: 'approved' as const } : {}),

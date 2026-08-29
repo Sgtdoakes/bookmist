@@ -3,7 +3,9 @@
 
 export type ProductoTipo = 'caja' | 'kit' | 'libro' | 'accesorio'
 export type MetodoPago = 'transferencia' | 'efectivo' | 'mercadopago' | 'deposito'
-export type EstadoPedido = 'pendiente' | 'pagado' | 'cancelado'
+// Migración 0034: 'enviado'/'entregado' se suman entre 'pagado' y 'cancelado'.
+// El orden acá refleja el del enum en Postgres a propósito.
+export type EstadoPedido = 'pendiente' | 'pagado' | 'enviado' | 'entregado' | 'cancelado'
 
 export type Database = {
   public: {
@@ -171,6 +173,15 @@ export type Database = {
           total: number
           notas: string | null
           leido: boolean
+          // Migración 0033 — seguimiento del pedido del lado del cliente.
+          // El token es el secreto del link público (/pedido/<numero>?t=…):
+          // el número solo es correlativo y adivinable, así que no alcanza
+          // como llave para datos que incluyen DNI y dirección.
+          token_consulta: string
+          // Número de envío de Andreani, cargado a mano por Dani (la
+          // integración solo cotiza, no despacha). null = sin despachar.
+          seguimiento: string | null
+          estado_actualizado_at: string
           mp_preference_id: string | null
           mp_payment_id: string | null
           created_at: string
@@ -193,6 +204,11 @@ export type Database = {
           total?: number
           notas?: string | null
           leido?: boolean
+          // Los tres tienen default en la base (0033): el token se genera
+          // solo, así que el checkout nunca lo manda.
+          token_consulta?: string
+          seguimiento?: string | null
+          estado_actualizado_at?: string
           mp_preference_id?: string | null
           mp_payment_id?: string | null
           created_at?: string
