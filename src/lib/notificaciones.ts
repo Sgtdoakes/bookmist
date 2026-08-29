@@ -14,7 +14,10 @@ export function whatsappAvisosConfigured() {
 }
 
 export async function avisarWhatsAppDani(texto: string): Promise<boolean> {
-  if (!whatsappAvisosConfigured()) return false
+  if (!whatsappAvisosConfigured()) {
+    console.error('[whatsapp] CALLMEBOT_PHONE/CALLMEBOT_APIKEY sin configurar — aviso descartado')
+    return false
+  }
   try {
     const url =
       'https://api.callmebot.com/whatsapp.php' +

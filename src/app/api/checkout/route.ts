@@ -330,8 +330,19 @@ export async function POST(request: Request) {
   }
   const marca = await getMarcaConfig()
   const waUrl = marca.whatsapp ? whatsappLink(marca.whatsapp, construirMensajePedido(datosMsg)) : null
-  await notificarPedidoNuevo(datosMsg, waUrl ?? '(WhatsApp no configurado)')
-  await avisarWhatsAppDani(`🛍️ ${construirMensajePedido(datosMsg)}`)
+  // Best-effort, pero NUNCA en silencio: los avisos se mandan sin frenar el
+  // pedido, y si alguno no sale queda registrado en los logs de Vercel. Antes
+  // el resultado se descartaba, y por eso una variable de entorno que faltaba
+  // (OWNER_EMAIL, sin cargar en Vercel) dejó a Daniela mes y medio sin recibir
+  // un solo aviso de pedido nuevo, sin que nada lo delatara.
+  const avisoEmail = await notificarPedidoNuevo(datosMsg, waUrl ?? '(WhatsApp no configurado)')
+  if (!avisoEmail.sent) {
+    console.error(`[checkout] aviso por email NO enviado (${order.numero_pedido}):`, avisoEmail.reason)
+  }
+  const avisoWhatsApp = await avisarWhatsAppDani(`🛍️ ${construirMensajePedido(datosMsg)}`)
+  if (!avisoWhatsApp) {
+    console.error(`[checkout] aviso por WhatsApp NO enviado (${order.numero_pedido})`)
+  }
 
   return NextResponse.json({
     ok: true,
