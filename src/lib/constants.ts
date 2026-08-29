@@ -21,8 +21,12 @@ export const NAV_LINKS = [
 // ese módulo es `server-only` (tiene las credenciales) y este link lo arma
 // también el panel, que es un componente cliente. Si Andreani cambia la URL
 // de su rastreo, este es el único lugar a tocar.
+//
+// La forma vieja (`/#!/informacionEnvio/<numero>`) todavía redirige a esta,
+// confirmado probando un número real en el navegador — pero se apunta directo
+// para no depender de que mantengan ese redirect vivo.
 export function andreaniSeguimientoUrl(numero: string): string {
-  return `https://www.andreani.com/#!/informacionEnvio/${encodeURIComponent(numero.trim())}`
+  return `https://www.andreani.com/envio/${encodeURIComponent(numero.trim())}`
 }
 
 export const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
