@@ -37,6 +37,11 @@ export type HeroConfig = {
   titulo: string
   subtitulo: string
   ctaTexto: string
+  // Destino del botón. Hasta ahora el hero era el único bloque con botón sin
+  // link: se renderizaba un <button> suelto que no hacía nada al clickearlo.
+  // Vacío = el botón se muestra igual, pero sin ser un link (mismo criterio
+  // que los bloques Texto/Banner).
+  ctaHref: string
   // Carrusel de fondo (Fase 8d): 0 = placeholder, 1 = imagen fija, 2+ = rota
   // automáticamente entre todas. Un solo texto/CTA para todo el carrusel —
   // no hay un título por slide, a propósito, para que Dani solo tenga que
@@ -216,6 +221,10 @@ function defaults(): SeccionConfigMap {
       titulo: 'Palabras que se sienten en las manos',
       subtitulo: 'Kits literarios pensados para pausar el ruido y perderte, otra vez, en una buena historia.',
       ctaTexto: 'Descubrir los kits',
+      // Al catálogo, igual que "Productos" del header y el "Ver más" de Más
+      // vendidos: es el único destino que tiene sentido para "descubrir los
+      // kits" desde el hero.
+      ctaHref: '/productos',
       imagenes: [],
       estilo: {},
     },

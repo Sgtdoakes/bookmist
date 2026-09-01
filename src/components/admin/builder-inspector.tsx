@@ -174,9 +174,19 @@ function Contenido({
               rows={2}
             />
           </Campo>
-          <Campo label="Texto del botón">
-            <Input value={texto('ctaTexto')} onChange={(e) => onChange({ ctaTexto: e.target.value }, false)} className="mt-1" />
-          </Campo>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo label="Texto del botón">
+              <Input value={texto('ctaTexto')} onChange={(e) => onChange({ ctaTexto: e.target.value }, false)} className="mt-1" />
+            </Campo>
+            <Campo label="Link del botón">
+              <Input
+                value={texto('ctaHref')}
+                onChange={(e) => onChange({ ctaHref: e.target.value }, false)}
+                placeholder="/productos"
+                className="mt-1"
+              />
+            </Campo>
+          </div>
           <Campo label="Fotos del carrusel">
             <p className="mb-2 text-xs text-muted-foreground">
               Subí 3 o más para que se note el efecto carrusel — con 1 sola queda fija, y sin ninguna se ve el

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Blob } from '@/components/public/decorative'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
@@ -15,7 +16,7 @@ const INTERVALO_MS = 6000
 // sola foto/video, queda fijo. Con 2+ rota solo cada unos segundos (fundido
 // por opacidad, sin librería de carrusel) y los puntos pasan a ser
 // navegación real — se pausa al pasar el mouse para poder mirar bien.
-export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, imagenes, estilo }: HeroConfig) {
+export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, ctaHref, imagenes, estilo }: HeroConfig) {
   const [activoBruto, setActivo] = useState(0)
   const [pausado, setPausado] = useState(false)
 
@@ -38,6 +39,12 @@ export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, imagenes, estilo }:
   const alineacion = resolverAlineacion(estilo)
   const textoAlineado = estilo?.alineacion ? `flex flex-col ${alineacion.items} ${alineacion.texto}` : ''
 
+  const boton = (
+    <PrimaryButton>
+      {ctaTexto} <ArrowRight size={17} />
+    </PrimaryButton>
+  )
+
   return (
     <section
       data-fondo={tieneFondo(estilo)}
@@ -54,9 +61,17 @@ export function Hero({ eyebrow, titulo, subtitulo, ctaTexto, imagenes, estilo }:
             {titulo}
           </h1>
           <p className="mb-8 max-w-md text-base text-muted md:text-lg">{subtitulo}</p>
-          <PrimaryButton>
-            {ctaTexto} <ArrowRight size={17} />
-          </PrimaryButton>
+          {/* Link por fuera del botón, igual que en los bloques Banner y
+              Texto. aria-label solo cuando no hay texto cargado: el hero de
+              producción hoy muestra la flecha sola, y un link sin ningún
+              nombre accesible no le dice nada a un lector de pantalla. */}
+          {ctaHref ? (
+            <Link href={ctaHref} aria-label={ctaTexto ? undefined : 'Ver productos'}>
+              {boton}
+            </Link>
+          ) : (
+            boton
+          )}
         </div>
 
         <div className="relative">

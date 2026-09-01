@@ -8,6 +8,15 @@ describe('resolverSeccion', () => {
     expect(s.config.ctaTexto).toBe('Descubrir los kits')
   })
 
+  it('el botón del hero apunta al catálogo, incluso en un hero guardado antes de que el campo existiera', () => {
+    expect(resolverSeccion('hero', {}).config.ctaHref).toBe('/productos')
+    // El hero que ya está guardado en producción no tiene `ctaHref`: el
+    // merge con los defaults es lo que hace que el botón empiece a llevar a
+    // algún lado sin tener que tocar la fila a mano.
+    const guardado = resolverSeccion('hero', { titulo: 'Viví entre tus libros', ctaTexto: '' })
+    expect(guardado.config.ctaHref).toBe('/productos')
+  })
+
   it('un campo guardado pisa el valor por defecto', () => {
     const s = resolverSeccion('hero', { titulo: 'Un título nuevo' })
     expect(s.config.titulo).toBe('Un título nuevo')
