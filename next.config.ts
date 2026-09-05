@@ -32,14 +32,19 @@ const isDev = process.env.NODE_ENV === 'development'
 // fuente oficial cerrada. Si en el navegador real (DevTools -> Console)
 // aparece algún "Refused to load/frame ... violates CSP" nuevo, sumar ese
 // dominio acá (mismo síntoma silencioso que el bug de GA4 de la Fase 7).
+// Revisitado al agregar el píxel de Meta: connect.facebook.net sirve el
+// fbevents.js y www.facebook.com recibe los eventos (el /tr? del <noscript>
+// y las llamadas que hace el propio fbevents). Esto se vio bloqueado en la
+// consola apenas se montó el componente — exactamente el mismo bug silencioso
+// que GA4 en la Fase 7, encontrado esta vez antes de subirlo.
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://apis.google.com https://www.gstatic.com${isDev ? " 'unsafe-eval'" : ''};
+  script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://apis.google.com https://www.gstatic.com https://connect.facebook.net${isDev ? " 'unsafe-eval'" : ''};
   style-src 'self' 'unsafe-inline' https://www.gstatic.com;
-  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://www.gstatic.com;
+  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://www.gstatic.com https://www.facebook.com https://connect.facebook.net;
   media-src 'self' https://res.cloudinary.com;
   font-src 'self';
-  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.googleapis.com;
+  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.googleapis.com https://www.facebook.com https://connect.facebook.net;
   frame-src https://www.google.com;
   object-src 'none';
   base-uri 'self';
