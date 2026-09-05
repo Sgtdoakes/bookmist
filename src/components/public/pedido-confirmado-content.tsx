@@ -7,7 +7,7 @@ import { sendGAEvent } from '@next/third-parties/google'
 import { CheckCircle2, Clock, XCircle, MessageCircle, Truck, PackageCheck } from 'lucide-react'
 import { PrimaryButton, OutlineButton } from '@/components/public/buttons'
 import { formatARS } from '@/lib/format'
-import { resolverVistaPedido, type VistaPedidoTipo } from '@/lib/pedido-confirmacion'
+import { resolverVistaPedido, esVisitaDeCompra, type VistaPedidoTipo } from '@/lib/pedido-confirmacion'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
 import { GoogleCustomerReviews } from '@/components/public/google-customer-reviews'
 import { ESTADO_PEDIDO_PUBLICO, andreaniSeguimientoUrl } from '@/lib/constants'
@@ -132,32 +132,50 @@ export function PedidoConfirmadoContent({
 
   // Evento de compra para GA4 (antes de esto, Analytics no tenía forma de
   // saber que una visita a esta página era una venta, solo la contaba como
-  // una pageview más). No se cuenta un pago rechazado; `pendiente` sí (ej.
-  // transferencia esperando confirmación) porque el pedido igual se creó.
-  // Va atado a sessionStorage y NO al pedido leído de la base: si dependiera
-  // de eso, cada vez que alguien abriera su link de seguimiento se
-  // registraría una compra nueva.
+  // una pageview más). Cuándo cuenta como venta lo decide `esVisitaDeCompra`
+  // — ahí está explicado por qué mirar solo el sessionStorage dejaba afuera
+  // todas las compras por Mercado Pago.
+  //
+  // Los números salen del pedido real cuando lo tenemos (la URL de vuelta de
+  // Mercado Pago trae el token, así que casi siempre lo tenemos) y del
+  // sessionStorage si no. Antes solo existía el segundo camino, y ese es
+  // justo el que se pierde al volver de la pasarela en otra pestaña.
   useEffect(() => {
-    if (!state.order || vistaCompra.tipo === 'rechazado') return
-    const marca = `bookmist-ga-purchase-${state.order.numero}`
+    if (!state.loaded || !esVisitaDeCompra(status, recienComprado)) return
+    const compra = pedido
+      ? {
+          numero: pedido.numero_pedido,
+          total: pedido.total,
+          items: pedido.items.map((i) => ({
+            nombre: i.nombre,
+            cantidad: i.cantidad,
+            precio: i.precio_unitario,
+          })),
+        }
+      : state.order
+    if (!compra) return
+    // La marca de "esta venta ya se registró" va en localStorage y no en
+    // sessionStorage: tiene que sobrevivir al cierre de la pestaña, que es
+    // exactamente lo que pasa al pagar con Mercado Pago desde el celular.
+    const marca = `bookmist-ga-purchase-${compra.numero}`
     try {
-      if (sessionStorage.getItem(marca)) return
-      sessionStorage.setItem(marca, '1')
+      if (localStorage.getItem(marca)) return
+      localStorage.setItem(marca, '1')
     } catch {
-      // sin sessionStorage: se manda igual, puede duplicarse en un refresh —
+      // sin localStorage: se manda igual, puede duplicarse en un refresh —
       // GA4 lo deduplica por transaction_id de todos modos.
     }
     sendGAEvent('event', 'purchase', {
-      transaction_id: state.order.numero,
-      value: state.order.total,
+      transaction_id: compra.numero,
+      value: compra.total,
       currency: 'ARS',
-      items: state.order.items.map((i) => ({
+      items: compra.items.map((i) => ({
         item_name: i.nombre,
         price: i.precio,
         quantity: i.cantidad,
       })),
     })
-  }, [state.order, vistaCompra.tipo])
+  }, [state.loaded, state.order, pedido, status, recienComprado])
 
   if (!state.loaded) {
     return <div className="mx-auto max-w-xl px-6 py-16" />
