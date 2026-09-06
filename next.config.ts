@@ -37,6 +37,17 @@ const isDev = process.env.NODE_ENV === 'development'
 // y las llamadas que hace el propio fbevents). Esto se vio bloqueado en la
 // consola apenas se montó el componente — exactamente el mismo bug silencioso
 // que GA4 en la Fase 7, encontrado esta vez antes de subirlo.
+//
+// Y revisitado de nuevo el 2026-09-06, ya en producción, con el píxel real
+// respondiendo: fbevents manda los eventos chicos como <img> a /tr?, pero
+// cuando el payload no entra en una URL (todos los de ecommerce:
+// ViewContent, AddToCart, InitiateCheckout, Purchase, que llevan ids,
+// cantidades y precios) cae a un POST de formulario dentro de un iframe
+// oculto. Eso lo frenaban form-action 'self' y frame-src, así que del píxel
+// solo llegaban los PageView y ninguna conversión — el mismo fallo mudo de
+// siempre, visible únicamente en la consola. No se pudo ver antes porque en
+// local se probó con un id de píxel falso, y sin configuración válida
+// fbevents descarta los eventos antes de elegir transporte.
 const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://apis.google.com https://www.gstatic.com https://connect.facebook.net${isDev ? " 'unsafe-eval'" : ''};
@@ -45,10 +56,10 @@ const cspHeader = `
   media-src 'self' https://res.cloudinary.com;
   font-src 'self';
   connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.googleapis.com https://www.facebook.com https://connect.facebook.net;
-  frame-src https://www.google.com;
+  frame-src https://www.google.com https://www.facebook.com;
   object-src 'none';
   base-uri 'self';
-  form-action 'self';
+  form-action 'self' https://www.facebook.com;
   frame-ancestors 'none';
   upgrade-insecure-requests;
 `
