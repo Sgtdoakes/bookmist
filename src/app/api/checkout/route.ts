@@ -259,6 +259,12 @@ export async function POST(request: Request) {
       cupon_id: cuponIdAplicado,
       total,
       notas: data.notas ?? null,
+      // Identificadores de GA4 que capturó el navegador (migración 0035).
+      // Se guardan acá porque cuando el webhook de Mercado Pago confirme el
+      // pago no va a haber ningún navegador del otro lado de donde sacarlos,
+      // y sin ellos la venta entra a Analytics sin origen.
+      ga_client_id: data.ga_client_id ?? null,
+      ga_session_id: data.ga_session_id ?? null,
     })
     // token_consulta lo genera la base sola (migración 0033) — se trae de
     // vuelta acá porque es lo que arma el link de seguimiento del mail.

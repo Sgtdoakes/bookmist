@@ -14,6 +14,8 @@ import { useCart } from '@/lib/cart'
 import { formatARS } from '@/lib/format'
 import { checkoutFormSchema, type CheckoutFormInput } from '@/lib/validations'
 import { fechaEstimadaEntrega } from '@/lib/fecha-estimada-entrega'
+import { leerIdsGA } from '@/lib/ga-cliente'
+import { fbTrack, contenidoPixel } from '@/lib/meta-pixel'
 import { METODO_PAGO_LABEL } from '@/lib/constants'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
 import type { CuentaPago } from '@/lib/configuracion'
@@ -104,6 +106,23 @@ export function CheckoutForm({
   const [enviando, setEnviando] = useState(false)
   const [cotizacion, setCotizacion] = useState<EstadoCotizacion>({ estado: 'sin_cotizar' })
   const [cupon, setCupon] = useState<EstadoCupon>({ estado: 'sin_verificar' })
+
+  // InitiateCheckout: "empezó a comprar". Junto con Purchase es lo que le
+  // deja ver a Dani cuánta gente abandona el checkout, y a Meta optimizar
+  // hacia quien suele terminar la compra. Se manda una sola vez por visita a
+  // esta página, cuando el carrito ya se leyó de localStorage — antes de eso
+  // items está vacío y el evento saldría sin nada adentro.
+  const checkoutAvisado = useRef(false)
+  useEffect(() => {
+    if (!ready || items.length === 0 || checkoutAvisado.current) return
+    checkoutAvisado.current = true
+    fbTrack('InitiateCheckout', {
+      value: totalPrecio,
+      currency: 'ARS',
+      num_items: items.reduce((n, i) => n + i.cantidad, 0),
+      ...contenidoPixel(items),
+    })
+  }, [ready, items, totalPrecio])
 
   const {
     register,
@@ -289,9 +308,17 @@ export function CheckoutForm({
     }
     setEnviando(true)
     try {
+      // Los ids de GA4 se leen acá y no en la confirmación porque este es el
+      // último momento en que el navegador y el pedido existen a la vez: si
+      // paga con Mercado Pago, lo próximo es irse a la pasarela. Van con el
+      // pedido para que la venta que manda el servidor al confirmarse el pago
+      // conserve de dónde venía el visitante (ver src/lib/ga-cliente.ts).
+      const idsGA = leerIdsGA(document.cookie, process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID)
       const payload = {
         ...values,
         items: items.map((i) => ({ producto_id: i.producto_id, cantidad: i.cantidad })),
+        ga_client_id: idsGA.clientId,
+        ga_session_id: idsGA.sessionId,
       }
       const res = await fetch('/api/checkout', {
         method: 'POST',

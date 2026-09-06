@@ -74,9 +74,16 @@ export const checkoutFormSchema = checkoutBase
 export type CheckoutFormInput = z.infer<typeof checkoutFormSchema>
 
 // Esquema completo del pedido (lo valida la API, incluye los items).
+// ga_client_id/ga_session_id no son campos del formulario: los agrega el
+// checkout leyendo las cookies de GA4 (src/lib/ga-cliente.ts) para que la
+// venta que después manda el servidor conserve el origen del visitante. Son
+// opcionales de verdad — quien bloquea Analytics no tiene esas cookies y su
+// pedido se tiene que crear igual.
 export const checkoutSchema = checkoutBase
   .extend({
     items: z.array(checkoutItemSchema).min(1, 'El carrito está vacío'),
+    ga_client_id: z.string().trim().max(60).nullish(),
+    ga_session_id: z.string().trim().max(30).nullish(),
   })
   .refine(direccionValida, MSG_DIRECCION)
   .refine(envioDefinido, MSG_ENVIO)

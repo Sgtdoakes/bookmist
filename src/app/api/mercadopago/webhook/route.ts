@@ -1,7 +1,62 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { obtenerPago } from '@/lib/mercadopago'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verificarAutoMantenimiento } from '@/lib/mantenimiento'
 import { notificarPagoAcreditado, enviarCambioEstado } from '@/lib/email'
+import { enviarCompraGA4, gaServidorConfigurado } from '@/lib/ga-servidor'
+import type { Database } from '@/types/db'
+
+// Cuenta la venta en GA4, una sola vez por pedido.
+//
+// El "una sola vez" es el punto delicado: Mercado Pago reintenta el mismo
+// aviso varias veces, y confirmar_pago_pedido (migración 0022) devuelve true
+// también en los reintentos, así que no sirve para saber si esta es la
+// primera confirmación. Por eso el pedido se "reclama" con un update que
+// exige que `ga_purchase_enviado_at` siga en null: Postgres resuelve los
+// updates fila por fila, así que si llegan dos avisos juntos uno solo se
+// lleva la fila y el otro se va sin mandar nada.
+//
+// El reclamo va ANTES de mandar el evento. Al revés (mandar y después
+// marcar), un corte entre las dos cosas dejaría el pedido sin marca y el
+// reintento contaría la venta dos veces. Así, el peor caso es perder una
+// venta en los números, que es preferible a inventar una que no existió.
+async function registrarCompraEnGA4(
+  supabase: SupabaseClient<Database>,
+  orderId: string,
+): Promise<void> {
+  if (!gaServidorConfigurado()) return
+
+  const { data: pedido, error } = await supabase
+    .from('orders')
+    .select('id,numero_pedido,total,created_at,ga_client_id,ga_session_id,order_items(nombre,cantidad,precio_unitario)')
+    .eq('id', orderId)
+    .maybeSingle()
+  if (error || !pedido) return
+
+  const { data: reclamado } = await supabase
+    .from('orders')
+    .update({ ga_purchase_enviado_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .is('ga_purchase_enviado_at', null)
+    .select('id')
+    .maybeSingle()
+  if (!reclamado) return // otro aviso de MP ya la contó
+
+  const { sent, reason } = await enviarCompraGA4({
+    orderId: pedido.id,
+    numeroPedido: pedido.numero_pedido,
+    createdAt: pedido.created_at,
+    total: pedido.total,
+    items: pedido.order_items ?? [],
+    clientId: pedido.ga_client_id,
+    sessionId: pedido.ga_session_id,
+  })
+  if (!sent) {
+    // Queda en los logs de Vercel: la venta está bien registrada en la base,
+    // lo único que falta es que aparezca en Analytics.
+    console.error(`[mp-webhook] compra NO registrada en GA4 (${pedido.numero_pedido}):`, reason)
+  }
+}
 
 // Webhook de Mercado Pago. MP avisa cuando cambia un pago.
 // Nunca confiamos en el body del aviso: volvemos a pedirle a Mercado Pago el
@@ -67,6 +122,17 @@ export async function POST(request: Request) {
           // atómica que ya funciona: si este update fallara, lo peor que pasa
           // es una fecha vieja en la página de seguimiento — nunca un pago a
           // medio registrar.
+          // La venta a GA4, mandada desde acá y no desde el navegador. Es lo
+          // único que alcanza a quien paga y no vuelve al sitio: cierra la
+          // app de Mercado Pago, o paga en efectivo por Rapipago dos días
+          // después. Best-effort y aislado: el pago ya quedó registrado y un
+          // problema con Analytics no puede hacer que MP reintente el aviso.
+          try {
+            await registrarCompraEnGA4(supabase, pago.external_reference)
+          } catch (e) {
+            console.error('[mp-webhook] registro de compra en GA4 falló', e)
+          }
+
           try {
             const { data: pedido } = await supabase
               .from('orders')

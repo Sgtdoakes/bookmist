@@ -184,6 +184,15 @@ export type Database = {
           estado_actualizado_at: string
           mp_preference_id: string | null
           mp_payment_id: string | null
+          // Migración 0035 — lo que necesita el evento de compra que manda el
+          // servidor cuando el webhook de MP confirma el pago. Los dos ids
+          // los captura el checkout de las cookies de GA4 y sirven para que
+          // esa venta conserve de dónde vino el visitante; null si el
+          // navegador no tenía Analytics. `ga_purchase_enviado_at` es la
+          // marca de "ya se contó", contra los reintentos de Mercado Pago.
+          ga_client_id: string | null
+          ga_session_id: string | null
+          ga_purchase_enviado_at: string | null
           created_at: string
         }
         Insert: {
@@ -211,6 +220,9 @@ export type Database = {
           estado_actualizado_at?: string
           mp_preference_id?: string | null
           mp_payment_id?: string | null
+          ga_client_id?: string | null
+          ga_session_id?: string | null
+          ga_purchase_enviado_at?: string | null
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['orders']['Insert']>

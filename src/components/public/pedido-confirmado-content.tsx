@@ -8,6 +8,7 @@ import { CheckCircle2, Clock, XCircle, MessageCircle, Truck, PackageCheck } from
 import { PrimaryButton, OutlineButton } from '@/components/public/buttons'
 import { formatARS } from '@/lib/format'
 import { resolverVistaPedido, esVisitaDeCompra, type VistaPedidoTipo } from '@/lib/pedido-confirmacion'
+import { fbTrack, contenidoPixel } from '@/lib/meta-pixel'
 import { DatosTransferenciaBox } from '@/components/public/datos-transferencia-box'
 import { GoogleCustomerReviews } from '@/components/public/google-customer-reviews'
 import { ESTADO_PEDIDO_PUBLICO, andreaniSeguimientoUrl } from '@/lib/constants'
@@ -95,12 +96,17 @@ export function PedidoConfirmadoContent({
   numero,
   pedido,
   cuentasPago,
+  gaCompraDesdeServidor,
 }: {
   numero: string
   // Viene del servidor cuando la URL trae un token válido. null = no sabemos
   // nada del pedido y mostramos lo que haya guardado el navegador.
   pedido: PedidoPublico | null
   cuentasPago: CuentaPago[]
+  // Si el servidor está configurado para contar las ventas de Mercado Pago
+  // por su cuenta. Decide si esta página tiene que mandar el evento de GA4 o
+  // callarse para no contarla dos veces.
+  gaCompraDesdeServidor: boolean
 }) {
   const searchParams = useSearchParams()
   const status = searchParams.get('status')
@@ -130,11 +136,10 @@ export function PedidoConfirmadoContent({
   const vistaCompra = resolverVistaPedido(status)
   const vistaEstado = pedido ? ESTADO_PEDIDO_PUBLICO[pedido.estado] : null
 
-  // Evento de compra para GA4 (antes de esto, Analytics no tenía forma de
-  // saber que una visita a esta página era una venta, solo la contaba como
-  // una pageview más). Cuándo cuenta como venta lo decide `esVisitaDeCompra`
-  // — ahí está explicado por qué mirar solo el sessionStorage dejaba afuera
-  // todas las compras por Mercado Pago.
+  // Eventos de compra para GA4 y para el píxel de Meta. Cuándo una visita a
+  // esta página cuenta como venta lo decide `esVisitaDeCompra` — ahí está
+  // explicado por qué mirar solo el sessionStorage dejaba afuera todas las
+  // compras por Mercado Pago.
   //
   // Los números salen del pedido real cuando lo tenemos (la URL de vuelta de
   // Mercado Pago trae el token, así que casi siempre lo tenemos) y del
@@ -146,6 +151,7 @@ export function PedidoConfirmadoContent({
       ? {
           numero: pedido.numero_pedido,
           total: pedido.total,
+          metodoPago: pedido.metodo_pago,
           items: pedido.items.map((i) => ({
             nombre: i.nombre,
             cantidad: i.cantidad,
@@ -153,29 +159,55 @@ export function PedidoConfirmadoContent({
           })),
         }
       : state.order
+        ? { ...state.order, metodoPago: state.order.metodo_pago }
+        : null
     if (!compra) return
-    // La marca de "esta venta ya se registró" va en localStorage y no en
-    // sessionStorage: tiene que sobrevivir al cierre de la pestaña, que es
+
+    // Las marcas de "esta venta ya se registró" van en localStorage y no en
+    // sessionStorage: tienen que sobrevivir al cierre de la pestaña, que es
     // exactamente lo que pasa al pagar con Mercado Pago desde el celular.
-    const marca = `bookmist-ga-purchase-${compra.numero}`
-    try {
-      if (localStorage.getItem(marca)) return
-      localStorage.setItem(marca, '1')
-    } catch {
-      // sin localStorage: se manda igual, puede duplicarse en un refresh —
-      // GA4 lo deduplica por transaction_id de todos modos.
+    // Una por sistema, porque no siempre se manda a los dos.
+    const yaRegistrado = (marca: string) => {
+      try {
+        if (localStorage.getItem(marca)) return true
+        localStorage.setItem(marca, '1')
+      } catch {
+        // sin localStorage: se manda igual, puede duplicarse en un refresh.
+      }
+      return false
     }
-    sendGAEvent('event', 'purchase', {
-      transaction_id: compra.numero,
-      value: compra.total,
-      currency: 'ARS',
-      items: compra.items.map((i) => ({
-        item_name: i.nombre,
-        price: i.precio,
-        quantity: i.cantidad,
-      })),
-    })
-  }, [state.loaded, state.order, pedido, status, recienComprado])
+
+    // Con Mercado Pago la venta la cuenta el servidor cuando el webhook
+    // confirma el pago (src/lib/ga-servidor.ts): así también entran las de
+    // quien pagó y nunca volvió al sitio. Mandarla también desde acá la
+    // contaría dos veces. Si la medición del servidor está apagada (falta
+    // GA4_API_SECRET), este camino sigue siendo el único que hay y se manda
+    // igual — apagar Analytics del servidor no puede dejar a Dani sin datos.
+    const laCuentaElServidor = gaCompraDesdeServidor && compra.metodoPago === 'mercadopago'
+    if (!laCuentaElServidor && !yaRegistrado(`bookmist-ga-purchase-${compra.numero}`)) {
+      sendGAEvent('event', 'purchase', {
+        transaction_id: compra.numero,
+        value: compra.total,
+        currency: 'ARS',
+        items: compra.items.map((i) => ({
+          item_name: i.nombre,
+          price: i.precio,
+          quantity: i.cantidad,
+        })),
+      })
+    }
+
+    // El píxel de Meta no tiene equivalente del lado del servidor (eso sería
+    // la Conversions API, que todavía no está), así que acá se manda siempre,
+    // también para Mercado Pago.
+    if (!yaRegistrado(`bookmist-fb-purchase-${compra.numero}`)) {
+      fbTrack('Purchase', {
+        value: compra.total,
+        currency: 'ARS',
+        ...contenidoPixel(compra.items),
+      })
+    }
+  }, [state.loaded, state.order, pedido, status, recienComprado, gaCompraDesdeServidor])
 
   if (!state.loaded) {
     return <div className="mx-auto max-w-xl px-6 py-16" />

@@ -5,6 +5,7 @@ import { Minus, Plus, ShoppingBag } from 'lucide-react'
 import { toast } from 'sonner'
 import { PrimaryButton } from '@/components/public/buttons'
 import { useCart } from '@/lib/cart'
+import { fbTrack, contenidoPixel } from '@/lib/meta-pixel'
 import type { Producto } from '@/types/db'
 
 export function AddToCart({
@@ -31,6 +32,17 @@ export function AddToCart({
       },
       cantidad,
     )
+    // Evento estándar de Meta: es uno de los que el administrador de
+    // anuncios usa para armar públicos ("gente que agregó al carrito y no
+    // compró") y para optimizar campañas.
+    fbTrack('AddToCart', {
+      value: producto.precio * cantidad,
+      currency: 'ARS',
+      content_name: producto.nombre,
+      ...contenidoPixel([
+        { producto_id: producto.id, nombre: producto.nombre, cantidad, precio: producto.precio },
+      ]),
+    })
     toast.success('Agregado al carrito', { description: producto.nombre })
   }
 

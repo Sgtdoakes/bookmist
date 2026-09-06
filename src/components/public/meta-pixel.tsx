@@ -3,12 +3,7 @@
 import Script from 'next/script'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
-
-declare global {
-  interface Window {
-    fbq?: (...args: unknown[]) => void
-  }
-}
+import { fbTrack } from '@/lib/meta-pixel'
 
 // Píxel de Meta (Facebook/Instagram): lo que deja ver desde el administrador
 // de anuncios qué pasa después de que alguien hace clic en una publicidad, y
@@ -36,7 +31,7 @@ export function MetaPixel({ pixelId }: { pixelId: string }) {
       primeraCarga.current = false
       return
     }
-    window.fbq?.('track', 'PageView')
+    fbTrack('PageView')
   }, [pathname])
 
   return (

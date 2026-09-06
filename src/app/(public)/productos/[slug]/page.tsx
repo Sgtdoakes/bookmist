@@ -5,6 +5,7 @@ import { getProductoConItems, getRelacionados, getVariantes } from '@/lib/produc
 import type { ProductoTipo } from '@/types/db'
 import { ProductGallery } from '@/components/public/product-gallery'
 import { AddToCart } from '@/components/public/add-to-cart'
+import { PixelEvento } from '@/components/public/pixel-evento'
 import { ProductCard } from '@/components/public/product-card'
 import { SelectorVariantes } from '@/components/public/selector-variantes'
 import { SeccionesDePagina } from '@/components/public/secciones-renderer'
@@ -119,6 +120,19 @@ export default async function ProductoDetallePage({ params }: Props) {
           )}
 
           <AddToCart producto={producto} showQuantity />
+          {/* ViewContent: lo que le dice a Meta qué producto miró cada
+              visitante, base de los públicos de retargeting ("le mostró
+              interés a esta caja y no la compró"). */}
+          <PixelEvento
+            evento="ViewContent"
+            params={{
+              content_type: 'product',
+              content_ids: [producto.id],
+              content_name: producto.nombre,
+              value: producto.precio,
+              currency: 'ARS',
+            }}
+          />
         </div>
       </div>
 

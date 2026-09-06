@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { PedidoConfirmadoContent } from '@/components/public/pedido-confirmado-content'
 import { getCuentasPago, cuentaValida } from '@/lib/configuracion'
 import { getPedidoPublico } from '@/lib/pedidos'
+import { gaServidorConfigurado } from '@/lib/ga-servidor'
 
 export const metadata: Metadata = {
   title: 'Tu pedido',
@@ -35,6 +36,9 @@ export default async function PedidoConfirmadoPage({ params, searchParams }: Pro
         numero={numero}
         pedido={pedido}
         cuentasPago={cuentasPago.filter(cuentaValida)}
+        // Se resuelve en el servidor porque depende de GA4_API_SECRET, que es
+        // un secreto y no puede viajar al navegador — solo viaja el sí/no.
+        gaCompraDesdeServidor={gaServidorConfigurado()}
       />
     </Suspense>
   )
