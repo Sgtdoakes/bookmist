@@ -48,14 +48,34 @@ const isDev = process.env.NODE_ENV === 'development'
 // siempre, visible únicamente en la consola. No se pudo ver antes porque en
 // local se probó con un id de píxel falso, y sin configuración válida
 // fbevents descarta los eventos antes de elegir transporte.
+//
+// Y otra vez el 2026-09-07, ahora con GA4 entero caído: no llegaba ni una
+// visita. gtag.js cargaba bien, pero TODOS los hits de medición salían hacia
+// `analytics.google.com/g/collect` y el navegador los frenaba, porque
+// `https://*.analytics.google.com` (el dominio que Google lista en su propia
+// guía de CSP, y el que se puso en la Fase 7) no cubre el dominio pelado:
+// un comodín en CSP matchea subdominios, nunca el dominio a secas. Antes no
+// se notó porque gtag mandaba los hits a `www.google-analytics.com`, que sí
+// entra por `https://*.google-analytics.com`; Google movió la recolección a
+// `analytics.google.com` y Analytics se quedó mudo de un día para el otro,
+// sin que cambiara una línea de este repo. De ahí que el dominio pelado vaya
+// listado aparte y explícito: es el que recibe las visitas.
+// Los otros tres bloqueos que aparecieron en la misma consola son Google
+// Signals (stats.g.doubleclick.net y www.google.com, que traen los informes
+// demográficos y de intereses) y el pixel de remarketing de Google Ads, que
+// va como <img> al dominio regional de quien visita — www.google.com.ar en
+// Argentina, que es de donde viene casi todo el tráfico. Si algún día se
+// hacen campañas para otro país y en la consola aparece un ga-audiences
+// bloqueado en otro `google.<TLD>`, se suma acá: CSP no tiene comodín de TLD,
+// hay que enumerarlos.
 const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://apis.google.com https://www.gstatic.com https://connect.facebook.net${isDev ? " 'unsafe-eval'" : ''};
   style-src 'self' 'unsafe-inline' https://www.gstatic.com;
-  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://www.gstatic.com https://www.facebook.com https://connect.facebook.net;
+  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://*.g.doubleclick.net https://www.google.com https://www.google.com.ar https://www.gstatic.com https://www.facebook.com https://connect.facebook.net;
   media-src 'self' https://res.cloudinary.com;
   font-src 'self';
-  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.googleapis.com https://www.facebook.com https://connect.facebook.net;
+  connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://*.googletagmanager.com https://*.g.doubleclick.net https://www.google.com https://www.googleapis.com https://www.facebook.com https://connect.facebook.net;
   frame-src https://www.google.com https://www.facebook.com;
   object-src 'none';
   base-uri 'self';
