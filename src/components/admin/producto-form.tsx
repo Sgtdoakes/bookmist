@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/admin/image-uploader'
 import { SelectorItems } from '@/components/admin/selector-items'
 import { SelectorVariantes } from '@/components/admin/selector-variantes'
+import { DatosLibro, type CompletarProducto, type FichaLibro } from '@/components/admin/datos-libro'
 import { generarSlug } from '@/lib/slugs'
+import { limpiarIsbn } from '@/lib/isbn-formato'
 import { formatPesoLegible, pesoFacturableGramos, pesoVolumetricoGramos } from '@/lib/paquete'
 import {
   actualizarProducto,
@@ -38,13 +40,36 @@ const TIPO_OPCIONES: { value: ProductoTipo; label: string }[] = [
   { value: 'accesorio', label: 'Accesorio suelto' },
 ]
 
+// Medidas de fábrica del formulario (pensadas para un marcapáginas) y las de
+// un libro de bolsillo promedio. Andreani cobra por el MAYOR entre peso real y
+// volumen, así que un libro declarado como marcapáginas cotiza mal —y un
+// marcapáginas declarado como cubo de 20×20×20 fue exactamente el envío de
+// $21.348 del 2026-08-24 (ver src/lib/paquete.ts).
+const PAQUETE_GENERICO = { peso: '300', alto: '5', ancho: '20', largo: '30' }
+const PAQUETE_LIBRO = { peso: '450', alto: '3', ancho: '15', largo: '22' }
+
+// Campo numérico opcional de la ficha (páginas, año): vacío o basura es null,
+// no 0 — un libro de 0 páginas sería mentira, y la base rechaza el 0 igual.
+function enteroPositivoONull(v: string): number | null {
+  const n = Number(v)
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+
 export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles, variantesDisponibles }: Props) {
   const router = useRouter()
   const [nombre, setNombre] = useState(producto?.nombre ?? '')
   const [slug, setSlug] = useState(producto?.slug ?? '')
   const [slugTocado, setSlugTocado] = useState(!!producto)
   const [tipo, setTipo] = useState<ProductoTipo>(producto?.tipo ?? 'caja')
-  const [autor, setAutor] = useState(producto?.autor ?? '')
+  const [ficha, setFicha] = useState<FichaLibro>(() => ({
+    autor: producto?.autor ?? '',
+    editorial: producto?.editorial ?? '',
+    isbn: producto?.isbn ?? '',
+    paginas: producto?.paginas ? String(producto.paginas) : '',
+    anio: producto?.anio_publicacion ? String(producto.anio_publicacion) : '',
+    idioma: producto?.idioma ?? '',
+    formato: producto?.formato ?? '',
+  }))
   const [descripcion, setDescripcion] = useState(producto?.descripcion ?? '')
   const [precio, setPrecio] = useState(String(producto?.precio ?? 0))
   const [stock, setStock] = useState(String(producto?.stock ?? 0))
@@ -79,6 +104,49 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
   function onNombreChange(v: string) {
     setNombre(v)
     if (!slugTocado) setSlug(generarSlug(v))
+  }
+
+  function actualizarFicha(patch: Partial<FichaLibro>) {
+    setFicha((prev) => ({ ...prev, ...patch }))
+  }
+
+  // Cambiar el tipo mueve el paquete al preset que corresponde, pero SOLO si
+  // las medidas siguen siendo las del otro preset — apenas Dani toca un valor,
+  // deja de tocarse solo. El peso mal cargado es lo más caro de este
+  // formulario: es lo que hizo que cuatro marcapáginas cotizaran $21.348.
+  function onTipoChange(nuevo: ProductoTipo) {
+    const anterior = tipo
+    setTipo(nuevo)
+
+    const actual = { peso: pesoGramos, alto: altoCm, ancho: anchoCm, largo: largoCm }
+    const igualA = (p: typeof PAQUETE_LIBRO) =>
+      actual.peso === p.peso && actual.alto === p.alto && actual.ancho === p.ancho && actual.largo === p.largo
+    const aplicar = (p: typeof PAQUETE_LIBRO) => {
+      setPesoGramos(p.peso)
+      setAltoCm(p.alto)
+      setAnchoCm(p.ancho)
+      setLargoCm(p.largo)
+    }
+
+    if (nuevo === 'libro' && igualA(PAQUETE_GENERICO)) aplicar(PAQUETE_LIBRO)
+    else if (anterior === 'libro' && nuevo !== 'libro' && igualA(PAQUETE_LIBRO)) aplicar(PAQUETE_GENERICO)
+  }
+
+  // Lo que un libro traído de Martín Libros (o de un ISBN) completa del
+  // producto. Los datos duros del libro los pisa DatosLibro; acá solo se
+  // rellena lo que está vacío: el nombre, la descripción, el precio y la foto
+  // son decisiones de Dani y traerse un libro no puede borrárselas.
+  function completarDesdeLibro(datos: CompletarProducto) {
+    if (datos.titulo && !nombre.trim()) onNombreChange(datos.titulo)
+    if (datos.descripcion && !descripcion.trim()) setDescripcion(datos.descripcion)
+    if (datos.precio && Number(precio) === 0) setPrecio(String(datos.precio))
+
+    if (datos.tapa && !imagenPrincipal) {
+      // Producto nuevo: la tapa viaja en el alta (más abajo, en onSubmit).
+      // Producto existente: se guarda ya, por el mismo camino que el uploader.
+      if (producto) void onPortadaChange(datos.tapa)
+      else setImagenPrincipal(datos.tapa)
+    }
   }
 
   function toggleCategoria(id: string, checked: boolean) {
@@ -134,7 +202,16 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       nombre: nombre.trim(),
       slug: slug.trim(),
       tipo,
-      autor: autor.trim() || null,
+      // La ficha de libro se guarda siempre, aunque el tipo actual no sea
+      // 'libro': si Dani reorganiza el catálogo y vuelve a marcarlo como libro,
+      // los datos tienen que seguir ahí. El formulario solo decide si se ven.
+      autor: ficha.autor.trim() || null,
+      editorial: ficha.editorial.trim() || null,
+      isbn: limpiarIsbn(ficha.isbn) || null,
+      paginas: enteroPositivoONull(ficha.paginas),
+      anio_publicacion: enteroPositivoONull(ficha.anio),
+      idioma: ficha.idioma.trim() || null,
+      formato: ficha.formato || null,
       descripcion: descripcion.trim() || null,
       precio: Number(precio),
       stock: Number(stock),
@@ -156,7 +233,9 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
       }
       id = producto.id
     } else {
-      const resultado = await crearProducto(datos)
+      // En el alta la foto no pasa por el uploader (que necesita un producto ya
+      // creado): si vino una tapa del catálogo de Martín Libros, entra acá.
+      const resultado = await crearProducto({ ...datos, imagen_principal: imagenPrincipal })
       if (!resultado.ok) {
         setGuardando(false)
         toast.error(resultado.error)
@@ -250,7 +329,7 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
           <select
             id="tipo"
             value={tipo}
-            onChange={(e) => setTipo(e.target.value as ProductoTipo)}
+            onChange={(e) => onTipoChange(e.target.value as ProductoTipo)}
             className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
           >
             {TIPO_OPCIONES.map((o) => (
@@ -260,17 +339,6 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
             ))}
           </select>
         </div>
-        {tipo === 'libro' && (
-          <div>
-            <Label htmlFor="autor">Autor</Label>
-            <Input
-              id="autor"
-              value={autor}
-              onChange={(e) => setAutor(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-        )}
         <div className="flex items-end gap-4 pb-1">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -283,6 +351,15 @@ export function ProductoForm({ producto, itemsDisponibles, categoriasDisponibles
           </label>
         </div>
       </div>
+
+      {tipo === 'libro' && (
+        <DatosLibro
+          ficha={ficha}
+          onFicha={actualizarFicha}
+          onCompletarProducto={completarDesdeLibro}
+          productoId={producto?.id}
+        />
+      )}
 
       <div>
         <Label className="mb-1 block">Categorías</Label>

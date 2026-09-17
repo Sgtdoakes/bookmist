@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Fragment } from 'react'
 import { notFound } from 'next/navigation'
 import { BookOpen, Gift } from 'lucide-react'
 import { getProductoConItems, getRelacionados, getVariantes } from '@/lib/productos'
@@ -12,6 +13,7 @@ import { SeccionesDePagina } from '@/components/public/secciones-renderer'
 import { BotonEditarProducto } from '@/components/public/boton-editar-producto'
 import { getIsAdmin } from '@/lib/admin'
 import { enUnaLinea, formatARS, separarEnParrafos } from '@/lib/format'
+import { fichaTecnicaDeLibro } from '@/lib/libro'
 import { productJsonLd } from '@/lib/structured-data'
 
 // ISR: sin esto, la ficha de producto queda estática desde el build.
@@ -58,6 +60,10 @@ export default async function ProductoDetallePage({ params }: Props) {
     getIsAdmin(),
   ])
   const parrafos = separarEnParrafos(producto.descripcion)
+  const ficha = fichaTecnicaDeLibro(producto)
+  // Atado al tipo, no solo a que el campo tenga algo: quedan kits viejos con
+  // un autor cargado de la biblioteca anterior, y ahí no significa nada.
+  const muestraAutor = producto.tipo === 'libro' && !!producto.autor
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12 md:px-10 md:py-16">
@@ -74,9 +80,16 @@ export default async function ProductoDetallePage({ params }: Props) {
 
         <div>
           <p className="font-script mb-1 text-xl text-muted">{TIPO_LABEL[producto.tipo]}</p>
-          <h1 className="mb-3 font-heading text-3xl font-semibold text-foreground md:text-4xl">
+          <h1
+            className={`font-heading text-3xl font-semibold text-foreground md:text-4xl ${
+              muestraAutor ? 'mb-1.5' : 'mb-3'
+            }`}
+          >
             {producto.nombre}
           </h1>
+          {/* El autor se lee acá, pegado al título, no perdido en la ficha
+              técnica: en un libro es parte del nombre. */}
+          {muestraAutor && <p className="mb-3 text-lg text-foreground/70">{producto.autor}</p>}
           <p className="mb-6 font-heading text-2xl font-semibold text-primary">
             {formatARS(producto.precio)}
           </p>
@@ -116,6 +129,24 @@ export default async function ProductoDetallePage({ params }: Props) {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Ficha técnica: solo libros, y solo con lo que esté cargado
+              (fichaTecnicaDeLibro devuelve [] si no hay nada que mostrar). */}
+          {ficha.length > 0 && (
+            <div className="mb-8">
+              <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                Ficha técnica
+              </h2>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
+                {ficha.map((fila) => (
+                  <Fragment key={fila.etiqueta}>
+                    <dt className="text-muted-foreground">{fila.etiqueta}</dt>
+                    <dd className="text-foreground/85">{fila.valor}</dd>
+                  </Fragment>
+                ))}
+              </dl>
             </div>
           )}
 

@@ -72,7 +72,7 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://apis.google.com https://www.gstatic.com https://connect.facebook.net${isDev ? " 'unsafe-eval'" : ''};
   style-src 'self' 'unsafe-inline' https://www.gstatic.com;
-  img-src 'self' blob: data: https://*.supabase.co https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://*.g.doubleclick.net https://www.google.com https://www.google.com.ar https://www.gstatic.com https://www.facebook.com https://connect.facebook.net;
+  img-src 'self' blob: data: https://*.supabase.co https://*.r2.dev https://*.cdninstagram.com https://*.fbcdn.net https://*.google-analytics.com https://*.googletagmanager.com https://*.g.doubleclick.net https://www.google.com https://www.google.com.ar https://www.gstatic.com https://www.facebook.com https://connect.facebook.net;
   media-src 'self' https://res.cloudinary.com;
   font-src 'self';
   connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://*.googletagmanager.com https://*.g.doubleclick.net https://www.google.com https://www.googleapis.com https://www.facebook.com https://connect.facebook.net;
@@ -104,8 +104,13 @@ const nextConfig: NextConfig = {
       // subdominio (scontent-xxx), de ahí el wildcard.
       { protocol: 'https', hostname: '*.cdninstagram.com' },
       { protocol: 'https', hostname: '*.fbcdn.net' },
-      // TODO: agregar el hostname del bucket público de Cloudflare R2 cuando
-      // se cree (ver README, sección de assets).
+      // Tapas de libros traídas del catálogo de Martín Libros, que ya las
+      // sirve desde su bucket público de Cloudflare R2 (pub-<id>.r2.dev). No
+      // se copian a Supabase a propósito: R2 no cobra egress, y el egress de
+      // Supabase es justo el que se está peleando.
+      // Ojo: con `unoptimized: true` esta lista es decorativa — el portero
+      // real de las imágenes es el img-src del CSP, más abajo.
+      { protocol: 'https', hostname: '*.r2.dev' },
     ],
   },
   async headers() {

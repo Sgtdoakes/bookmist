@@ -3,6 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { esSlugValido, generarSlug } from '@/lib/slugs'
+import { buscarLibrosEnML, catalogoMLConfigurado } from '@/lib/catalogo-ml'
+import type { LibroDeML } from '@/lib/catalogo-ml-datos'
+import { buscarPorIsbn, type DatosDeIsbn } from '@/lib/isbn'
+import { esIsbnPlausible, limpiarIsbn } from '@/lib/isbn-formato'
 import type { Categoria, Producto, ProductoInsert, ProductoUpdate } from '@/types/db'
 
 type Ok = { ok: true }
@@ -433,4 +437,84 @@ export async function guardarContenidoProducto(
 
   revalidarPublico()
   return { ok: true }
+}
+
+// --- Alta de libros ----------------------------------------------------------
+// Tres acciones para completar la ficha de un libro sin tipearla a mano. Todas
+// pasan por clienteAutenticado(): una server action es un endpoint POST como
+// cualquier otro, y sin ese chequeo cualquiera podría usar el panel de Bookmist
+// como proxy gratis del catálogo de Martín Libros.
+
+export type ResultadoLibrosML =
+  | { ok: true; resultados: LibroDeML[] }
+  | { ok: false; error: string }
+
+// Buscador contra el catálogo de Martín Libros (450k+ títulos). El término
+// puede ser un ISBN, un título o un autor: de distinguirlos se encarga el
+// servicio del otro lado.
+export async function buscarLibrosEnMartinLibros(termino: string): Promise<ResultadoLibrosML> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  if (!catalogoMLConfigurado()) {
+    return {
+      ok: false,
+      error: 'El catálogo de Martín Libros no está configurado (faltan ML_CATALOGO_URL y ML_CATALOGO_TOKEN).',
+    }
+  }
+
+  const busqueda = await buscarLibrosEnML(termino)
+  if (!busqueda.ok) {
+    return { ok: false, error: 'No se pudo consultar el catálogo de Martín Libros. Probá de nuevo.' }
+  }
+  return { ok: true, resultados: busqueda.resultados }
+}
+
+export type ResultadoIsbn = { ok: true; datos: DatosDeIsbn } | { ok: false; error: string }
+
+// Completa lo que el catálogo de Martín Libros no tiene (páginas, año, idioma)
+// y sirve para libros que directamente no estén en ese catálogo.
+export async function buscarDatosPorIsbn(isbn: string): Promise<ResultadoIsbn> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+
+  if (!esIsbnPlausible(isbn)) {
+    return { ok: false, error: 'Ese ISBN no parece válido: tiene que tener 10 o 13 dígitos.' }
+  }
+
+  const datos = await buscarPorIsbn(isbn)
+  if (!datos.encontrado) {
+    // "Sin cupo" y "no existe" son cosas distintas para quien está cargando un
+    // libro: una se arregla esperando o cargando a mano, la otra no.
+    return {
+      ok: false,
+      error:
+        datos.motivo === 'sin_cupo'
+          ? 'Google Books agotó su cupo diario y OpenLibrary no tiene ese ISBN. Probá más tarde o completá los datos a mano.'
+          : 'No encontramos ese ISBN en Google Books ni en OpenLibrary.',
+    }
+  }
+  return { ok: true, datos }
+}
+
+// Aviso de duplicado. El ISBN no es unique en la base a propósito (ver
+// migración 0036): el mismo título puede entrar dos veces —una edición
+// firmada, otra tapa— así que esto avisa y muestra cuál es el producto que ya
+// existe, en vez de rebotar el guardado.
+export async function buscarProductoConIsbn(
+  isbn: string,
+  excludeId?: string,
+): Promise<{ id: string; nombre: string } | null> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return null
+
+  const limpio = limpiarIsbn(isbn)
+  if (!limpio) return null
+
+  let query = supabase.from('productos').select('id, nombre').eq('isbn', limpio).limit(1)
+  if (excludeId) query = query.neq('id', excludeId)
+
+  const { data, error } = await query
+  if (error || !data || data.length === 0) return null
+  return { id: data[0].id, nombre: data[0].nombre }
 }

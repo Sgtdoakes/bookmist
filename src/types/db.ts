@@ -19,6 +19,15 @@ export type Database = {
           // Solo aplica a productos tipo "libro" (informativo, no hay tipo
           // separado desde la fusión con la biblioteca — Fase 6h).
           autor: string | null
+          // Ficha de libro (migración 0036). Todas nullable: solo se cargan
+          // para tipo "libro", y ninguna es obligatoria ni siquiera ahí.
+          editorial: string | null
+          isbn: string | null
+          paginas: number | null
+          anio_publicacion: number | null
+          idioma: string | null
+          // 'blanda' | 'dura' — lo restringe un check en la base.
+          formato: string | null
           descripcion: string | null
           precio: number
           stock: number
@@ -48,6 +57,12 @@ export type Database = {
           nombre: string
           tipo: ProductoTipo
           autor?: string | null
+          editorial?: string | null
+          isbn?: string | null
+          paginas?: number | null
+          anio_publicacion?: number | null
+          idioma?: string | null
+          formato?: string | null
           descripcion?: string | null
           precio?: number
           stock?: number
