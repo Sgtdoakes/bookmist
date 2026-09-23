@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Playfair_Display, Caveat, Nunito } from 'next/font/google'
 import { getMarcaConfig } from '@/lib/configuracion'
-import { organizationJsonLd } from '@/lib/structured-data'
+import { organizationJsonLd, websiteJsonLd } from '@/lib/structured-data'
 import { SITE_URL } from '@/lib/constants'
 import './globals.css'
 
@@ -27,20 +27,30 @@ const nunito = Nunito({
 })
 
 const description =
-  'Cajas y kits literarios curados: libros elegidos + accesorios pensados para vivir cada historia. Envíos a todo el país desde Argentina.'
+  'Tienda literaria online: cajas y kits literarios, libros y accesorios para lectores. Envíos a todo el país desde Argentina.'
+
+// Pedido de Dani: que en Google se lea "Tienda Literaria", que es lo que la
+// gente busca (y cómo se presentan las tiendas que aparecen arriba). Atado al
+// nombre editable de la marca, así un cambio de nombre no deja el título viejo.
+function tituloDelSitio(nombre: string) {
+  return `${nombre} - Tienda Literaria`
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const marca = await getMarcaConfig()
   const googleVerification = process.env.GOOGLE_SITE_VERIFICATION
+  const titulo = tituloDelSitio(marca.nombre)
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: `${marca.nombre} — Cajas y kits literarios`,
+      default: titulo,
       template: `%s · ${marca.nombre}`,
     },
     description,
     keywords: [
       'Bookmist',
+      'tienda literaria',
+      'tienda literaria online',
       'cajas literarias',
       'kits literarios',
       'suscripción de libros Argentina',
@@ -58,13 +68,13 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: 'es_AR',
       url: SITE_URL,
       siteName: marca.nombre,
-      title: `${marca.nombre} — Cajas y kits literarios`,
+      title: titulo,
       description,
       ...(marca.logoUrl && { images: [{ url: marca.logoUrl }] }),
     },
     twitter: {
       card: 'summary',
-      title: `${marca.nombre} — Cajas y kits literarios`,
+      title: titulo,
       description,
     },
   }
@@ -90,6 +100,7 @@ export default async function RootLayout({
 }>) {
   const marca = await getMarcaConfig()
   const jsonLd = { ...organizationJsonLd(marca), description }
+  const sitioJsonLd = websiteJsonLd(marca, tituloDelSitio(marca.nombre))
   const colores = estilosDeColor(marca)
 
   return (
@@ -102,6 +113,10 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(sitioJsonLd) }}
         />
         {children}
       </body>

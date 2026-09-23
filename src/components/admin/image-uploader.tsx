@@ -20,7 +20,7 @@ import { subirImagen } from '@/app/admin/media/actions'
 import { esVideoUrl } from '@/lib/media'
 
 type Props = {
-  carpeta: 'productos' | 'items' | 'secciones'
+  carpeta: 'productos' | 'items' | 'secciones' | 'blog'
   entidadId: string
   portada: string | null
   galeria?: string[]

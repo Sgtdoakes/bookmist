@@ -1,5 +1,5 @@
 import type { MarcaConfig } from '@/lib/configuracion'
-import type { ProductoConItems } from '@/types/db'
+import type { NotaBlog, ProductoConItems } from '@/types/db'
 import { SITE_URL } from '@/lib/constants'
 import { codigoDeIdioma } from '@/lib/isbn-formato'
 import { enUnaLinea } from '@/lib/format'
@@ -17,6 +17,50 @@ export function organizationJsonLd(marca: MarcaConfig) {
     email: marca.email,
     areaServed: 'AR',
     sameAs: [marca.instagram, marca.tiktok].filter(Boolean),
+  }
+}
+
+// El nombre que Google pone arriba de cada resultado ("site name"). Sin esto
+// mostraba el dominio pelado, "bookmist.com.ar". Google elige entre `name` y
+// los `alternateName`, y prefiere uno corto: la marca va sola en `name`, y la
+// versión con "Tienda Literaria" queda como alternativa aceptada.
+export function websiteJsonLd(marca: MarcaConfig, titulo: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: marca.nombre,
+    alternateName: [titulo, new URL(SITE_URL).hostname],
+    url: SITE_URL,
+  }
+}
+
+// Una nota del blog. Autor y editor son la marca: las notas las escribe Dani
+// como Bookmist, no con firma propia.
+export function blogPostingJsonLd(
+  nota: Pick<NotaBlog, 'slug' | 'titulo' | 'bajada' | 'imagen' | 'publicado_at' | 'updated_at'>,
+  marca: MarcaConfig,
+  descripcion: string,
+) {
+  const url = `${SITE_URL}/blog/${nota.slug}`
+  const organizacion = {
+    '@type': 'Organization',
+    name: marca.nombre,
+    url: SITE_URL,
+    ...(marca.logoUrl && { logo: marca.logoUrl }),
+  }
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: nota.titulo,
+    description: descripcion || undefined,
+    image: nota.imagen ?? undefined,
+    datePublished: nota.publicado_at ?? undefined,
+    dateModified: nota.updated_at,
+    author: organizacion,
+    publisher: organizacion,
+    mainEntityOfPage: url,
+    url,
+    inLanguage: 'es-AR',
   }
 }
 

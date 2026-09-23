@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { ChevronLeft, Ticket } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getMarcaConfig, getCuentasPago, getCintilloConfig } from '@/lib/configuracion'
+import { getMarcaConfig, getCuentasPago, getCintilloConfig, getCuotasConfig } from '@/lib/configuracion'
 import { ConfiguracionForm } from '@/components/admin/configuracion-form'
 import { NavLinksEditor } from '@/components/admin/nav-links-editor'
 import { CuentasPagoEditor } from '@/components/admin/cuentas-pago-editor'
 import { DescuentoTransferenciaForm } from '@/components/admin/descuento-transferencia-form'
+import { CuotasSinInteresForm } from '@/components/admin/cuotas-sin-interes-form'
 import type { NavLink } from '@/types/db'
 
 export const metadata = { title: 'Configuración' }
@@ -18,11 +19,12 @@ async function getNavLinksAdmin(): Promise<NavLink[]> {
 }
 
 export default async function AdminConfiguracionPage() {
-  const [marca, navLinks, cuentasPago, cintillo] = await Promise.all([
+  const [marca, navLinks, cuentasPago, cintillo, cuotas] = await Promise.all([
     getMarcaConfig(),
     getNavLinksAdmin(),
     getCuentasPago(),
     getCintilloConfig(),
+    getCuotasConfig(),
   ])
 
   return (
@@ -43,6 +45,7 @@ export default async function AdminConfiguracionPage() {
       <div className="mt-6 space-y-8">
         <ConfiguracionForm marcaInicial={marca} />
         <DescuentoTransferenciaForm inicial={cintillo} />
+        <CuotasSinInteresForm inicial={cuotas} />
         <CuentasPagoEditor cuentasIniciales={cuentasPago} />
 
         {/* El cupón de bienvenida se editaba acá cuando era el único que

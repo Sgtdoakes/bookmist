@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Package, ShoppingBag, Truck, AlertTriangle, LayoutTemplate, Settings, Ticket, Mail } from 'lucide-react'
+import { Package, ShoppingBag, Truck, AlertTriangle, LayoutTemplate, Settings, Ticket, Mail, Newspaper } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function AdminHome() {
@@ -50,6 +50,12 @@ export default function AdminHome() {
           icon={<LayoutTemplate className="h-8 w-8" />}
           titulo="Página de inicio"
           desc="Arrastrá para reordenar, ocultá y editá el texto de cada sección"
+        />
+        <Accion
+          href="/admin/blog"
+          icon={<Newspaper className="h-8 w-8" />}
+          titulo="Blog"
+          desc="Escribí notas con imagen y links a tus productos"
         />
         <Accion
           href="/admin/configuracion"

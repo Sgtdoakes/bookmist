@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
 import { AddToCart } from '@/components/public/add-to-cart'
 import { MediaVisual } from '@/components/public/media-visual'
+import { PrecioBeneficios } from '@/components/public/beneficios-precio'
 import { formatARS } from '@/lib/format'
 import type { Producto } from '@/types/db'
 
@@ -32,7 +33,10 @@ export function ProductCard({ producto }: { producto: Producto }) {
         {producto.tipo === 'libro' && producto.autor && (
           <p className="mb-1.5 line-clamp-1 text-xs text-card-foreground/70">{producto.autor}</p>
         )}
-        <p className="mb-4 font-heading text-xl font-semibold text-primary">{formatARS(producto.precio)}</p>
+        <div className="mb-4">
+          <p className="font-heading text-xl font-semibold text-primary">{formatARS(producto.precio)}</p>
+          <PrecioBeneficios precio={producto.precio} sobre="tarjeta" className="mt-1 text-xs" />
+        </div>
         <div className="mt-auto">
           <AddToCart producto={producto} />
         </div>

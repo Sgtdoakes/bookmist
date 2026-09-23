@@ -6,6 +6,7 @@ import { getProductoConItems, getRelacionados, getVariantes } from '@/lib/produc
 import type { ProductoTipo } from '@/types/db'
 import { ProductGallery } from '@/components/public/product-gallery'
 import { AddToCart } from '@/components/public/add-to-cart'
+import { PrecioBeneficios } from '@/components/public/beneficios-precio'
 import { PixelEvento } from '@/components/public/pixel-evento'
 import { ProductCard } from '@/components/public/product-card'
 import { SelectorVariantes } from '@/components/public/selector-variantes'
@@ -90,9 +91,10 @@ export default async function ProductoDetallePage({ params }: Props) {
           {/* El autor se lee acá, pegado al título, no perdido en la ficha
               técnica: en un libro es parte del nombre. */}
           {muestraAutor && <p className="mb-3 text-lg text-foreground/70">{producto.autor}</p>}
-          <p className="mb-6 font-heading text-2xl font-semibold text-primary">
-            {formatARS(producto.precio)}
-          </p>
+          <div className="mb-6">
+            <p className="font-heading text-2xl font-semibold text-primary">{formatARS(producto.precio)}</p>
+            <PrecioBeneficios precio={producto.precio} sobre="fondo" className="mt-1.5 text-sm" />
+          </div>
 
           <SelectorVariantes actual={producto} otrasVariantes={otrasVariantes} />
 

@@ -103,7 +103,34 @@ export async function guardarDescuentoTransferencia(cfg: {
   return { ok: true }
 }
 
-export type NavLinkItem = { id: string; label: string; href: string; activo: boolean }
+// Cuotas sin interés que anuncia el sitio (tarjetas, ficha y barra del
+// carrito). No cambian nada en Mercado Pago: son el cartel, y tienen que
+// coincidir con lo que Dani tiene configurado allá.
+export async function guardarCuotasSinInteres(cfg: { cantidad: number; minimo: number }): Promise<Ok | Err> {
+  const supabase = await clienteAutenticado()
+  if (!supabase) return { ok: false, error: 'Tu sesión expiró.' }
+  if (!Number.isInteger(cfg.cantidad) || cfg.cantidad < 0 || cfg.cantidad > 24) {
+    return { ok: false, error: 'La cantidad de cuotas va de 0 a 24.' }
+  }
+  if (!Number.isInteger(cfg.minimo) || cfg.minimo < 0) {
+    return { ok: false, error: 'El monto mínimo tiene que ser un número entero, 0 o más.' }
+  }
+
+  try {
+    await guardarValoresConfiguracion(supabase, {
+      cuotas_sin_interes_cantidad: String(cfg.cantidad),
+      cuotas_sin_interes_minimo: String(cfg.minimo),
+    })
+  } catch {
+    return { ok: false, error: 'No se pudieron guardar las cuotas.' }
+  }
+
+  // Se ven en cada tarjeta de producto de todo el sitio.
+  revalidarPublico()
+  return { ok: true }
+}
+
+export type NavLinkItem ={ id: string; label: string; href: string; activo: boolean }
 
 // Reemplazo completo del lienzo de nav_links en una sola pasada — mismo
 // patrón diff (borrar/actualizar/insertar) que guardarLayout en

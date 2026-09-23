@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { OutlineButton, PrimaryButton } from '@/components/public/buttons'
 import { ImgPlaceholder } from '@/components/public/img-placeholder'
+import { BarraBeneficiosCarrito } from '@/components/public/barra-beneficios-carrito'
 import { useCart } from '@/lib/cart'
 import { formatARS } from '@/lib/format'
 
@@ -34,6 +35,10 @@ export default function CarritoPage() {
       <p className="mt-1 text-foreground/75">
         {totalItems} {totalItems === 1 ? 'producto' : 'productos'}
       </p>
+
+      <div className="mt-6">
+        <BarraBeneficiosCarrito subtotal={totalPrecio} />
+      </div>
 
       <ul className="mt-6 divide-y divide-foreground/10 rounded-2xl border border-foreground/10">
         {items.map((item) => (

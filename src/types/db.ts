@@ -302,6 +302,36 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['configuracion']['Insert']>
         Relationships: []
       }
+      blog_posts: {
+        Row: {
+          id: string
+          slug: string
+          titulo: string
+          bajada: string
+          imagen: string | null
+          cuerpo: string
+          producto_ids: string[]
+          publicado: boolean
+          publicado_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          titulo: string
+          bajada?: string
+          imagen?: string | null
+          cuerpo?: string
+          producto_ids?: string[]
+          publicado?: boolean
+          publicado_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['blog_posts']['Insert']>
+        Relationships: []
+      }
       paginas: {
         Row: {
           id: string
@@ -484,3 +514,4 @@ export type SuscriptorNewsletter = Database['public']['Tables']['suscriptores_ne
 export type SuscriptorNewsletterInsert = Database['public']['Tables']['suscriptores_newsletter']['Insert']
 export type Cupon = Database['public']['Tables']['cupones']['Row']
 export type CuponInsert = Database['public']['Tables']['cupones']['Insert']
+export type NotaBlog = Database['public']['Tables']['blog_posts']['Row']

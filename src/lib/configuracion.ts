@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/public'
 import { storeConfig } from '@/lib/store-config'
 import { NAV_LINKS } from '@/lib/constants'
 import type { CintilloConfig } from '@/lib/cintillo'
+import type { BeneficiosPrecio, CuotasConfig } from '@/lib/beneficios'
 import type { Database } from '@/types/db'
 
 // Configuración de marca editable desde /admin/configuracion (Fase 6f-1):
@@ -237,6 +238,60 @@ export async function getCintilloConfig(): Promise<CintilloConfig> {
   } catch {
     return base
   }
+}
+
+// Cuotas sin interés que se anuncian en las tarjetas, en la ficha y en la
+// barra del carrito. Solo es el anuncio: las cuotas las da Mercado Pago según
+// la cuenta de Dani (la preferencia de src/lib/mercadopago.ts no manda
+// `installments`), así que estos dos números tienen que coincidir con lo que
+// está configurado allá. Default: lo que ya prometían el cintillo y la home.
+const CUOTAS_DEFAULT: CuotasConfig = { cantidad: 3, minimo: 75000 }
+
+function parseEnteroNoNegativo(valor: string | undefined): number | null {
+  if (valor === undefined || valor.trim() === '') return null
+  const n = Number(valor)
+  return Number.isInteger(n) && n >= 0 ? n : null
+}
+
+// Todo lo que acompaña a un precio en el sitio público, en una sola consulta:
+// el layout lo lee una vez y se lo pasa a las tarjetas y al carrito.
+const CLAVES_BENEFICIOS = [
+  'descuento_transferencia_pct',
+  'cuotas_sin_interes_cantidad',
+  'cuotas_sin_interes_minimo',
+  'envio_gratis_umbral',
+] as const
+
+export async function getBeneficiosPrecio(): Promise<BeneficiosPrecio> {
+  const base: BeneficiosPrecio = {
+    descuentoTransferenciaPct: DESCUENTO_TRANSFERENCIA_DEFAULT,
+    cuotas: CUOTAS_DEFAULT,
+    envioGratisUmbral: 0,
+  }
+  if (!configured()) return base
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.from('configuracion').select('clave, valor').in('clave', CLAVES_BENEFICIOS)
+    if (error) throw error
+    const map = new Map((data ?? []).map((r) => [r.clave, r.valor]))
+    const umbral = Number(map.get('envio_gratis_umbral'))
+    return {
+      descuentoTransferenciaPct: parsePct(map.get('descuento_transferencia_pct')) ?? base.descuentoTransferenciaPct,
+      cuotas: {
+        cantidad: parseEnteroNoNegativo(map.get('cuotas_sin_interes_cantidad')) ?? CUOTAS_DEFAULT.cantidad,
+        minimo: parseEnteroNoNegativo(map.get('cuotas_sin_interes_minimo')) ?? CUOTAS_DEFAULT.minimo,
+      },
+      // Misma lectura que getEnvioConfig(): la barra del carrito tiene que
+      // prometer el mismo umbral que después aplica el checkout.
+      envioGratisUmbral: Number.isFinite(umbral) && umbral > 0 ? Math.round(umbral) : 0,
+    }
+  } catch {
+    return base
+  }
+}
+
+export async function getCuotasConfig(): Promise<CuotasConfig> {
+  return (await getBeneficiosPrecio()).cuotas
 }
 
 // Configuración de envíos (Fase 6k): umbral de envío gratis y punto de

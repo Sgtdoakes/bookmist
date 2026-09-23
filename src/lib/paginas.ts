@@ -5,7 +5,7 @@ import type { PaginaRow } from '@/types/db'
 // (public)/[slug]) — una página institucional con uno de estos slugs nunca
 // sería alcanzable en su propia URL (la ruta fija siempre gana), así que se
 // rechaza al crearla en vez de dejar una página fantasma sin acceso.
-export const SLUGS_RESERVADOS = ['admin', 'productos', 'carrito', 'checkout', 'pedido', 'mantenimiento', 'api']
+export const SLUGS_RESERVADOS = ['admin', 'productos', 'carrito', 'checkout', 'pedido', 'mantenimiento', 'api', 'blog']
 
 function configured() {
   return !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY
