@@ -24,14 +24,21 @@ const TAMANO_MAXIMO = 5 * 1024 * 1024 // 5 MB
 // withoutEnlargement evita agrandar (y empeorar) una imagen chica.
 const ANCHO_MAXIMO = 1600
 const CALIDAD_WEBP = 80
-// 30 días. Ojo con el formato: Supabase guarda este string tal cual y lo
-// sirve como "public, <lo que mandes>" — un "2592000" pelado sale como
-// "public, 2592000", que no es una directiva válida y el navegador ignora
-// (verificado contra el servidor). Tiene que decir "max-age=".
+// 30 días. Ojo con el formato: NO va el "max-age=" acá. @supabase/storage-js
+// arma el header como `max-age=${cacheControl}` (dist/index.mjs), así que lo
+// que se manda es solo el valor y lo que sirve el servidor termina siendo
+// "public, max-age=2592000, immutable".
+// Esto estuvo mal entre el 2026-08-22 y el 2026-09-10: la constante decía
+// 'max-age=2592000, immutable' y el header salía duplicado, "public,
+// max-age=max-age=2592000, immutable". Un max-age con valor inválido lo
+// descarta el navegador, así que los 51 archivos subidos en esa ventana se
+// quedaron sin los 30 días de caché y cada visita repetida los volvía a
+// bajar — egress pago por nada. Verificado contra el servidor real y contra
+// la metadata de los objetos, no por lectura del código solo.
 // `immutable` es correcto acá porque cada archivo se sube con un nombre
 // UUID nuevo: el contenido de una URL dada no cambia nunca, así que el
 // navegador no necesita revalidar.
-const CACHE_CONTROL = 'max-age=2592000, immutable'
+const CACHE_CONTROL = '2592000, immutable'
 
 async function usuarioAutenticado() {
   const supabase = await createClient()
